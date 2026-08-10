@@ -1,0 +1,1070 @@
+==================
+top-level items preserve every normal pattern action and special form
+==================
+{}
+ready
+low, high
+active {}
+start,
+stop {}
+from,
+# range continuation
+through {}
+/record/ {}
+total / count {}
+BEGIN {}
+END {}
+---
+
+(program
+  (item_list
+    (item
+      (action))
+    (terminator
+      (newline))
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (lvalue
+              (name))))))
+    (terminator
+      (newline))
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (lvalue
+              (name))))
+        (expr
+          (non_unary_expr
+            (lvalue
+              (name))))))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))
+          (newline_opt
+            (newline))
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))
+          (newline_opt
+            (newline)
+            (comment)
+            (newline))
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (ere
+                (extended_reg_exp
+                  (ere_branch
+                    (ere_branch
+                      (ere_branch
+                        (ere_branch
+                          (ere_branch
+                            (ere_branch
+                              (ere_expression
+                                (one_char_or_coll_elem_ere
+                                  (ordinary_character))))
+                            (ere_expression
+                              (one_char_or_coll_elem_ere
+                                (ordinary_character))))
+                          (ere_expression
+                            (one_char_or_coll_elem_ere
+                              (ordinary_character))))
+                        (ere_expression
+                          (one_char_or_coll_elem_ere
+                            (ordinary_character))))
+                      (ere_expression
+                        (one_char_or_coll_elem_ere
+                          (ordinary_character))))
+                    (ere_expression
+                      (one_char_or_coll_elem_ere
+                        (ordinary_character))))))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (non_unary_expr
+                (lvalue
+                  (name)))
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name))))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator
+      (newline)))
+  (item
+    (pattern
+      (special_pattern
+        (end_keyword)))
+    (action)))
+
+==================
+top-level terminators preserve semicolon newlines and a final item
+==================
+{}; END {}
+
+
+final
+---
+
+(program
+  (item_list
+    (item
+      (action))
+    (terminator)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline)
+      (newline)
+      (newline)))
+  (item
+    (normal_pattern
+      (expr
+        (non_unary_expr
+          (lvalue
+            (name)))))))
+
+==================
+function definitions distinguish names parameters newlines and continuations
+==================
+function adjacent() {}
+function spaced (first,
+second)
+{
+  return first
+}
+func\
+tion con\
+tinued(pa\
+ram,\
+other) {}
+---
+
+(program
+  (item_list
+    (item
+      (function_keyword)
+      (func_name)
+      (action))
+    (terminator
+      (newline))
+    (item
+      (function_keyword)
+      (name)
+      (param_list
+        (name)
+        (newline_opt
+          (newline))
+        (name))
+      (newline_opt
+        (newline))
+      (action
+        (newline_opt
+          (newline))
+        (terminated_statement_list
+          (terminated_statement
+            (terminatable_statement
+              (return_keyword)
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            (newline)))))
+    (terminator
+      (newline)))
+  (item
+    (function_keyword
+      (line_continuation))
+    (func_name
+      (line_continuation))
+    (param_list
+      (name
+        (line_continuation))
+      (line_continuation)
+      (name))
+    (action)))
+
+==================
+parameter recovery preserves actual closer and body boundaries
+==================
+function closed(first,) {}
+function direct(first,{}
+function continued(first,\
+{}
+function separated(first,
+{}
+---
+
+(program
+  (item_list
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      parameters: (param_list
+        (name)
+        (parameter_recovery))
+      body: (action))
+    terminator: (terminator
+      (newline))
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      parameters: (param_list
+        (name)
+        (parameter_recovery))
+      (closer_recovery)
+      body: (action))
+    terminator: (terminator
+      (newline))
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      parameters: (param_list
+        (name)
+        (line_continuation)
+        (parameter_recovery))
+      (closer_recovery)
+      body: (action))
+    terminator: (terminator
+      (newline))
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      parameters: (param_list
+        (name)
+        (parameter_recovery))
+      (closer_recovery)
+      body: (function_body_recovery))
+    terminator: (terminator
+      (newline)))
+  item: (item
+    action: (action)))
+
+==================
+function recovery preserves preceding and following items
+==================
+function missing()
+BEGIN {}
+function ordinary()
+value {}
+function invalid(first,
+END {}
+function eof()
+---
+
+(program
+  (item_list
+    (item
+      (function_keyword)
+      (func_name)
+      (function_body_recovery))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (function_keyword)
+      (func_name)
+      (function_body_recovery))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (function_keyword)
+      (func_name)
+      (param_list
+        (name)
+        (parameter_recovery))
+      (closer_recovery)
+      (function_body_recovery))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline)))
+  (item
+    (function_keyword)
+    (func_name)
+    (function_body_recovery)))
+
+==================
+a special pattern without an action remains invalid before the next item
+==================
+BEGIN
+END {}
+---
+
+(program
+  (ERROR
+    (pattern
+      (special_pattern
+        (begin_keyword))))
+  (item_list
+    leading: (newline_opt
+      (newline)))
+  item: (item
+    pattern: (pattern
+      (special_pattern
+        (end_keyword)))
+    action: (action)))
+
+==================
+range recovery preserves missing arms newline ownership actions and EOF
+==================
+, right {}
+left, {}
+same,
+{}
+separate,
+BEGIN {}
+tail,
+---
+
+(program
+  (item_list
+    (item
+      (pattern
+        (normal_pattern
+          (expression_recovery)
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))
+          (expression_recovery)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))
+          (newline_opt
+            (newline))
+          (expression_recovery)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (lvalue
+              (name))))
+        (expression_recovery)))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator
+      (newline)))
+  (item
+    (normal_pattern
+      (expr
+        (non_unary_expr
+          (lvalue
+            (name))))
+      (expression_recovery))))
+
+==================
+direct item boundaries recover empty newline nonempty and nested action closers
+==================
+BEGIN { END {}
+BEGIN {
+END {}
+BEGIN { break END {}
+BEGIN { { break } END {}
+BEGIN { { break END {}
+---
+
+(program
+  (item_list
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (newline_opt
+          (newline))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (break_keyword))))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (terminated_statement_list
+          (terminated_statement
+            (action
+              (unterminated_statement_list
+                (unterminated_statement
+                  (terminatable_statement
+                    (break_keyword)))))))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (terminated_statement_list
+          (terminated_statement
+            (action
+              (unterminated_statement_list
+                (unterminated_statement
+                  (terminatable_statement
+                    (break_keyword))))
+              (action_item_boundary_recovery))))
+        (action_item_boundary_recovery)))
+    (terminator_recovery))
+  (item
+    (pattern
+      (special_pattern
+        (end_keyword)))
+    (action)))
+
+==================
+direct item recovery accepts each self-terminating control tail
+==================
+BEGIN { if (condition) {} END {}
+BEGIN { if (condition); END {}
+BEGIN { if (condition) {} else {} END {}
+BEGIN { while (condition) {} END {}
+BEGIN { for (;;) {} END {}
+---
+
+(program
+  (item_list
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (terminated_statement_list
+          (terminated_statement
+            (if_keyword)
+            (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (terminated_statement
+              (action))))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (terminated_statement_list
+          (terminated_statement
+            (if_keyword)
+            (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (terminated_statement)))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (terminated_statement_list
+          (terminated_statement
+            (if_keyword)
+            (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (terminated_statement
+              (action))
+            (else_keyword)
+            (terminated_statement
+              (action))))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (terminated_statement_list
+          (terminated_statement
+            (while_keyword)
+            (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (terminated_statement
+              (action))))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (terminated_statement_list
+          (terminated_statement
+            (for_keyword)
+            (terminated_statement
+              (action))))
+        (action_item_boundary_recovery)))
+    (terminator_recovery))
+  (item
+    (pattern
+      (special_pattern
+        (end_keyword)))
+    (action)))
+
+==================
+mixed item sequences preserve real terminators after missing action closers
+==================
+active {}
+BEGIN { break
+END {}
+function helper() {}
+from,
+# range continuation
+through {}
+BEGIN { break; END {}
+final
+---
+
+(program
+  (item_list
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (break_keyword))))
+        (closer_recovery)))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (function_keyword)
+      (func_name)
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))
+          (newline_opt
+            (newline)
+            (comment)
+            (newline))
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (break_keyword))))
+        (closer_recovery)))
+    (terminator)
+    (item
+      (pattern
+        (special_pattern
+          (end_keyword)))
+      (action))
+    (terminator
+      (newline)))
+  (item
+    (normal_pattern
+      (expr
+        (non_unary_expr
+          (lvalue
+            (name)))))))
+
+==================
+a missing top-level item terminator preserves the following item
+==================
+BEGIN {} END {}
+---
+
+(program
+  (item_list
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator_recovery))
+  (item
+    (pattern
+      (special_pattern
+        (end_keyword)))
+    (action)))
+
+==================
+a missing function header closer preserves its body and following item
+==================
+function missing(value
+{}
+END {}
+---
+
+(program
+  (item_list
+    (item
+      (function_keyword)
+      (func_name)
+      (param_list
+        (name))
+      (closer_recovery)
+      (newline_opt
+        (newline))
+      (action))
+    (terminator
+      (newline)))
+  (item
+    (pattern
+      (special_pattern
+        (end_keyword)))
+    (action)))
+
+==================
+physical EOF recovers every open action closer
+==================
+BEGIN { { break
+---
+
+(program
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action
+      (terminated_statement_list
+        (terminated_statement
+          (action
+            (unterminated_statement_list
+              (unterminated_statement
+                (terminatable_statement
+                  (break_keyword))))
+            (closer_recovery))))
+      (closer_recovery))))
+
+==================
+parameter recovery retains completed items before non-name item boundaries
+==================
+BEGIN {}
+ready {}
+42 {}
+{}
+function regex(first,
+/r/ {}
+function numeric(first,
+42 {}
+function block(first,
+{}
+---
+
+(program
+  (item_list
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (lvalue
+                (name))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (number)))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (action))
+    (terminator
+      (newline))
+    (item
+      (function_keyword)
+      (func_name)
+      (param_list
+        (name)
+        (parameter_recovery))
+      (closer_recovery)
+      (function_body_recovery))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (ere
+                (extended_reg_exp
+                  (ere_branch
+                    (ere_expression
+                      (one_char_or_coll_elem_ere
+                        (ordinary_character))))))))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (function_keyword)
+      (func_name)
+      (param_list
+        (name)
+        (parameter_recovery))
+      (closer_recovery)
+      (function_body_recovery))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (normal_pattern
+          (expr
+            (non_unary_expr
+              (number)))))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (function_keyword)
+      (func_name)
+      (param_list
+        (name)
+        (parameter_recovery))
+      (closer_recovery)
+      (function_body_recovery))
+    (terminator
+      (newline)))
+  (item
+    (action)))
+
+==================
+function bodies own logical continuations before actions recovery and EOF
+==================
+function body() \
+{}
+function boundary() \
+END {}
+function eof() \
+
+---
+
+(program
+  (item_list
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      (line_continuation)
+      body: (action))
+    terminator: (terminator
+      (newline))
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      (line_continuation)
+      body: (function_body_recovery))
+    terminator: (terminator_recovery)
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (end_keyword)))
+      action: (action))
+    terminator: (terminator
+      (newline)))
+  item: (item
+    (function_keyword)
+    name: (func_name)
+    (line_continuation)
+    body: (function_body_recovery)))
+
+==================
+same-line unexpected source does not synthesize function recovery nodes
+==================
+function number(a,42) {}
+function string(a,"s") {}
+function regex(a,/r/) {}
+function operator(a,+x) {}
+function dot() .
+function parenthesis() )
+function bracket() ]
+function comma() ,
+function colon() :
+
+---
+
+(program
+  (ERROR
+    (function_keyword)
+    name: (func_name)
+    (name)
+    (expression_recovery)
+    (item_list
+      leading: (newline_opt
+        (newline))
+      (ERROR
+        (function_keyword)
+        name: (func_name)
+        (name))
+      item: (item
+        pattern: (normal_pattern
+          (expr
+            (non_unary_expr
+              (string
+                (string_content))))))
+      (ERROR
+        (expression_recovery))
+      terminator: (terminator
+        (newline)))
+    (function_keyword)
+    name: (func_name)
+    (name)
+    (expression_recovery)
+    (item_list
+      leading: (newline_opt
+        (newline))
+      (ERROR
+        (function_keyword)
+        name: (func_name)
+        (name))
+      item: (item
+        pattern: (normal_pattern
+          (expr
+            (unary_expr
+              operand: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name))))))))
+      (ERROR
+        (expression_recovery))
+      terminator: (terminator
+        (newline)))
+    (function_keyword)
+    name: (func_name)
+    (UNEXPECTED '.')
+    (newline_opt
+      (newline))
+    (function_keyword)
+    name: (func_name)
+    (newline_opt
+      (newline))
+    (function_keyword)
+    name: (func_name)
+    (newline_opt
+      (newline))
+    (function_keyword)
+    name: (func_name)
+    (newline_opt
+      (newline))
+    (function_keyword)
+    name: (func_name))
+  (item_list
+    leading: (newline_opt
+      (newline))))

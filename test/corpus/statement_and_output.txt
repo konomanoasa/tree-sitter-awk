@@ -1,0 +1,1731 @@
+==================
+statement lists preserve empty terminated unterminated and action forms
+==================
+
+BEGIN {
+  ;
+  by_semicolon;
+  by_newline
+  { nested } final }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (unterminated_statement_list
+          (terminated_statement
+            (newline_opt
+              (newline)))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))))
+            (newline_opt
+              (newline)))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))))
+            terminator: (newline))
+          (terminated_statement
+            (action
+              body: (unterminated_statement_list
+                (unterminated_statement
+                  statement: (terminatable_statement
+                    (simple_statement
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name))))))))))
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+delete jump exit and return statements preserve their formal children
+==================
+
+BEGIN {
+  delete whole
+  delete indexed[first, second]
+  break
+  continue
+  next
+  nextfile
+  exit
+  exit status + 1
+  return
+  return value
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (delete_keyword)
+                array: (name)))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (delete_keyword)
+                array: (name)
+                subscripts: (expr_list
+                  (multiple_expr_list
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (break_keyword))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (continue_keyword))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (next_keyword))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (nextfile_keyword))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (exit_keyword))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (exit_keyword)
+              (expr
+                (non_unary_expr
+                  left: (non_unary_expr
+                    (lvalue
+                      (name)))
+                  right: (expr
+                    (non_unary_expr
+                      (number))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (return_keyword))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (return_keyword)
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+print and printf distinguish optional single and multiple argument forms
+==================
+
+BEGIN {
+  print
+  print value
+  print (value)
+  print (first, second)
+  printf format
+  printf (format)
+  printf (format, value)
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (expr
+                            (non_unary_expr
+                              (lvalue
+                                (name)))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (multiple_expr_list
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name))))
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (printf_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (printf_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (expr
+                            (non_unary_expr
+                              (lvalue
+                                (name)))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (printf_keyword)
+                    arguments: (multiple_expr_list
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name))))
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+output redirection stays outside print expressions and owns a normal target expression
+==================
+
+BEGIN {
+  print > file
+  print value >> archive
+  print value | command
+  printf format > file
+  print (left > right)
+  print left || right
+  print (command | getline input_target)
+  print value | getline output_target
+  print value > target > suffix
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name))))))
+                  redirection: (output_redirection
+                    (append)
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name))))))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (printf_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name))))))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (expr
+                            (non_unary_expr
+                              left: (non_unary_expr
+                                (lvalue
+                                  (name)))
+                              right: (expr
+                                (non_unary_expr
+                                  (lvalue
+                                    (name)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          left: (non_unary_print_expr
+                            (lvalue
+                              (name)))
+                          operator: (or)
+                          right: (print_expr
+                            (non_unary_print_expr
+                              (lvalue
+                                (name)))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (expr
+                            (non_unary_expr
+                              (non_unary_input_function
+                                source: (non_unary_expr
+                                  (lvalue
+                                    (name)))
+                                get: (simple_get
+                                  (getline_keyword)
+                                  target: (lvalue
+                                    (name)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name))))))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        (non_unary_input_function
+                          get: (simple_get
+                            (getline_keyword)
+                            target: (lvalue
+                              (name))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name))))))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        left: (non_unary_expr
+                          (lvalue
+                            (name)))
+                        right: (expr
+                          (non_unary_expr
+                            (lvalue
+                              (name))))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+conditionals bind else to the nearest eligible if and accept an empty consequence
+==================
+
+BEGIN {
+  if (empty);
+  else
+    empty_alternative
+  if (outer)
+    if (inner)
+      nearest;
+    else
+      inner_alternative
+  if (outer)
+    if (inner)
+      inner_consequence;
+    else
+      inner_alternative;
+  else
+    outer_alternative
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            consequence: (terminated_statement
+              (newline_opt
+                (newline)))
+            (else_keyword)
+            (newline_opt
+              (newline))
+            alternative: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (newline_opt
+              (newline))
+            consequence: (terminated_statement
+              (if_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name))))
+              (newline_opt
+                (newline))
+              consequence: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))
+                (newline_opt
+                  (newline)))
+              (else_keyword)
+              (newline_opt
+                (newline))
+              alternative: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))
+                terminator: (newline))))
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (newline_opt
+              (newline))
+            consequence: (terminated_statement
+              (if_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name))))
+              (newline_opt
+                (newline))
+              consequence: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))
+                (newline_opt
+                  (newline)))
+              (else_keyword)
+              (newline_opt
+                (newline))
+              alternative: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))
+                (newline_opt
+                  (newline))))
+            (else_keyword)
+            (newline_opt
+              (newline))
+            alternative: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+loops preserve terminated bodies optional clauses and for in names
+==================
+
+BEGIN {
+  while (condition)
+    while_body
+  do
+    do_body;
+  while (condition)
+  do
+    { action_body }
+  while (condition)
+  do
+    ;
+  while (condition)
+  do
+    while (inner)
+      nested_body;
+  while (outer)
+  for (;;)
+    empty_clauses
+  for (counter = 0; counter < limit; counter++)
+    full_clauses
+  for (print start; condition; delete cache)
+    simple_statement_clauses
+  for (key in array)
+    membership_body
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            (while_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (newline_opt
+              (newline))
+            body: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              (newline_opt
+                (newline))
+              body: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))
+                (newline_opt
+                  (newline)))
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              (newline_opt
+                (newline))
+              body: (terminated_statement
+                (action
+                  body: (unterminated_statement_list
+                    (unterminated_statement
+                      statement: (terminatable_statement
+                        (simple_statement
+                          (expr
+                            (non_unary_expr
+                              (lvalue
+                                (name)))))))))
+                (newline_opt
+                  (newline)))
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              (newline_opt
+                (newline))
+              body: (terminated_statement
+                (newline_opt
+                  (newline)))
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              (newline_opt
+                (newline))
+              body: (terminated_statement
+                (while_keyword)
+                condition: (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))
+                (newline_opt
+                  (newline))
+                body: (terminated_statement
+                  statement: (terminatable_statement
+                    (simple_statement
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name))))))
+                  (newline_opt
+                    (newline))))
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            terminator: (newline))
+          (terminated_statement
+            (for_keyword)
+            (newline_opt
+              (newline))
+            body: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (expr
+                (non_unary_expr
+                  left: (lvalue
+                    (name))
+                  right: (expr
+                    (non_unary_expr
+                      (number))))))
+            condition: (expr
+              (non_unary_expr
+                left: (non_unary_expr
+                  (lvalue
+                    (name)))
+                right: (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))))
+            update: (simple_statement
+              (expr
+                (non_unary_expr
+                  operand: (lvalue
+                    (name))
+                  operator: (incr))))
+            (newline_opt
+              (newline))
+            body: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (print_statement
+                statement: (simple_print_statement
+                  (print_keyword)
+                  arguments: (print_expr_list
+                    (print_expr
+                      (non_unary_print_expr
+                        (lvalue
+                          (name))))))))
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            update: (simple_statement
+              (delete_keyword)
+              array: (name))
+            (newline_opt
+              (newline))
+            body: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            (for_keyword)
+            variable: (name)
+            (in_keyword)
+            array: (name)
+            (newline_opt
+              (newline))
+            body: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+line continuations keep keyword header and output ownership
+==================
+
+BEGIN {
+  pr\
+int value\
+>\
+>\
+destination
+  if (raw_header)
+    raw_body
+  if (continued_header)\
+    continued_body
+  if (branch)
+    consequence;
+  el\
+se
+    alternative
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword
+                      (line_continuation))
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name))))))
+                  (line_continuation)
+                  redirection: (output_redirection
+                    (append
+                      (line_continuation))
+                    (line_continuation)
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (newline_opt
+              (newline))
+            consequence: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (line_continuation)
+            consequence: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (newline_opt
+              (newline))
+            consequence: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              (newline_opt
+                (newline)))
+            (else_keyword
+              (line_continuation))
+            (newline_opt
+              (newline))
+            alternative: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+classic for updates remain normal after direct and continued boundaries
+==================
+
+BEGIN {
+  for (delete cache; condition; print value);
+  for (start; condition; \
+    delete cache);
+  for (start; condition; \
+    print value);
+  for (start; condition; \
+    update++);
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (delete_keyword)
+              array: (name))
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            update: (simple_statement
+              (print_statement
+                statement: (simple_print_statement
+                  (print_keyword)
+                  arguments: (print_expr_list
+                    (print_expr
+                      (non_unary_print_expr
+                        (lvalue
+                          (name))))))))
+            body: (terminated_statement
+              (newline_opt
+                (newline))))
+          (terminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (line_continuation)
+            update: (simple_statement
+              (delete_keyword)
+              array: (name))
+            body: (terminated_statement
+              (newline_opt
+                (newline))))
+          (terminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (line_continuation)
+            update: (simple_statement
+              (print_statement
+                statement: (simple_print_statement
+                  (print_keyword)
+                  arguments: (print_expr_list
+                    (print_expr
+                      (non_unary_print_expr
+                        (lvalue
+                          (name))))))))
+            body: (terminated_statement
+              (newline_opt
+                (newline))))
+          (terminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (line_continuation)
+            update: (simple_statement
+              (expr
+                (non_unary_expr
+                  operand: (lvalue
+                    (name))
+                  operator: (incr))))
+            body: (terminated_statement
+              (newline_opt
+                (newline)))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+required statement expressions recover without filling optional slots
+==================
+
+BEGIN {
+  if () condition_body
+  while () loop_body
+  do do_body; while ()
+  printf
+  printf > file
+  print value, > file
+  print value >
+  delete values[]
+  for (;;) optional_condition
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            (if_keyword)
+            condition: (expression_recovery)
+            consequence: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            (while_keyword)
+            condition: (expression_recovery)
+            body: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name)))))))
+              (while_keyword)
+              condition: (expression_recovery))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (printf_keyword)
+                    arguments: (print_expr_list
+                      (expression_recovery))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (printf_keyword)
+                    arguments: (print_expr_list
+                      (expression_recovery)))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name))))
+                      (expression_recovery)))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name))))))
+                  redirection: (output_redirection
+                    (expression_recovery)))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (delete_keyword)
+                array: (name)
+                subscripts: (expr_list
+                  (expression_recovery))))
+            terminator: (newline))
+          (terminated_statement
+            (for_keyword)
+            body: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+missing bodies and terminators retain following control and simple statements
+==================
+
+BEGIN {
+  if (condition) else recovered_consequence
+  if (condition) consequence else alternative
+  do while (condition);
+  do body while (condition);
+  break print value
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            consequence: (statement_recovery)
+            (else_keyword)
+            alternative: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            consequence: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (terminator_recovery))
+            (else_keyword)
+            alternative: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name))))))
+              terminator: (newline)))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (statement_recovery)
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            (newline_opt
+              (newline)))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))
+                terminator: (terminator_recovery))
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            (newline_opt
+              (newline)))
+          (terminated_statement
+            statement: (terminatable_statement
+              (break_keyword))
+            terminator: (terminator_recovery))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+missing bodies recover at the action boundary without consuming its closer
+==================
+
+BEGIN { if (condition) consequence; else }
+BEGIN {
+  while (condition)
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            consequence: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name)))))))
+            (else_keyword)
+            alternative: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (while_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (newline_opt
+              (newline))
+            body: (statement_recovery)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+missing closers retain their owners continuations and following statements
+==================
+
+BEGIN { if (condition }
+BEGIN {
+  f(array[1); print retained
+  array[(1]; print retained_again
+  print (value\
+# comment
+  ; print continued
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (closer_recovery)
+            consequence: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (func_name)
+                    (expr_list
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name)
+                            (expr_list
+                              (expr
+                                (non_unary_expr
+                                  (number))))
+                            (closer_recovery))))))))))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name)
+                      (expr_list
+                        (expr
+                          (non_unary_expr
+                            (expr
+                              (non_unary_expr
+                                (number)))
+                            (closer_recovery))))))))))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (expr
+                            (non_unary_expr
+                              (lvalue
+                                (name))))
+                          (line_continuation)
+                          (comment)
+                          (closer_recovery))))))))
+            terminator: (newline))
+          (terminated_statement)
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+comma and colon do not trigger closer recovery
+==================
+
+BEGIN { f((left\
+, right) }
+BEGIN { result = condition ? (yes\
+: no }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (ERROR
+          (func_name)
+          (multiple_expr_list
+            (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (line_continuation)
+            (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    left: (lvalue
+                      (name))
+                    right: (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))))
+        (ERROR
+          (name)
+          (line_continuation)
+          (UNEXPECTED 'n'))))
+    terminator: (terminator
+      (newline))))
+
+==================
+greater than or equal never becomes output redirection
+==================
+
+BEGIN {
+  print a >= b
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))
+            (ERROR
+              (UNEXPECTED 'b'))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+empty print parentheses remain invalid
+==================
+
+BEGIN { print() }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (expression_recovery))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+empty printf parentheses remain invalid
+==================
+
+BEGIN { printf() }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (printf_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (expression_recovery))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+for in requires a plain name
+==================
+
+BEGIN { for (values[offset] in arrays) body }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (ERROR
+          (for_keyword)
+          left: (non_unary_expr
+            (lvalue
+              (name)
+              (expr_list
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name)))))))
+          operator: (in_keyword)
+          right: (name)
+          (UNEXPECTED 'b'))))
+    terminator: (terminator
+      (newline))))

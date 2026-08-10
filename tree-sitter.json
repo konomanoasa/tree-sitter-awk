@@ -1,0 +1,37 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "posix_awk",
+      "camelcase": "PosixAwk",
+      "title": "POSIX awk",
+      "scope": "source.awk",
+      "path": ".",
+      "file-types": ["awk"],
+      "injection-regex": "^awk$"
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "A Tree-sitter grammar for POSIX.1-2024 awk.",
+    "authors": [
+      {
+        "name": "konomanoasa"
+      }
+    ],
+    "links": {
+      "repository": "https://github.com/konomanoasa/tree-sitter-posix-awk"
+    }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "java": false,
+    "node": false,
+    "python": false,
+    "rust": false,
+    "swift": false,
+    "zig": false
+  }
+}

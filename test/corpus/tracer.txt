@@ -1,0 +1,395 @@
+==================
+tracer crosses top-level layout, assignment, print, match, and ERE
+==================
+
+# tracer
+BEGIN {
+  x /= 2
+  print x ~ /a/
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline)
+      (comment)
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    left: (lvalue
+                      (name))
+                    operator: (div_assign)
+                    right: (expr
+                      (non_unary_expr
+                        (number)))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          left: (non_unary_print_expr
+                            (lvalue
+                              (name)))
+                          right: (print_expr
+                            (non_unary_print_expr
+                              (ere
+                                expression: (extended_reg_exp
+                                  (ere_branch
+                                    (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (ordinary_character)))))))))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+slash tokens use assignment, division, then ERE context
+==================
+
+BEGIN {
+  x /= 2
+  x / 2
+  print /a/
+}
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (newline_opt
+          (newline))
+        (terminated_statement_list
+          (terminated_statement
+            (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))
+                    (div_assign)
+                    (expr
+                      (non_unary_expr
+                        (number)))))))
+            (newline))
+          (terminated_statement
+            (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (non_unary_expr
+                      (lvalue
+                        (name)))
+                    (expr
+                      (non_unary_expr
+                        (number)))))))
+            (newline))
+          (terminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))
+            (newline)))))
+    (terminator
+      (newline))))
+
+==================
+leading newline precedes the first item
+==================
+
+
+BEGIN {}
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline)
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator
+      (newline))))
+
+==================
+single unterminated top-level item remains under program
+==================
+
+BEGIN {}
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline)))
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action)))
+
+==================
+terminated items precede the final unterminated item
+==================
+
+BEGIN {}
+BEGIN {}
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator
+      (newline)))
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action)))
+
+==================
+multiple top-level items retain their terminator
+==================
+
+BEGIN {}
+BEGIN {}
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action))
+    (terminator
+      (newline))))
+
+==================
+implicit concatenation remains an expression
+==================
+
+BEGIN { print x y }
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (non_unary_print_expr
+                            (lvalue
+                              (name)))
+                          (non_unary_print_expr
+                            (lvalue
+                              (name))))))))))))))
+    (terminator
+      (newline))))
+
+==================
+division wins before an adjacent ERE-shaped spelling
+==================
+
+BEGIN { print x /a/ }
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (non_unary_print_expr
+                            (non_unary_print_expr
+                              (lvalue
+                                (name)))
+                            (print_expr
+                              (non_unary_print_expr
+                                (lvalue
+                                  (name)))))
+                          (expression_recovery))))))))))))
+    (terminator
+      (newline))))
+
+==================
+implemented keywords remain reserved in expression context
+==================
+
+BEGIN { x /= print }
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))))))
+        (ERROR
+          (div_assign)
+          (UNEXPECTED 'p')
+          (UNEXPECTED 'i'))))
+    (terminator
+      (newline))))
+
+==================
+match operators do not form an associative chain
+==================
+
+BEGIN { print a ~ b ~ c }
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (non_unary_print_expr
+                            (lvalue
+                              (name)))
+                          (ERROR
+                            (name))
+                          (print_expr
+                            (non_unary_print_expr
+                              (lvalue
+                                (name)))))))))))))))
+    (terminator
+      (newline))))
+
+==================
+newline-only program
+==================
+
+
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline)
+      (newline))))
+
+==================
+comment-only program
+==================
+
+# comment only
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline)
+      (comment)
+      (newline))))

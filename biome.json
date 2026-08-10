@@ -1,0 +1,17 @@
+{
+  "formatter": {
+    "includes": ["**", "!src/grammar.json", "!src/node-types.json"]
+  },
+  "javascript": {
+    "formatter": {
+      "indentStyle": "space",
+      "indentWidth": 2
+    }
+  },
+  "json": {
+    "formatter": {
+      "indentStyle": "space",
+      "indentWidth": 2
+    }
+  }
+}

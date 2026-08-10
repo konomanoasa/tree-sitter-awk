@@ -1,0 +1,1777 @@
+==================
+ordinary characters include blank, hash, non-ASCII, and hyphen
+==================
+
+BEGIN { print /1 #犬-/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  left: (ere_branch
+                                    left: (ere_branch
+                                      left: (ere_branch
+                                        (ere_expression
+                                          (one_char_or_coll_elem_ere
+                                            (ordinary_character))))
+                                      right: (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (ordinary_character))))
+                                    right: (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (ordinary_character))))
+                                  right: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+two and three physical continuations preserve every ERE owner
+==================
+
+BEGIN {
+  print /a\
+\
+b/
+  print /a\
+\
+\
+|b/
+  print /a\
+\
+*/
+  print /a*\
+\
+\
+?/
+  print /(a\
+\
+)/
+  print /(\
+\
+\
+)/
+  print /[a\
+\
+]/
+  print /a\
+\
+\
+/
+  print /a\\
+\
+n/
+  print /\1\
+\
+\
+2/
+  print /a{1\
+\
+2}/
+  print /[[:al\
+\
+\
+pha:]]/
+  print /[a\
+\
+-\
+\
+\
+c]/
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                (line_continuation)
+                                (line_continuation)
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              left: (extended_reg_exp
+                                (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character)))))
+                              (line_continuation)
+                              (line_continuation)
+                              (line_continuation)
+                              right: (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  operand: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character)))
+                                  (line_continuation)
+                                  (line_continuation)
+                                  operator: (ere_dupl_symbol))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  operand: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character)))
+                                  operator: (ere_dupl_symbol
+                                    (line_continuation)
+                                    (line_continuation)
+                                    (line_continuation)
+                                    modifier: (repetition_modifier)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  expression: (extended_reg_exp
+                                    (ere_branch
+                                      (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (ordinary_character)))))
+                                  (line_continuation)
+                                  (line_continuation))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (line_continuation)
+                                  (line_continuation)
+                                  (line_continuation)
+                                  expression: (expression_recovery))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (expression_term
+                                              (single_expression
+                                                (end_range
+                                                  (collating_element)))))))
+                                      (line_continuation)
+                                      (line_continuation))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))
+                            (line_continuation)
+                            (line_continuation)
+                            (line_continuation)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character
+                                      (escape_sequence
+                                        (line_continuation)
+                                        (line_continuation)))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (escape_sequence
+                                      (line_continuation)
+                                      (line_continuation)
+                                      (line_continuation))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  operand: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character)))
+                                  operator: (ere_dupl_symbol
+                                    (dup_count
+                                      (line_continuation)
+                                      (line_continuation))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (expression_term
+                                              (single_expression
+                                                (character_class
+                                                  (class_name
+                                                    (line_continuation)
+                                                    (line_continuation)
+                                                    (line_continuation)))))))))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (expression_term
+                                              (range_expression
+                                                (start_range
+                                                  (end_range
+                                                    (collating_element))
+                                                  (line_continuation)
+                                                  (line_continuation))
+                                                (line_continuation)
+                                                (line_continuation)
+                                                (line_continuation)
+                                                (end_range
+                                                  (collating_element))))))))))))))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+multiple continuation runs preserve ERE recovery boundaries
+==================
+
+BEGIN {
+  print /(a\
+\
+/
+  print /a{1,\
+\
+\
+/
+  print /[a\
+\
+/
+  print /a\
+\
+
+  print /ok/
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  expression: (extended_reg_exp
+                                    (ere_branch
+                                      (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (ordinary_character)))))
+                                  (line_continuation)
+                                  (line_continuation)
+                                  (ere_inner_recovery))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  operand: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character)))
+                                  operator: (ere_dupl_symbol
+                                    (dup_count)
+                                    (line_continuation)
+                                    (line_continuation)
+                                    (line_continuation)
+                                    (ere_inner_recovery)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (expression_term
+                                              (single_expression
+                                                (end_range
+                                                  (collating_element)))))))
+                                      (line_continuation)
+                                      (line_continuation)
+                                      (ere_inner_recovery))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))
+                            (line_continuation)
+                            (line_continuation)
+                            (ere_end_recovery)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+AWK escapes preserve source-neutral ERE classifications
+==================
+
+BEGIN { print /\/\\\.\[\(\*\+\?\{\|\^\$\a\b\f\n\r\t\v\1\12\1234\0000\400\052\057\134.\q\x\"/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  left: (ere_branch
+                                    left: (ere_branch
+                                      left: (ere_branch
+                                        left: (ere_branch
+                                          left: (ere_branch
+                                            left: (ere_branch
+                                              left: (ere_branch
+                                                left: (ere_branch
+                                                  left: (ere_branch
+                                                    left: (ere_branch
+                                                      left: (ere_branch
+                                                        left: (ere_branch
+                                                          left: (ere_branch
+                                                            left: (ere_branch
+                                                              left: (ere_branch
+                                                                left: (ere_branch
+                                                                  left: (ere_branch
+                                                                    left: (ere_branch
+                                                                      left: (ere_branch
+                                                                        left: (ere_branch
+                                                                          left: (ere_branch
+                                                                            left: (ere_branch
+                                                                              left: (ere_branch
+                                                                                left: (ere_branch
+                                                                                  left: (ere_branch
+                                                                                    left: (ere_branch
+                                                                                      left: (ere_branch
+                                                                                        left: (ere_branch
+                                                                                          left: (ere_branch
+                                                                                            left: (ere_branch
+                                                                                              left: (ere_branch
+                                                                                                (ere_expression
+                                                                                                  (one_char_or_coll_elem_ere
+                                                                                                    (ordinary_character
+                                                                                                      (escaped_delimiter)))))
+                                                                                              right: (ere_expression
+                                                                                                (one_char_or_coll_elem_ere
+                                                                                                  (quoted_character
+                                                                                                    (escape_sequence)))))
+                                                                                            right: (ere_expression
+                                                                                              (one_char_or_coll_elem_ere
+                                                                                                (quoted_character
+                                                                                                  (escape_sequence)))))
+                                                                                          right: (ere_expression
+                                                                                            (one_char_or_coll_elem_ere
+                                                                                              (quoted_character
+                                                                                                (escape_sequence)))))
+                                                                                        right: (ere_expression
+                                                                                          (one_char_or_coll_elem_ere
+                                                                                            (quoted_character
+                                                                                              (escape_sequence)))))
+                                                                                      right: (ere_expression
+                                                                                        (one_char_or_coll_elem_ere
+                                                                                          (quoted_character
+                                                                                            (escape_sequence)))))
+                                                                                    right: (ere_expression
+                                                                                      (one_char_or_coll_elem_ere
+                                                                                        (quoted_character
+                                                                                          (escape_sequence)))))
+                                                                                  right: (ere_expression
+                                                                                    (one_char_or_coll_elem_ere
+                                                                                      (quoted_character
+                                                                                        (escape_sequence)))))
+                                                                                right: (ere_expression
+                                                                                  (one_char_or_coll_elem_ere
+                                                                                    (quoted_character
+                                                                                      (escape_sequence)))))
+                                                                              right: (ere_expression
+                                                                                (one_char_or_coll_elem_ere
+                                                                                  (quoted_character
+                                                                                    (escape_sequence)))))
+                                                                            right: (ere_expression
+                                                                              (one_char_or_coll_elem_ere
+                                                                                (quoted_character
+                                                                                  (escape_sequence)))))
+                                                                          right: (ere_expression
+                                                                            (one_char_or_coll_elem_ere
+                                                                              (quoted_character
+                                                                                (escape_sequence)))))
+                                                                        right: (ere_expression
+                                                                          (one_char_or_coll_elem_ere
+                                                                            (ordinary_character
+                                                                              (escape_sequence)))))
+                                                                      right: (ere_expression
+                                                                        (one_char_or_coll_elem_ere
+                                                                          (ordinary_character
+                                                                            (escape_sequence)))))
+                                                                    right: (ere_expression
+                                                                      (one_char_or_coll_elem_ere
+                                                                        (ordinary_character
+                                                                          (escape_sequence)))))
+                                                                  right: (ere_expression
+                                                                    (one_char_or_coll_elem_ere
+                                                                      (ordinary_character
+                                                                        (escape_sequence)))))
+                                                                right: (ere_expression
+                                                                  (one_char_or_coll_elem_ere
+                                                                    (ordinary_character
+                                                                      (escape_sequence)))))
+                                                              right: (ere_expression
+                                                                (one_char_or_coll_elem_ere
+                                                                  (ordinary_character
+                                                                    (escape_sequence)))))
+                                                            right: (ere_expression
+                                                              (one_char_or_coll_elem_ere
+                                                                (ordinary_character
+                                                                  (escape_sequence)))))
+                                                          right: (ere_expression
+                                                            (one_char_or_coll_elem_ere
+                                                              (escape_sequence))))
+                                                        right: (ere_expression
+                                                          (one_char_or_coll_elem_ere
+                                                            (escape_sequence))))
+                                                      right: (ere_expression
+                                                        (one_char_or_coll_elem_ere
+                                                          (escape_sequence))))
+                                                    right: (ere_expression
+                                                      (one_char_or_coll_elem_ere
+                                                        (ordinary_character))))
+                                                  right: (ere_expression
+                                                    (one_char_or_coll_elem_ere
+                                                      (escape_sequence))))
+                                                right: (ere_expression
+                                                  (one_char_or_coll_elem_ere
+                                                    (ordinary_character))))
+                                              right: (ere_expression
+                                                (one_char_or_coll_elem_ere
+                                                  (escape_sequence))))
+                                            right: (ere_expression
+                                              (one_char_or_coll_elem_ere
+                                                (escape_sequence))))
+                                          right: (ere_expression
+                                            (one_char_or_coll_elem_ere
+                                              (escape_sequence))))
+                                        right: (ere_expression
+                                          (one_char_or_coll_elem_ere
+                                            (escape_sequence))))
+                                      right: (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (wildcard))))
+                                    right: (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (escape_sequence))))
+                                  right: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (escape_sequence))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (escape_sequence)))))))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+EOF recovers an unterminated ERE without a closing slash
+==================
+
+BEGIN { print /abc
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline)))
+  item: (item
+    pattern: (pattern
+      (special_pattern
+        (begin_keyword)))
+    action: (action
+      body: (unterminated_statement_list
+        (unterminated_statement
+          statement: (terminatable_statement
+            (simple_statement
+              (print_statement
+                statement: (simple_print_statement
+                  (print_keyword)
+                  arguments: (print_expr_list
+                    (print_expr
+                      (non_unary_print_expr
+                        (ere
+                          expression: (extended_reg_exp
+                            (ere_branch
+                              left: (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character))))
+                              right: (ere_expression
+                                (one_char_or_coll_elem_ere
+                                  (ordinary_character)))))
+                          (ere_end_recovery)))))))))))
+      closing: (closer_recovery))))
+
+==================
+raw newline recovery preserves the following statement
+==================
+
+BEGIN { print /abc
+print /ok/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  left: (ere_branch
+                                    (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (ordinary_character))))
+                                  right: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))
+                            (ere_end_recovery)))))))))
+            terminator: (newline))
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+physical line continuation before slash recovers a missing ERE expression
+==================
+
+BEGIN { print /\
+/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            (line_continuation)
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (wildcard
+                                      (MISSING "."))))))))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+physical line continuation before EOF remains direct ERE recovery
+==================
+
+BEGIN { print /\
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline)))
+  item: (item
+    pattern: (pattern
+      (special_pattern
+        (begin_keyword)))
+    action: (action
+      body: (unterminated_statement_list
+        (unterminated_statement
+          statement: (terminatable_statement
+            (simple_statement
+              (print_statement
+                statement: (simple_print_statement
+                  (print_keyword)
+                  arguments: (print_expr_list
+                    (print_expr
+                      (non_unary_print_expr
+                        (ere
+                          (line_continuation)
+                          (ere_end_recovery)))))))))))
+      closing: (closer_recovery))))
+
+==================
+inner slash fences preserve pending delimiters and empty ERE shapes
+==================
+
+BEGIN {
+  print /(a/
+  print /[a\
+/
+  print /a{1,/
+  print /[[./
+  print /a|\
+/
+  print /(\
+)/
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  expression: (extended_reg_exp
+                                    (ere_branch
+                                      (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (ordinary_character)))))
+                                  (ere_inner_recovery))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (expression_term
+                                              (single_expression
+                                                (end_range
+                                                  (collating_element)))))))
+                                      (line_continuation)
+                                      (ere_inner_recovery))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  operand: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character)))
+                                  operator: (ere_dupl_symbol
+                                    (dup_count)
+                                    (ere_inner_recovery)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (expression_term
+                                              (single_expression
+                                                (end_range
+                                                  (collating_symbol
+                                                    (ere_inner_recovery))))))))
+                                      (ere_inner_recovery))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              left: (extended_reg_exp
+                                (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character)))))
+                              (line_continuation)
+                              right: (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (wildcard
+                                      (MISSING "."))))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (line_continuation)
+                                  expression: (expression_recovery))))))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+inner newline fences preserve following statements
+==================
+
+BEGIN {
+  print /(a
+  print /ok/
+  print /[[.a\
+
+  print /ok/
+  print /[[:alpha
+  print /ok/
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  expression: (extended_reg_exp
+                                    (ere_branch
+                                      (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (ordinary_character)))))
+                                  (ere_inner_recovery))))
+                            (ere_end_recovery)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (expression_term
+                                              (single_expression
+                                                (end_range
+                                                  (collating_symbol
+                                                    (collating_element)
+                                                    (line_continuation)
+                                                    (ere_inner_recovery))))))))
+                                      (ere_inner_recovery))))))
+                            (ere_end_recovery)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (expression_term
+                                              (single_expression
+                                                (character_class
+                                                  (class_name)
+                                                  (ere_inner_recovery)))))))
+                                      (ere_inner_recovery))))))
+                            (ere_end_recovery)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+matching and nonmatching lists preserve first bracket and last hyphen
+==================
+
+BEGIN { print /[]a-][^]b-]/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (bracket_expression
+                                        (matching_list
+                                          (bracket_list
+                                            (follow_list
+                                              (follow_list
+                                                (expression_term
+                                                  (single_expression
+                                                    (end_range
+                                                      (collating_element)))))
+                                              (expression_term
+                                                (single_expression
+                                                  (end_range
+                                                    (collating_element)))))))))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (nonmatching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (follow_list
+                                              (expression_term
+                                                (single_expression
+                                                  (end_range
+                                                    (collating_element)))))
+                                            (expression_term
+                                              (single_expression
+                                                (end_range
+                                                  (collating_element))))))))))))))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+ranges, collating forms, classes, and escapes preserve bracket hierarchy
+==================
+
+BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  left: (ere_branch
+                                    left: (ere_branch
+                                      left: (ere_branch
+                                        left: (ere_branch
+                                          left: (ere_branch
+                                            left: (ere_branch
+                                              left: (ere_branch
+                                                (ere_expression
+                                                  (one_char_or_coll_elem_ere
+                                                    (bracket_expression
+                                                      (matching_list
+                                                        (bracket_list
+                                                          (follow_list
+                                                            (expression_term
+                                                              (range_expression
+                                                                (start_range
+                                                                  (end_range
+                                                                    (collating_element)))
+                                                                (end_range
+                                                                  (collating_element)))))))))))
+                                              right: (ere_expression
+                                                (one_char_or_coll_elem_ere
+                                                  (bracket_expression
+                                                    (matching_list
+                                                      (bracket_list
+                                                        (follow_list
+                                                          (expression_term
+                                                            (single_expression
+                                                              (end_range
+                                                                (collating_element)))))))))))
+                                            right: (ere_expression
+                                              (one_char_or_coll_elem_ere
+                                                (bracket_expression
+                                                  (matching_list
+                                                    (bracket_list
+                                                      (follow_list
+                                                        (expression_term
+                                                          (single_expression
+                                                            (end_range
+                                                              (collating_symbol
+                                                                (collating_element))))))))))))
+                                          right: (ere_expression
+                                            (one_char_or_coll_elem_ere
+                                              (bracket_expression
+                                                (matching_list
+                                                  (bracket_list
+                                                    (follow_list
+                                                      (expression_term
+                                                        (single_expression
+                                                          (end_range
+                                                            (collating_symbol
+                                                              (collating_element))))))))))))
+                                        right: (ere_expression
+                                          (one_char_or_coll_elem_ere
+                                            (bracket_expression
+                                              (matching_list
+                                                (bracket_list
+                                                  (follow_list
+                                                    (expression_term
+                                                      (single_expression
+                                                        (end_range
+                                                          (collating_symbol
+                                                            (meta_character))))))))))))
+                                      right: (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (bracket_expression
+                                            (matching_list
+                                              (bracket_list
+                                                (follow_list
+                                                  (expression_term
+                                                    (single_expression
+                                                      (equivalence_class
+                                                        (collating_element)))))))))))
+                                    right: (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (bracket_expression
+                                          (matching_list
+                                            (bracket_list
+                                              (follow_list
+                                                (expression_term
+                                                  (single_expression
+                                                    (equivalence_class
+                                                      (collating_element)))))))))))
+                                  right: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (bracket_expression
+                                        (matching_list
+                                          (bracket_list
+                                            (follow_list
+                                              (expression_term
+                                                (single_expression
+                                                  (character_class
+                                                    (class_name)))))))))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (follow_list
+                                              (expression_term
+                                                (single_expression
+                                                  (end_range
+                                                    (collating_element
+                                                      (escape_sequence))))))
+                                            (expression_term
+                                              (single_expression
+                                                (end_range
+                                                  (collating_element
+                                                    (escaped_delimiter)))))))))))))))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+line continuations stay with their narrowest ERE owners
+==================
+
+BEGIN { print /a\\
+n\1\
+23\
+|\
+(\
+b\
+)\
+*\
+?\
+c\
+{1\
+2\
+,3\
+}\
+?\
+/
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              left: (extended_reg_exp
+                                (ere_branch
+                                  left: (ere_branch
+                                    left: (ere_branch
+                                      (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (ordinary_character))))
+                                    right: (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (ordinary_character
+                                          (escape_sequence
+                                            (line_continuation))))))
+                                  right: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (escape_sequence
+                                        (line_continuation))))))
+                              (line_continuation)
+                              (line_continuation)
+                              right: (ere_branch
+                                left: (ere_branch
+                                  (ere_expression
+                                    operand: (ere_expression
+                                      (line_continuation)
+                                      expression: (extended_reg_exp
+                                        (ere_branch
+                                          (ere_expression
+                                            (one_char_or_coll_elem_ere
+                                              (ordinary_character)))))
+                                      (line_continuation))
+                                    (line_continuation)
+                                    operator: (ere_dupl_symbol
+                                      (line_continuation)
+                                      modifier: (repetition_modifier))))
+                                (line_continuation)
+                                right: (ere_expression
+                                  operand: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character)))
+                                  (line_continuation)
+                                  operator: (ere_dupl_symbol
+                                    (dup_count
+                                      (line_continuation))
+                                    (line_continuation)
+                                    (dup_count)
+                                    (line_continuation)
+                                    (line_continuation)
+                                    modifier: (repetition_modifier)))))
+                            (line_continuation)))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
+line continuations remain inside bracket leaves and delimiters
+==================
+
+BEGIN { print /[\
+a\
+-\
+c\
+][[\
+.\
+c\
+h\
+.\
+]\
+][[:\
+al\
+pha\
+:]\
+][\\
+q\\
+/]/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  left: (ere_branch
+                                    left: (ere_branch
+                                      (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (bracket_expression
+                                            (line_continuation)
+                                            (matching_list
+                                              (bracket_list
+                                                (follow_list
+                                                  (expression_term
+                                                    (range_expression
+                                                      (start_range
+                                                        (end_range
+                                                          (collating_element))
+                                                        (line_continuation))
+                                                      (line_continuation)
+                                                      (end_range
+                                                        (collating_element)))))))
+                                            (line_continuation)))))
+                                    right: (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (bracket_expression
+                                          (matching_list
+                                            (bracket_list
+                                              (follow_list
+                                                (expression_term
+                                                  (single_expression
+                                                    (end_range
+                                                      (collating_symbol
+                                                        (line_continuation)
+                                                        (line_continuation)
+                                                        (collating_element
+                                                          (line_continuation))
+                                                        (line_continuation)
+                                                        (line_continuation))))))))
+                                          (line_continuation)))))
+                                  right: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (bracket_expression
+                                        (matching_list
+                                          (bracket_list
+                                            (follow_list
+                                              (expression_term
+                                                (single_expression
+                                                  (character_class
+                                                    (line_continuation)
+                                                    (class_name
+                                                      (line_continuation))
+                                                    (line_continuation)))))))
+                                        (line_continuation)))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (bracket_expression
+                                      (matching_list
+                                        (bracket_list
+                                          (follow_list
+                                            (follow_list
+                                              (expression_term
+                                                (single_expression
+                                                  (end_range
+                                                    (collating_element
+                                                      (escape_sequence
+                                                        (line_continuation)))))))
+                                            (expression_term
+                                              (single_expression
+                                                (end_range
+                                                  (collating_element
+                                                    (escaped_delimiter
+                                                      (line_continuation))))))))))))))))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+alternation, grouping, anchors, and repetitions follow ERE hierarchy
+==================
+
+BEGIN { print /^a.(b|c)*?d+?e??f{2}?g{3,}?h{4,5}?$/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  left: (ere_branch
+                                    left: (ere_branch
+                                      left: (ere_branch
+                                        left: (ere_branch
+                                          left: (ere_branch
+                                            left: (ere_branch
+                                              left: (ere_branch
+                                                left: (ere_branch
+                                                  (ere_expression
+                                                    (left_anchor)))
+                                                right: (ere_expression
+                                                  (one_char_or_coll_elem_ere
+                                                    (ordinary_character))))
+                                              right: (ere_expression
+                                                (one_char_or_coll_elem_ere
+                                                  (wildcard))))
+                                            right: (ere_expression
+                                              operand: (ere_expression
+                                                expression: (extended_reg_exp
+                                                  left: (extended_reg_exp
+                                                    (ere_branch
+                                                      (ere_expression
+                                                        (one_char_or_coll_elem_ere
+                                                          (ordinary_character)))))
+                                                  right: (ere_branch
+                                                    (ere_expression
+                                                      (one_char_or_coll_elem_ere
+                                                        (ordinary_character))))))
+                                              operator: (ere_dupl_symbol
+                                                modifier: (repetition_modifier))))
+                                          right: (ere_expression
+                                            operand: (ere_expression
+                                              (one_char_or_coll_elem_ere
+                                                (ordinary_character)))
+                                            operator: (ere_dupl_symbol
+                                              modifier: (repetition_modifier))))
+                                        right: (ere_expression
+                                          operand: (ere_expression
+                                            (one_char_or_coll_elem_ere
+                                              (ordinary_character)))
+                                          operator: (ere_dupl_symbol
+                                            modifier: (repetition_modifier))))
+                                      right: (ere_expression
+                                        operand: (ere_expression
+                                          (one_char_or_coll_elem_ere
+                                            (ordinary_character)))
+                                        operator: (ere_dupl_symbol
+                                          (dup_count)
+                                          modifier: (repetition_modifier))))
+                                    right: (ere_expression
+                                      operand: (ere_expression
+                                        (one_char_or_coll_elem_ere
+                                          (ordinary_character)))
+                                      operator: (ere_dupl_symbol
+                                        (dup_count)
+                                        modifier: (repetition_modifier))))
+                                  right: (ere_expression
+                                    operand: (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (ordinary_character)))
+                                    operator: (ere_dupl_symbol
+                                      (dup_count)
+                                      (dup_count)
+                                      modifier: (repetition_modifier))))
+                                right: (ere_expression
+                                  (right_anchor))))))))))))))))
+    terminator: (terminator
+      (newline))))
