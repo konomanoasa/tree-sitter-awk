@@ -14,7 +14,7 @@
   "metadata": {
     "version": "0.1.0",
     "license": "MIT",
-    "description": "A Tree-sitter grammar for POSIX.1-2024 awk.",
+    "description": "Tree-sitter grammar for POSIX awk.",
     "authors": [
       {
         "name": "konomanoasa"
