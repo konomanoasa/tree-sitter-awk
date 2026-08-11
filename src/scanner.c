@@ -1252,6 +1252,7 @@ static bool scan_function_body_recovery(TSLexer *lexer) {
 static bool
 scan_parameter_recovery_or_word(TSLexer *lexer, const bool *valid_symbols) {
   switch (lexer->lookahead) {
+  case ',':
   case ')':
   case '\n':
   case '{':

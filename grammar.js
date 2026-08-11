@@ -184,6 +184,13 @@ const requiredParameter = ($) =>
 const continuedParameter = ($) =>
   seq(continuedMember($, $._lc_before_comma, ","), requiredParameter($));
 
+const continuedParameterRecovery = ($) =>
+  seq(
+    continuedMember($, $._lc_before_comma, ","),
+    repeat($.line_continuation),
+    parameterRecovery($),
+  );
+
 const continuedRequiredMemberWith = ($, member, recovery) =>
   choice(
     choice(member, recovery($)),
@@ -1269,7 +1276,13 @@ module.exports = grammar({
       seq(
         continuedMember($, $._lc_before_comma, ","),
         choice(
-          seq(repeat($.line_continuation), parameterRecovery($)),
+          seq(
+            repeat($.line_continuation),
+            parameterRecovery($),
+            repeat(
+              choice(continuedParameter($), continuedParameterRecovery($)),
+            ),
+          ),
           seq(requiredParameter($), $._recovered_parameter_tail),
         ),
       ),
@@ -2490,8 +2503,9 @@ module.exports = grammar({
     _ere_quoted_escape_character: () =>
       choice(
         token.immediate(/\\/),
-        token.immediate(/[.(*+?{|^$]/),
+        token.immediate(/[().*+?{}|^$]/),
         token.immediate(/\[/),
+        token.immediate("]"),
       ),
 
     _ere_undefined_escape_character: () =>

@@ -1775,3 +1775,49 @@ BEGIN { print /^a.(b|c)*?d+?e??f{2}?g{3,}?h{4,5}?$/ }
                                   (right_anchor))))))))))))))))
     terminator: (terminator
       (newline))))
+==================
+closing ERE special characters remain quoted characters
+==================
+
+BEGIN { print /\)\}\]/ }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            expression: (extended_reg_exp
+                              (ere_branch
+                                left: (ere_branch
+                                  left: (ere_branch
+                                    (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (quoted_character
+                                          (escape_sequence)))))
+                                  right: (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (quoted_character
+                                        (escape_sequence)))))
+                                right: (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (quoted_character
+                                      (escape_sequence))))))))))))))))))
+    terminator: (terminator
+      (newline))))

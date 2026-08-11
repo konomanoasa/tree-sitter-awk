@@ -1068,3 +1068,37 @@ function colon() :
   (item_list
     leading: (newline_opt
       (newline))))
+==================
+parameter recovery preserves interior and repeated missing slots
+==================
+
+function interior(first,,last) {}
+function repeated(first,,,last) {}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      parameters: (param_list
+        (name)
+        (parameter_recovery)
+        (name))
+      body: (action))
+    terminator: (terminator
+      (newline))
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      parameters: (param_list
+        (name)
+        (parameter_recovery)
+        (parameter_recovery)
+        (name))
+      body: (action))
+    terminator: (terminator
+      (newline))))
