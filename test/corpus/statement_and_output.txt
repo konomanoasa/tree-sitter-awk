@@ -866,10 +866,8 @@ line continuations keep keyword header and output ownership
 ==================
 
 BEGIN {
-  pr\
-int value\
->\
->\
+  print value\
+>>\
 destination
   if (raw_header)
     raw_body
@@ -877,8 +875,7 @@ destination
     continued_body
   if (branch)
     consequence;
-  el\
-se
+  else\
     alternative
 }
 
@@ -901,8 +898,7 @@ se
               (simple_statement
                 (print_statement
                   statement: (simple_print_statement
-                    (print_keyword
-                      (line_continuation))
+                    (print_keyword)
                     arguments: (print_expr_list
                       (print_expr
                         (non_unary_print_expr
@@ -910,8 +906,7 @@ se
                             (name))))))
                   (line_continuation)
                   redirection: (output_redirection
-                    (append
-                      (line_continuation))
+                    (append)
                     (line_continuation)
                     (expr
                       (non_unary_expr
@@ -966,10 +961,8 @@ se
                         (name))))))
               (newline_opt
                 (newline)))
-            (else_keyword
-              (line_continuation))
-            (newline_opt
-              (newline))
+            (else_keyword)
+            (line_continuation)
             alternative: (terminated_statement
               statement: (terminatable_statement
                 (simple_statement

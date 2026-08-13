@@ -9,12 +9,12 @@ parser_file="$repository_directory/src/parser.c"
 
 # These limits leave a small allowance above the reviewed parser. Raising one
 # requires identifying and reviewing the source of the growth first.
-maximum_state_count=41500
-maximum_large_state_count=5200
-maximum_symbol_count=490
-maximum_external_token_count=138
-maximum_parser_bytes=56000000
-maximum_action_index=60000
+maximum_state_count=31000
+maximum_large_state_count=5050
+maximum_symbol_count=450
+maximum_external_token_count=112
+maximum_parser_bytes=46000000
+maximum_action_index=42000
 
 read_define() {
   awk -v expected="$1" '

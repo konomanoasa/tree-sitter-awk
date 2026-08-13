@@ -101,121 +101,6 @@ BEGIN { print "\1\12\1234\0000\377\400\777\8\x41" }
                           (string_content))))))))))))))
 
 ==================
-continuation between content runs belongs to the string
-==================
-BEGIN { print "ab\
-cd" }
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (print_statement
-                (simple_print_statement
-                  (print_keyword)
-                  (print_expr_list
-                    (print_expr
-                      (non_unary_print_expr
-                        (string
-                          (string_content)
-                          (line_continuation)
-                          (string_content))))))))))))))
-
-==================
-continuation inside a character escape belongs to the escape
-==================
-BEGIN { print "\\
-\
-n" }
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (print_statement
-                (simple_print_statement
-                  (print_keyword)
-                  (print_expr_list
-                    (print_expr
-                      (non_unary_print_expr
-                        (string
-                          (escape_sequence
-                            (line_continuation)
-                            (line_continuation)))))))))))))))
-
-==================
-octal digits and their continuations stay in one escape
-==================
-BEGIN { print "\1\
-2\
-34" }
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (print_statement
-                (simple_print_statement
-                  (print_keyword)
-                  (print_expr_list
-                    (print_expr
-                      (non_unary_print_expr
-                        (string
-                          (escape_sequence
-                            (line_continuation)
-                            (line_continuation))
-                          (string_content))))))))))))))
-
-==================
-continuation after a complete octal escape belongs to the string
-==================
-BEGIN { print "\1\
-x" }
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (print_statement
-                (simple_print_statement
-                  (print_keyword)
-                  (print_expr_list
-                    (print_expr
-                      (non_unary_print_expr
-                        (string
-                          (escape_sequence)
-                          (line_continuation)
-                          (string_content))))))))))))))
-
-==================
 normal expression and continued print expression both accept strings
 ==================
 BEGIN { "value"; print x \
@@ -254,11 +139,9 @@ BEGIN { "value"; print x \
                             (string_content)))))))))))))))
 
 ==================
-logical odd and even backslashes distinguish escaped and closing quotes
+odd and even backslashes distinguish escaped and closing quotes
 ==================
-BEGIN { print "\\
-"" "\\
-\" }
+BEGIN { print "\\" "\"" }
 ---
 
 (program
@@ -279,12 +162,10 @@ BEGIN { print "\\
                       (non_unary_print_expr
                         (non_unary_print_expr
                           (string
-                            (escape_sequence
-                              (line_continuation))))
+                            (escape_sequence)))
                         (non_unary_print_expr
                           (string
-                            (escape_sequence
-                              (line_continuation))))))))))))))))
+                            (escape_sequence)))))))))))))))
 
 ==================
 raw newline ends recovery before the following statement
@@ -377,33 +258,4 @@ BEGIN { print "abc\
                         (string
                           (string_content)
                           (string_end_recovery)))))))))))
-      (closer_recovery))))
-
-==================
-EOF recovery owns continuations after a lone logical escape introducer
-==================
-BEGIN { print "abc\\
-
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (print_statement
-                (simple_print_statement
-                  (print_keyword)
-                  (print_expr_list
-                    (print_expr
-                      (non_unary_print_expr
-                        (string
-                          (string_content)
-                          (string_end_recovery
-                            (line_continuation))))))))))))
       (closer_recovery))))

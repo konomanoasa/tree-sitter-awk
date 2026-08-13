@@ -95,7 +95,7 @@ mkdir -p "$wasm_library_directory"
   "$repository_directory"
 
 parse_native() {
-  "$tree_sitter" parse \
+  NO_COLOR=1 "$tree_sitter" parse \
     --config-path "$tree_sitter_config" \
     --lib-path "$parser_library" \
     --lang-name posix_awk \
@@ -104,7 +104,7 @@ parse_native() {
 }
 
 parse_wasm() {
-  TREE_SITTER_LIBDIR="$wasm_library_directory" \
+  NO_COLOR=1 TREE_SITTER_LIBDIR="$wasm_library_directory" \
     "$tree_sitter" parse \
     --config-path "$tree_sitter_config" \
     --wasm \
@@ -117,13 +117,10 @@ normalize_parse_tree() {
   normalize_input_file=$1
   normalize_output_file=$2
   normalize_source_file=$3
-  normalize_report_file=$4
-  : >"$normalize_report_file"
   awk '
     index($0, source_file) == 1 {
       suffix = substr($0, length(source_file) + 1)
       if (suffix ~ /^[[:space:]]+Parse:[[:space:]]/) {
-        print > report_file
         next
       }
     }
@@ -131,7 +128,6 @@ normalize_parse_tree() {
     { print }
   ' \
     source_file="$normalize_source_file" \
-    report_file="$normalize_report_file" \
     "$normalize_input_file" \
     >"$normalize_output_file"
 }
@@ -176,8 +172,7 @@ capture_parse() {
   normalize_parse_tree \
     "$capture_prefix.stdout" \
     "$capture_prefix.tree" \
-    "$capture_source" \
-    "$capture_prefix.report"
+    "$capture_source"
 }
 
 show_parse_result() {
@@ -390,6 +385,8 @@ assert_incremental_equals_fresh \
 backslash=\\
 line_continuation='\
 '
+raw_newline='
+'
 
 ere_source="$runtime_directory/ere.awk"
 printf '%s\n' \
@@ -585,28 +582,14 @@ assert_contains "collating_element" "$literal_open_bracket_ere_tree"
 assert_not_contains "collating_symbol" "$literal_open_bracket_ere_tree"
 
 raw_ere_newline_source="$runtime_directory/raw-ere-newline.awk"
-continued_ere_newline_source="$runtime_directory/continued-ere-newline.awk"
 printf '%s\n' 'BEGIN { print /ab' '/ }' >"$raw_ere_newline_source"
-printf '%s\n' \
-  "BEGIN { print /ab$backslash" \
-  '/ }' \
-  >"$continued_ere_newline_source"
 assert_incremental_equals_fresh \
+  "$plain_ere_delimiter_source" \
   "$raw_ere_newline_source" \
-  "$continued_ere_newline_source" \
-  "raw-ere-newline-to-continuation" \
+  "closed-ere-to-raw-newline" \
   0 \
-  "17 0 $backslash"
-continued_ere_newline_tree="$runtime_directory/raw-ere-newline-to-continuation.native.fresh.tree"
-assert_contains "line_continuation" "$continued_ere_newline_tree"
-assert_not_contains "_recovery" "$continued_ere_newline_tree"
-assert_incremental_equals_fresh \
-  "$continued_ere_newline_source" \
-  "$raw_ere_newline_source" \
-  "ere-continuation-to-raw-newline" \
-  0 \
-  '17 1 '
-raw_ere_newline_tree="$runtime_directory/ere-continuation-to-raw-newline.native.fresh.tree"
+  "17 0 $raw_newline"
+raw_ere_newline_tree="$runtime_directory/closed-ere-to-raw-newline.native.fresh.tree"
 assert_contains "ere_end_recovery" "$raw_ere_newline_tree"
 assert_single_action_closer_recovery "$raw_ere_newline_tree"
 assert_not_contains "ERROR" "$raw_ere_newline_tree"
@@ -641,9 +624,7 @@ assert_not_contains "ERROR" "$eof_ere_escape_recovery_tree"
 assert_not_contains "MISSING" "$eof_ere_escape_recovery_tree"
 
 nested_group_eof_source="$runtime_directory/nested-group-eof.awk"
-continued_nested_group_eof_source="$runtime_directory/continued-nested-group-eof.awk"
 printf '%s' 'BEGIN { print /(a' >"$nested_group_eof_source"
-printf '%s\n' "BEGIN { print /(a$backslash" >"$continued_nested_group_eof_source"
 assert_fresh_cross_runtime \
   "$nested_group_eof_source" \
   "nested-group-eof" \
@@ -658,24 +639,6 @@ assert_matches \
 assert_single_action_closer_recovery "$nested_group_eof_tree"
 assert_not_contains "ERROR" "$nested_group_eof_tree"
 assert_not_contains "MISSING" "$nested_group_eof_tree"
-
-assert_fresh_cross_runtime \
-  "$continued_nested_group_eof_source" \
-  "continued-nested-group-eof" \
-  0
-continued_nested_group_eof_tree="$runtime_directory/continued-nested-group-eof.native.fresh.tree"
-assert_matches \
-  '^0:17[[:space:]]*-[[:space:]]*1:0[[:space:]]+line_continuation$' \
-  "$continued_nested_group_eof_tree"
-assert_matches \
-  '^1:0[[:space:]]*-[[:space:]]*1:0[[:space:]]+ere_inner_recovery$' \
-  "$continued_nested_group_eof_tree"
-assert_matches \
-  '^1:0[[:space:]]*-[[:space:]]*1:0[[:space:]]+ere_end_recovery$' \
-  "$continued_nested_group_eof_tree"
-assert_single_action_closer_recovery "$continued_nested_group_eof_tree"
-assert_not_contains "ERROR" "$continued_nested_group_eof_tree"
-assert_not_contains "MISSING" "$continued_nested_group_eof_tree"
 
 raw_statement_newline_source="$runtime_directory/raw-statement-newline.awk"
 continued_statement_boundary_source="$runtime_directory/continued-statement-boundary.awk"
@@ -723,15 +686,15 @@ plain_append_source="$runtime_directory/plain-append.awk"
 continued_append_source="$runtime_directory/continued-append.awk"
 printf '%s\n' 'BEGIN { print value >> archive }' >"$plain_append_source"
 printf '%s\n' \
-  "BEGIN { print value >$backslash" \
-  '> archive }' \
+  "BEGIN { print value $backslash" \
+  '>> archive }' \
   >"$continued_append_source"
 assert_incremental_equals_fresh \
   "$plain_append_source" \
   "$continued_append_source" \
   "insert-append-line-continuation" \
   0 \
-  "21 0 $line_continuation"
+  "20 0 $line_continuation"
 continued_append_tree="$runtime_directory/insert-append-line-continuation.native.fresh.tree"
 assert_contains "redirection: output_redirection" "$continued_append_tree"
 assert_contains "append" "$continued_append_tree"
@@ -820,76 +783,6 @@ assert_not_contains "ERROR" "$closed_subscript_eof_tree"
 assert_not_contains "MISSING" "$closed_subscript_eof_tree"
 assert_not_contains "_recovery" "$closed_subscript_eof_tree"
 
-plain_keyword_source="$runtime_directory/plain-keyword.awk"
-continued_keyword_source="$runtime_directory/continued-keyword.awk"
-printf '%s\n' 'BEGIN {}' >"$plain_keyword_source"
-printf '%s\n' "BE$backslash" 'GIN {}' >"$continued_keyword_source"
-assert_incremental_equals_fresh \
-  "$plain_keyword_source" \
-  "$continued_keyword_source" \
-  "insert-keyword-line-continuation" \
-  0 \
-  "2 0 $line_continuation"
-assert_incremental_equals_fresh \
-  "$continued_keyword_source" \
-  "$plain_keyword_source" \
-  "delete-keyword-line-continuation" \
-  0 \
-  '2 2 '
-
-plain_name_source="$runtime_directory/plain-name.awk"
-continued_name_source="$runtime_directory/continued-name.awk"
-printf '%s\n' 'BEGIN { print value }' >"$plain_name_source"
-printf '%s\n' "BEGIN { print va$backslash" 'lue }' >"$continued_name_source"
-assert_incremental_equals_fresh \
-  "$plain_name_source" \
-  "$continued_name_source" \
-  "insert-name-line-continuation" \
-  0 \
-  "16 0 $line_continuation"
-assert_incremental_equals_fresh \
-  "$continued_name_source" \
-  "$plain_name_source" \
-  "delete-name-line-continuation" \
-  0 \
-  '16 2 '
-
-plain_number_source="$runtime_directory/plain-number.awk"
-continued_number_source="$runtime_directory/continued-number.awk"
-printf '%s\n' 'BEGIN { print 12.5 }' >"$plain_number_source"
-printf '%s\n' "BEGIN { print 12$backslash" '.5 }' >"$continued_number_source"
-assert_incremental_equals_fresh \
-  "$plain_number_source" \
-  "$continued_number_source" \
-  "insert-number-line-continuation" \
-  0 \
-  "16 0 $line_continuation"
-assert_incremental_equals_fresh \
-  "$continued_number_source" \
-  "$plain_number_source" \
-  "delete-number-line-continuation" \
-  0 \
-  '16 2 '
-
-between_names_continuation_source="$runtime_directory/between-names-continuation.awk"
-inside_name_continuation_source="$runtime_directory/inside-name-continuation.awk"
-printf '%s\n' "BEGIN { print x $backslash" ' y }' >"$between_names_continuation_source"
-printf '%s\n' "BEGIN { print x$backslash" 'y }' >"$inside_name_continuation_source"
-assert_incremental_equals_fresh \
-  "$between_names_continuation_source" \
-  "$inside_name_continuation_source" \
-  "move-line-continuation-inside-name" \
-  0 \
-  '15 1 ' \
-  '17 1 '
-assert_incremental_equals_fresh \
-  "$inside_name_continuation_source" \
-  "$between_names_continuation_source" \
-  "move-line-continuation-between-names" \
-  0 \
-  '15 0  ' \
-  '18 0  '
-
 comment_backslash_source="$runtime_directory/comment-backslash.awk"
 leading_continuation_source="$runtime_directory/leading-continuation.awk"
 printf '%s\n' "#$backslash" 'BEGIN {}' >"$comment_backslash_source"
@@ -924,15 +817,15 @@ plain_add_assign_source="$runtime_directory/plain-add-assign.awk"
 continued_add_assign_source="$runtime_directory/continued-add-assign.awk"
 printf '%s\n' 'BEGIN { value += other }' >"$plain_add_assign_source"
 printf '%s\n' \
-  "BEGIN { value +$backslash" \
-  '= other }' \
+  "BEGIN { value $backslash" \
+  '+= other }' \
   >"$continued_add_assign_source"
 assert_incremental_equals_fresh \
   "$plain_add_assign_source" \
   "$continued_add_assign_source" \
   "insert-add-assign-line-continuation" \
   0 \
-  "15 0 $line_continuation"
+  "14 0 $line_continuation"
 continued_add_assign_tree="$runtime_directory/insert-add-assign-line-continuation.native.fresh.tree"
 assert_contains "add_assign" "$continued_add_assign_tree"
 assert_clean_continuation_tree "$continued_add_assign_tree"
@@ -1090,27 +983,17 @@ printf '%s\n' \
   'BEGIN {' \
   '  "value"' \
   '  print "" "a #/é value" "\"\\\a\b\f\n\r\t\v\/\.\q\x"' \
-  "  print \"\\1$backslash" \
-  "2$backslash" \
-  "34\" \"ab$backslash" \
-  "cd\" \"$backslash$backslash" \
-  'n"' \
+  '  print "\1234" "abcd" "\\n"' \
   '}' \
   >"$string_source"
 assert_fresh_cross_runtime "$string_source" "string" 0
 string_tree="$runtime_directory/string.native.fresh.tree"
 assert_contains "string_content" "$string_tree"
 assert_contains "escape_sequence" "$string_tree"
-assert_contains "line_continuation" "$string_tree"
+assert_not_contains "line_continuation" "$string_tree"
 assert_not_contains "ERROR" "$string_tree"
 assert_not_contains "MISSING" "$string_tree"
 assert_not_contains "_recovery" "$string_tree"
-string_line_continuation_count=$(
-  grep -Ec '^[[:space:][:digit:]:-]*line_continuation$' "$string_tree"
-)
-if [ "$string_line_continuation_count" -ne 4 ]; then
-  fail "Expected four string line-continuation nodes"
-fi
 
 raw_string_recovery_source="$runtime_directory/raw-string-recovery.awk"
 printf '%s\n' \
@@ -1149,10 +1032,10 @@ assert_fresh_cross_runtime \
   0
 continued_lone_escape_tree="$runtime_directory/continued-lone-escape.native.fresh.tree"
 assert_matches \
-  '^0:18[[:space:]]*-[[:space:]]*1:0[[:space:]]+string_end_recovery$' \
+  '^0:18[[:space:]]*-[[:space:]]*0:20[[:space:]]+escape_sequence[[:space:]]' \
   "$continued_lone_escape_tree"
 assert_matches \
-  '^0:19[[:space:]]*-[[:space:]]*1:0[[:space:]]+line_continuation$' \
+  '^0:20[[:space:]]*-[[:space:]]*0:20[[:space:]]+string_end_recovery$' \
   "$continued_lone_escape_tree"
 assert_single_action_closer_recovery "$continued_lone_escape_tree"
 assert_not_contains "ERROR" "$continued_lone_escape_tree"
@@ -1170,13 +1053,13 @@ assert_fresh_cross_runtime \
   0
 raw_lone_escape_recovery_tree="$runtime_directory/raw-lone-escape-recovery.native.fresh.tree"
 assert_matches \
-  '^0:18[[:space:]]*-[[:space:]]*1:0[[:space:]]+string_end_recovery$' \
+  '^0:18[[:space:]]*-[[:space:]]*0:20[[:space:]]+escape_sequence[[:space:]]' \
   "$raw_lone_escape_recovery_tree"
 assert_matches \
-  '^0:19[[:space:]]*-[[:space:]]*1:0[[:space:]]+line_continuation$' \
+  '^0:20[[:space:]]*-[[:space:]]*0:20[[:space:]]+string_end_recovery$' \
   "$raw_lone_escape_recovery_tree"
 assert_matches \
-  '^1:0[[:space:]]*-[[:space:]]*2:0[[:space:]]+terminator:[[:space:]]+newline$' \
+  '^0:20[[:space:]]*-[[:space:]]*1:0[[:space:]]+terminator:[[:space:]]+newline$' \
   "$raw_lone_escape_recovery_tree"
 assert_not_contains "ERROR" "$raw_lone_escape_recovery_tree"
 assert_not_contains "MISSING" "$raw_lone_escape_recovery_tree"
@@ -1224,79 +1107,6 @@ assert_incremental_equals_fresh \
   '16 1 '
 delete_escape_backslash_tree="$runtime_directory/delete-string-escape-backslash.native.fresh.tree"
 assert_not_contains "escape_sequence" "$delete_escape_backslash_tree"
-
-raw_string_newline_source="$runtime_directory/raw-string-newline.awk"
-continued_string_newline_source="$runtime_directory/continued-string-newline.awk"
-printf '%s\n' 'BEGIN { print "ab' '"' '}' >"$raw_string_newline_source"
-printf '%s\n' \
-  "BEGIN { print \"ab$backslash" \
-  '"' \
-  '}' \
-  >"$continued_string_newline_source"
-assert_incremental_equals_fresh \
-  "$raw_string_newline_source" \
-  "$continued_string_newline_source" \
-  "raw-string-newline-to-continuation" \
-  0 \
-  "17 0 $backslash"
-continued_string_newline_tree="$runtime_directory/raw-string-newline-to-continuation.native.fresh.tree"
-assert_contains "line_continuation" "$continued_string_newline_tree"
-assert_not_contains "_recovery" "$continued_string_newline_tree"
-assert_incremental_equals_fresh \
-  "$continued_string_newline_source" \
-  "$raw_string_newline_source" \
-  "string-continuation-to-raw-newline" \
-  0 \
-  '17 1 '
-raw_string_newline_tree="$runtime_directory/string-continuation-to-raw-newline.native.fresh.tree"
-assert_contains "string_end_recovery" "$raw_string_newline_tree"
-
-plain_octal_source="$runtime_directory/plain-octal.awk"
-continued_octal_source="$runtime_directory/continued-octal.awk"
-printf '%s\n' 'BEGIN { print "\12" }' >"$plain_octal_source"
-printf '%s\n' \
-  "BEGIN { print \"\\1$backslash" \
-  '2" }' \
-  >"$continued_octal_source"
-assert_incremental_equals_fresh \
-  "$plain_octal_source" \
-  "$continued_octal_source" \
-  "insert-octal-line-continuation" \
-  0 \
-  "17 0 $line_continuation"
-continued_octal_tree="$runtime_directory/insert-octal-line-continuation.native.fresh.tree"
-assert_contains "line_continuation" "$continued_octal_tree"
-assert_incremental_equals_fresh \
-  "$continued_octal_source" \
-  "$plain_octal_source" \
-  "delete-octal-line-continuation" \
-  0 \
-  '17 2 '
-
-formal_string_continuation_source="$runtime_directory/formal-string-continuation.awk"
-internal_string_continuation_source="$runtime_directory/internal-string-continuation.awk"
-printf '%s\n' \
-  "BEGIN { print \"a\"$backslash" \
-  '"b" }' \
-  >"$formal_string_continuation_source"
-printf '%s\n' \
-  "BEGIN { print \"a$backslash" \
-  'b" }' \
-  >"$internal_string_continuation_source"
-assert_incremental_equals_fresh \
-  "$formal_string_continuation_source" \
-  "$internal_string_continuation_source" \
-  "move-line-continuation-inside-string" \
-  0 \
-  '16 1 ' \
-  '18 1 '
-assert_incremental_equals_fresh \
-  "$internal_string_continuation_source" \
-  "$formal_string_continuation_source" \
-  "move-line-continuation-between-strings" \
-  0 \
-  '16 0 "' \
-  '19 0 "'
 
 top_level_ere_pattern_source="$runtime_directory/top-level-ere-pattern.awk"
 top_level_division_pattern_source="$runtime_directory/top-level-division-pattern.awk"
@@ -1373,8 +1183,6 @@ assert_not_contains "ERROR" "$adjacent_function_name_tree"
 assert_not_contains "MISSING" "$adjacent_function_name_tree"
 assert_not_contains "_recovery" "$adjacent_function_name_tree"
 
-raw_newline='
-'
 compact_range_pattern_source="$runtime_directory/compact-range-pattern.awk"
 multiline_range_pattern_source="$runtime_directory/multiline-range-pattern.awk"
 printf '%s\n' 'start,stop {}' >"$compact_range_pattern_source"

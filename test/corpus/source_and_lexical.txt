@@ -7,6 +7,35 @@ empty source has no layout nodes
 (program)
 
 ==================
+newline-only program
+==================
+
+
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline)
+      (newline))))
+
+==================
+comment-only program
+==================
+
+# comment only
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline)
+      (comment)
+      (newline))))
+
+==================
 ASCII space and horizontal tab remain unnamed layout
 ==================
 	 
@@ -73,79 +102,6 @@ continuation-only logical source retains every physical pair
   (line_continuation))
 
 ==================
-continued keywords and a continued name own their continuations
-==================
-BE\
-GIN { pri\
-nt na\
-me }
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword
-          (line_continuation))))
-    (action
-      (unterminated_statement_list
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (print_statement
-                (simple_print_statement
-                  (print_keyword
-                    (line_continuation))
-                  (print_expr_list
-                    (print_expr
-                      (non_unary_print_expr
-                        (lvalue
-                          (name
-                            (line_continuation)))))))))))))))
-
-==================
-each decimal DFA form owns its internal continuations
-==================
-BEGIN { print 12\
-34 1\
-.\
-5 1\
-e\
-+\
-2 }
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (print_statement
-                (simple_print_statement
-                  (print_keyword)
-                  (print_expr_list
-                    (print_expr
-                      (non_unary_print_expr
-                        (non_unary_print_expr
-                          (non_unary_print_expr
-                            (number
-                              (line_continuation)))
-                          (non_unary_print_expr
-                            (number
-                              (line_continuation)
-                              (line_continuation))))
-                        (non_unary_print_expr
-                          (number
-                            (line_continuation)
-                            (line_continuation)
-                            (line_continuation)))))))))))))))
-
-==================
 plain decimal DFA forms each remain one number
 ==================
 BEGIN { print 1.5 1. .5 1e+2 }
@@ -179,31 +135,135 @@ BEGIN { print 1.5 1. .5 1e+2 }
                           (number))))))))))))))
 
 ==================
-continued division assignment owns its internal continuation
+slash tokens use assignment, division, match, then ERE contexts
 ==================
-BEGIN { x /\
-= 2 }
+
+# slash
+BEGIN {
+  x /= 2
+  x / 2
+  print x ~ /a/
+  print /a/
+}
+
 ---
 
 (program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (expr
-                (non_unary_expr
-                  (lvalue
-                    (name))
-                  (div_assign
-                    (line_continuation))
-                  (expr
+  (item_list
+    (newline_opt
+      (newline)
+      (comment)
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (newline_opt
+          (newline))
+        (terminated_statement_list
+          (terminated_statement
+            (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))
+                    (div_assign)
+                    (expr
+                      (non_unary_expr
+                        (number)))))))
+            (newline))
+          (terminated_statement
+            (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
                     (non_unary_expr
-                      (number))))))))))))
+                      (lvalue
+                        (name)))
+                    (expr
+                      (non_unary_expr
+                        (number)))))))
+            (newline))
+          (terminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (non_unary_print_expr
+                            (lvalue
+                              (name)))
+                          (print_expr
+                            (non_unary_print_expr
+                              (ere
+                                (extended_reg_exp
+                                  (ere_branch
+                                    (ere_expression
+                                      (one_char_or_coll_elem_ere
+                                        (ordinary_character)))))))))))))))
+            (newline))
+          (terminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))))))))))
+            (newline)))))
+    (terminator
+      (newline))))
+
+==================
+division wins before an adjacent ERE-shaped spelling
+==================
+
+BEGIN { print x /a/ }
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (non_unary_print_expr
+                            (non_unary_print_expr
+                              (lvalue
+                                (name)))
+                            (print_expr
+                              (non_unary_print_expr
+                                (lvalue
+                                  (name)))))
+                          (expression_recovery))))))))))))
+    (terminator
+      (newline))))
 
 ==================
 continuation between names belongs to their concatenation
@@ -328,8 +388,39 @@ BEGIN { value = (END) }
                 (non_unary_expr
                   (lvalue
                     (name))))))))
-      (ERROR
-        (UNEXPECTED 'N')))))
+      (ERROR))))
+
+==================
+print remains reserved in expression context
+==================
+
+BEGIN { x /= print }
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))))))
+        (ERROR
+          (div_assign)
+          (UNEXPECTED 'p')
+          (UNEXPECTED 'i'))))
+    (terminator
+      (newline))))
 
 ==================
 function remains reserved outside a definition

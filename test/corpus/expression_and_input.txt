@@ -902,6 +902,45 @@ BEGIN {
       (newline))))
 
 ==================
+print match operators do not form an associative chain
+==================
+
+BEGIN { print a ~ b ~ c }
+
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline))
+    (item
+      (pattern
+        (special_pattern
+          (begin_keyword)))
+      (action
+        (unterminated_statement_list
+          (unterminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (non_unary_print_expr
+                            (lvalue
+                              (name)))
+                          (ERROR
+                            (name))
+                          (print_expr
+                            (non_unary_print_expr
+                              (lvalue
+                                (name)))))))))))))))
+    (terminator
+      (newline))))
+
+==================
 print expressions retain their distinct hierarchy and list
 ==================
 
@@ -1233,272 +1272,14 @@ BEGIN {
       (newline))))
 
 ==================
-named operators own their internal line continuations
+continuations before a call parenthesis and inside a list keep their owners
 ==================
 
 BEGIN {
-  a +\
-= b -\
-= c *\
-= d /\
-= e %\
-= f ^\
-= g
-  (a !\
-~ b)
-  (a =\
-= b)
-  (a <\
-= b)
-  (a >\
-= b)
-  (a !\
-= b)
-  a &\
-& b
-  a |\
-| b
-  +\
-+value
-  value+\
-+
-  -\
--other
-  other-\
--
-}
-
----
-
-(program
-  (item_list
-    (newline_opt
-      (newline))
-    (item
-      (pattern
-        (special_pattern
-          (begin_keyword)))
-      (action
-        (newline_opt
-          (newline))
-        (terminated_statement_list
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (lvalue
-                      (name))
-                    (add_assign
-                      (line_continuation))
-                    (expr
-                      (non_unary_expr
-                        (lvalue
-                          (name))
-                        (sub_assign
-                          (line_continuation))
-                        (expr
-                          (non_unary_expr
-                            (lvalue
-                              (name))
-                            (mul_assign
-                              (line_continuation))
-                            (expr
-                              (non_unary_expr
-                                (lvalue
-                                  (name))
-                                (div_assign
-                                  (line_continuation))
-                                (expr
-                                  (non_unary_expr
-                                    (lvalue
-                                      (name))
-                                    (mod_assign
-                                      (line_continuation))
-                                    (expr
-                                      (non_unary_expr
-                                        (lvalue
-                                          (name))
-                                        (pow_assign
-                                          (line_continuation))
-                                        (expr
-                                          (non_unary_expr
-                                            (lvalue
-                                              (name))))))))))))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (expr
-                      (non_unary_expr
-                        (non_unary_expr
-                          (lvalue
-                            (name)))
-                        (no_match
-                          (line_continuation))
-                        (expr
-                          (non_unary_expr
-                            (lvalue
-                              (name))))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (expr
-                      (non_unary_expr
-                        (non_unary_expr
-                          (lvalue
-                            (name)))
-                        (eq
-                          (line_continuation))
-                        (expr
-                          (non_unary_expr
-                            (lvalue
-                              (name))))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (expr
-                      (non_unary_expr
-                        (non_unary_expr
-                          (lvalue
-                            (name)))
-                        (le
-                          (line_continuation))
-                        (expr
-                          (non_unary_expr
-                            (lvalue
-                              (name))))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (expr
-                      (non_unary_expr
-                        (non_unary_expr
-                          (lvalue
-                            (name)))
-                        (ge
-                          (line_continuation))
-                        (expr
-                          (non_unary_expr
-                            (lvalue
-                              (name))))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (expr
-                      (non_unary_expr
-                        (non_unary_expr
-                          (lvalue
-                            (name)))
-                        (ne
-                          (line_continuation))
-                        (expr
-                          (non_unary_expr
-                            (lvalue
-                              (name))))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (non_unary_expr
-                      (lvalue
-                        (name)))
-                    (and
-                      (line_continuation))
-                    (expr
-                      (non_unary_expr
-                        (lvalue
-                          (name))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (non_unary_expr
-                      (lvalue
-                        (name)))
-                    (or
-                      (line_continuation))
-                    (expr
-                      (non_unary_expr
-                        (lvalue
-                          (name))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (incr
-                      (line_continuation))
-                    (lvalue
-                      (name))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (lvalue
-                      (name))
-                    (incr
-                      (line_continuation))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (decr
-                      (line_continuation))
-                    (lvalue
-                      (name))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (lvalue
-                      (name))
-                    (decr
-                      (line_continuation))))))
-            (newline)))))
-    (terminator
-      (newline))))
-
-==================
-continued words and lists keep the narrowest formal owner
-==================
-
-BEGIN {
-  get\
-line value
-  value i\
-n array
-  len\
-gth(value)
   length\
 (value)
-  function_\
-name(value)
+  function_name\
+(value)
   print first,
     second,\
     third
@@ -1523,43 +1304,6 @@ name(value)
               (simple_statement
                 (expr
                   (non_unary_expr
-                    (non_unary_input_function
-                      (simple_get
-                        (getline_keyword
-                          (line_continuation))
-                        (lvalue
-                          (name))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (non_unary_expr
-                      (lvalue
-                        (name)))
-                    (in_keyword
-                      (line_continuation))
-                    (name)))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (builtin_func_name
-                      (line_continuation))
-                    (expr_list
-                      (expr
-                        (non_unary_expr
-                          (lvalue
-                            (name)))))))))
-            (newline))
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
                     (builtin_func_name)
                     (line_continuation)
                     (expr_list
@@ -1573,8 +1317,8 @@ name(value)
               (simple_statement
                 (expr
                   (non_unary_expr
-                    (func_name
-                      (line_continuation))
+                    (func_name)
+                    (line_continuation)
                     (expr_list
                       (expr
                         (non_unary_expr

@@ -179,6 +179,23 @@ final
             (name)))))))
 
 ==================
+single unterminated top-level item remains under program
+==================
+
+BEGIN {}
+---
+
+(program
+  (item_list
+    (newline_opt
+      (newline)))
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action)))
+
+==================
 function definitions distinguish names parameters newlines and continuations
 ==================
 function adjacent() {}
@@ -187,10 +204,7 @@ second)
 {
   return first
 }
-func\
-tion con\
-tinued(pa\
-ram,\
+function continued(param,\
 other) {}
 ---
 
@@ -227,13 +241,10 @@ other) {}
     (terminator
       (newline)))
   (item
-    (function_keyword
-      (line_continuation))
-    (func_name
-      (line_continuation))
+    (function_keyword)
+    (func_name)
     (param_list
-      (name
-        (line_continuation))
+      (name)
       (line_continuation)
       (name))
     (action)))
@@ -1068,6 +1079,7 @@ function colon() :
   (item_list
     leading: (newline_opt
       (newline))))
+
 ==================
 parameter recovery preserves interior and repeated missing slots
 ==================

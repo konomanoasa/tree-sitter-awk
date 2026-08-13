@@ -27,41 +27,29 @@ enum TokenType {
   IN_WORD,
   BUILTIN_FUNC_NAME_WORD,
   FUNC_NAME_WORD,
-  WORD_CONTINUES,
   NUMBER_INTEGER,
   NUMBER_FRACTION,
   NUMBER_EXPONENT,
   NUMBER_FRACTION_DIGITS,
   DIVISION_SLASH,
   ERE_OPENING_SLASH,
-  DIV_ASSIGN_OPERATOR_SLASH,
-  ADD_ASSIGN_OPERATOR_PLUS,
-  SUB_ASSIGN_OPERATOR_MINUS,
-  MUL_ASSIGN_OPERATOR_STAR,
-  MOD_ASSIGN_OPERATOR_PERCENT,
-  POW_ASSIGN_OPERATOR_CARET,
-  OR_OPERATOR_BAR,
-  AND_OPERATOR_AMPERSAND,
-  NO_MATCH_OPERATOR_BANG,
-  EQ_OPERATOR_EQUALS,
-  LE_OPERATOR_LESS,
-  GE_OPERATOR_GREATER,
-  NE_OPERATOR_BANG,
-  INCR_OPERATOR_PLUS,
-  DECR_OPERATOR_MINUS,
-  APPEND_OPERATOR_GREATER,
-  OPERATOR_EQUALS,
-  OPERATOR_PLUS,
-  OPERATOR_MINUS,
-  OPERATOR_BAR,
-  OPERATOR_AMPERSAND,
-  OPERATOR_TILDE,
-  OPERATOR_GREATER,
+  DIV_ASSIGN_OPERATOR,
+  ADD_ASSIGN_OPERATOR,
+  SUB_ASSIGN_OPERATOR,
+  MUL_ASSIGN_OPERATOR,
+  MOD_ASSIGN_OPERATOR,
+  POW_ASSIGN_OPERATOR,
+  OR_OPERATOR,
+  AND_OPERATOR,
+  NO_MATCH_OPERATOR,
+  EQ_OPERATOR,
+  LE_OPERATOR,
+  GE_OPERATOR,
+  NE_OPERATOR,
+  INCR_OPERATOR,
+  DECR_OPERATOR,
+  APPEND_OPERATOR,
   OUTPUT_GREATER_GUARD,
-  LC_BEFORE_DIGIT,
-  LC_BEFORE_DOT,
-  LC_BEFORE_EXPONENT,
-  LC_BEFORE_SIGN,
   LC_BEFORE_OPERATOR,
   LC_BEFORE_ADDITIVE_OPERATOR,
   LC_BEFORE_MULTIPLICATIVE_OPERATOR,
@@ -101,8 +89,6 @@ enum TokenType {
   ACTION_EMPTY_SEMICOLON_ITEM_BOUNDARY_GUARD,
   ACTION_CLOSE_ITEM_BOUNDARY_GUARD,
   ACTION_ITEM_BOUNDARY_RECOVERY,
-  LC_BEFORE_ESCAPE_CHARACTER,
-  LC_BEFORE_OCTAL_DIGIT,
   STRING_LONE_ESCAPE,
   STRING_END_BOUNDARY,
   ERE_COMPOUND_OPEN_GUARD,
@@ -114,23 +100,9 @@ enum TokenType {
   ERE_ESCAPED_DELIMITER_START,
   ERE_ESCAPED_DELIMITER_END,
   ERE_LONE_ESCAPE,
-  ERE_LINE_CONTINUATION,
-  ERE_RUN_GUARD,
-  ERE_EXPRESSION_RUN_GUARD,
-  ERE_ALTERNATION_RUN_GUARD,
-  ERE_DUPLICATION_RUN_GUARD,
-  ERE_MODIFIER_RUN_GUARD,
-  ERE_GROUP_CLOSE_RUN_GUARD,
-  ERE_GROUP_RECOVERY_RUN_GUARD,
-  ERE_BRACKET_CLOSE_RUN_GUARD,
   ERE_COMPOUND_BOUNDARY,
   ERE_INNER_SLASH_BOUNDARY,
   ERE_INNER_END_BOUNDARY,
-  ERE_END_RUN_GUARD,
-  ERE_ESCAPE_RUN_GUARD,
-  ERE_OCTAL_RUN_GUARD,
-  ERE_DIGIT_RUN_GUARD,
-  ERE_CLASS_RUN_GUARD,
   ERE_END_BOUNDARY,
   ERE_CLOSING,
   CLOSE_PARENTHESIS_RECOVERY,
@@ -313,22 +285,22 @@ static const WordToken WORD_TOKENS[] = {
 };
 
 static const CompositeOperator COMPOSITE_OPERATORS[] = {
-  {'/', '=', DIV_ASSIGN_OPERATOR_SLASH},
-  {'+', '=', ADD_ASSIGN_OPERATOR_PLUS},
-  {'-', '=', SUB_ASSIGN_OPERATOR_MINUS},
-  {'*', '=', MUL_ASSIGN_OPERATOR_STAR},
-  {'%', '=', MOD_ASSIGN_OPERATOR_PERCENT},
-  {'^', '=', POW_ASSIGN_OPERATOR_CARET},
-  {'|', '|', OR_OPERATOR_BAR},
-  {'&', '&', AND_OPERATOR_AMPERSAND},
-  {'!', '~', NO_MATCH_OPERATOR_BANG},
-  {'=', '=', EQ_OPERATOR_EQUALS},
-  {'<', '=', LE_OPERATOR_LESS},
-  {'>', '=', GE_OPERATOR_GREATER},
-  {'!', '=', NE_OPERATOR_BANG},
-  {'+', '+', INCR_OPERATOR_PLUS},
-  {'-', '-', DECR_OPERATOR_MINUS},
-  {'>', '>', APPEND_OPERATOR_GREATER},
+  {'/', '=', DIV_ASSIGN_OPERATOR},
+  {'+', '=', ADD_ASSIGN_OPERATOR},
+  {'-', '=', SUB_ASSIGN_OPERATOR},
+  {'*', '=', MUL_ASSIGN_OPERATOR},
+  {'%', '=', MOD_ASSIGN_OPERATOR},
+  {'^', '=', POW_ASSIGN_OPERATOR},
+  {'|', '|', OR_OPERATOR},
+  {'&', '&', AND_OPERATOR},
+  {'!', '~', NO_MATCH_OPERATOR},
+  {'=', '=', EQ_OPERATOR},
+  {'<', '=', LE_OPERATOR},
+  {'>', '=', GE_OPERATOR},
+  {'!', '=', NE_OPERATOR},
+  {'+', '+', INCR_OPERATOR},
+  {'-', '-', DECR_OPERATOR},
+  {'>', '>', APPEND_OPERATOR},
 };
 
 static bool is_ascii_blank(int32_t character) {
@@ -339,17 +311,9 @@ static bool is_ascii_digit(int32_t character) {
   return character >= '0' && character <= '9';
 }
 
-static bool is_octal_digit(int32_t character) {
-  return character >= '0' && character <= '7';
-}
-
 static bool is_ascii_letter(int32_t character) {
   return (character >= 'A' && character <= 'Z') ||
     (character >= 'a' && character <= 'z');
-}
-
-static bool is_ascii_alphanumeric(int32_t character) {
-  return is_ascii_letter(character) || is_ascii_digit(character);
 }
 
 static bool is_word_start(int32_t character) {
@@ -409,6 +373,23 @@ static bool skip_ascii_blanks(TSLexer *lexer) {
 
 static bool advance_comment_to_boundary(TSLexer *lexer);
 
+static bool advance_layout_gap(TSLexer *lexer) {
+  for (;;) {
+    (void)skip_ascii_blanks(lexer);
+    (void)advance_comment_to_boundary(lexer);
+    if (lexer->lookahead == '\n') {
+      lexer->advance(lexer, false);
+      continue;
+    }
+    if (lexer->lookahead != '\\') {
+      return true;
+    }
+    if (!advance_line_continuations(lexer)) {
+      return false;
+    }
+  }
+}
+
 static WordKind classify_word(const char *word, size_t length) {
   if (length > MAX_RESERVED_WORD_LENGTH) {
     return WORD_KIND_NAME;
@@ -430,47 +411,30 @@ static WordKind classify_word(const char *word, size_t length) {
 static WordKind scan_word_kind(TSLexer *lexer) {
   char word[MAX_RESERVED_WORD_LENGTH + 1] = {0};
   size_t length = 0;
-  bool has_logically_adjacent_call = true;
 
   if (!is_word_start(lexer->lookahead)) {
     return WORD_KIND_NONE;
   }
 
-  for (;;) {
-    if (is_word_continue(lexer->lookahead)) {
-      if (length < MAX_RESERVED_WORD_LENGTH) {
-        word[length] = (char)lexer->lookahead;
-      }
-      if (length <= MAX_RESERVED_WORD_LENGTH) {
-        length++;
-      }
-      lexer->advance(lexer, false);
-      continue;
+  while (is_word_continue(lexer->lookahead)) {
+    if (length < MAX_RESERVED_WORD_LENGTH) {
+      word[length] = (char)lexer->lookahead;
     }
-
-    if (lexer->lookahead == '\\') {
-      lexer->advance(lexer, false);
-      if (lexer->lookahead != '\n') {
-        has_logically_adjacent_call = false;
-        break;
-      }
-      lexer->advance(lexer, false);
-      continue;
+    if (length <= MAX_RESERVED_WORD_LENGTH) {
+      length++;
     }
-
-    break;
+    lexer->advance(lexer, false);
   }
 
   const WordKind kind = classify_word(word, length);
-  if (
-    kind ==
-    WORD_KIND_NAME &&
-    has_logically_adjacent_call &&
-    lexer->lookahead == '('
-  ) {
-    return WORD_KIND_FUNC_NAME;
+  if (kind != WORD_KIND_NAME) {
+    return kind;
   }
-  return kind;
+
+  if (lexer->lookahead == '\\' && !advance_line_continuations(lexer)) {
+    return kind;
+  }
+  return lexer->lookahead == '(' ? WORD_KIND_FUNC_NAME : kind;
 }
 
 static bool
@@ -524,15 +488,6 @@ static NumberKind scan_number_kind(TSLexer *lexer) {
   NumberKind accepted = NUMBER_KIND_NONE;
 
   for (;;) {
-    if (state != STATE_START && lexer->lookahead == '\\') {
-      lexer->advance(lexer, false);
-      if (lexer->lookahead != '\n') {
-        return accepted;
-      }
-      lexer->advance(lexer, false);
-      continue;
-    }
-
     switch (state) {
     case STATE_START:
       if (is_ascii_digit(lexer->lookahead)) {
@@ -658,18 +613,6 @@ emit_number_kind(TSLexer *lexer, const bool *valid_symbols, NumberKind kind) {
   return false;
 }
 
-static bool advance_to_logical_second_character(TSLexer *lexer) {
-  while (lexer->lookahead == '\\') {
-    lexer->advance(lexer, false);
-    if (lexer->lookahead != '\n') {
-      return false;
-    }
-    lexer->advance(lexer, false);
-  }
-
-  return true;
-}
-
 static bool
 has_valid_composite_operator_start(int32_t first, const bool *valid_symbols) {
   for (
@@ -706,6 +649,19 @@ find_composite_operator(int32_t first, int32_t second) {
   return NULL;
 }
 
+static bool is_composite_operator_start(int32_t first) {
+  for (
+    size_t i = 0;
+    i < sizeof(COMPOSITE_OPERATORS) / sizeof(COMPOSITE_OPERATORS[0]);
+    i++
+  ) {
+    if (COMPOSITE_OPERATORS[i].first == first) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool
 scan_composite_operator_start(TSLexer *lexer, const bool *valid_symbols) {
   const int32_t first = lexer->lookahead;
@@ -714,29 +670,16 @@ scan_composite_operator_start(TSLexer *lexer, const bool *valid_symbols) {
   }
 
   lexer->advance(lexer, false);
-  lexer->mark_end(lexer);
-  if (!advance_to_logical_second_character(lexer)) {
+  const CompositeOperator *composite =
+    find_composite_operator(first, lexer->lookahead);
+  if (composite == NULL || !valid_symbols[composite->token]) {
     return false;
   }
 
-  for (
-    size_t i = 0;
-    i < sizeof(COMPOSITE_OPERATORS) / sizeof(COMPOSITE_OPERATORS[0]);
-    i++
-  ) {
-    const CompositeOperator *operator = &COMPOSITE_OPERATORS[i];
-    if (
-      operator->first ==
-      first &&
-      operator->second ==
-      lexer->lookahead &&
-      valid_symbols[operator->token]
-    ) {
-      lexer->result_symbol = operator->token;
-      return true;
-    }
-  }
-  return false;
+  lexer->advance(lexer, false);
+  lexer->mark_end(lexer);
+  lexer->result_symbol = composite->token;
+  return true;
 }
 
 static bool scan_output_greater_boundary(TSLexer *lexer) {
@@ -745,16 +688,12 @@ static bool scan_output_greater_boundary(TSLexer *lexer) {
   }
 
   lexer->advance(lexer, false);
-  if (!advance_to_logical_second_character(lexer)) {
-    return true;
-  }
-
   const CompositeOperator *composite =
     find_composite_operator('>', lexer->lookahead);
   if (composite == NULL) {
     return true;
   }
-  return composite->token == APPEND_OPERATOR_GREATER;
+  return composite->token == APPEND_OPERATOR;
 }
 
 static bool scan_print_output_boundary(TSLexer *lexer) {
@@ -766,9 +705,6 @@ static bool scan_print_output_boundary(TSLexer *lexer) {
   }
 
   lexer->advance(lexer, false);
-  if (!advance_to_logical_second_character(lexer)) {
-    return true;
-  }
   return find_composite_operator('|', lexer->lookahead) == NULL;
 }
 
@@ -798,10 +734,10 @@ static bool scan_slash_start(
 
   lexer->advance(lexer, false);
   lexer->mark_end(lexer);
-  const bool is_div_assign =
-    advance_to_logical_second_character(lexer) && lexer->lookahead == '=';
-  if (is_div_assign && valid_symbols[DIV_ASSIGN_OPERATOR_SLASH]) {
-    lexer->result_symbol = DIV_ASSIGN_OPERATOR_SLASH;
+  if (lexer->lookahead == '=' && valid_symbols[DIV_ASSIGN_OPERATOR]) {
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    lexer->result_symbol = DIV_ASSIGN_OPERATOR;
     return true;
   }
   if (valid_symbols[DIVISION_SLASH]) {
@@ -814,43 +750,6 @@ static bool scan_slash_start(
     return true;
   }
   return false;
-}
-
-static bool scan_operator_end(TSLexer *lexer, const bool *valid_symbols) {
-  enum TokenType token;
-  switch (lexer->lookahead) {
-  case '=':
-    token = OPERATOR_EQUALS;
-    break;
-  case '+':
-    token = OPERATOR_PLUS;
-    break;
-  case '-':
-    token = OPERATOR_MINUS;
-    break;
-  case '|':
-    token = OPERATOR_BAR;
-    break;
-  case '&':
-    token = OPERATOR_AMPERSAND;
-    break;
-  case '~':
-    token = OPERATOR_TILDE;
-    break;
-  case '>':
-    token = OPERATOR_GREATER;
-    break;
-  default:
-    return false;
-  }
-
-  if (!valid_symbols[token]) {
-    return false;
-  }
-  lexer->advance(lexer, false);
-  lexer->mark_end(lexer);
-  lexer->result_symbol = token;
-  return true;
 }
 
 static bool
@@ -877,8 +776,6 @@ scan_expression_recovery(TSLexer *lexer, const bool *valid_symbols) {
   case ':':
   case ';':
   case '}':
-    lexer->result_symbol = EXPRESSION_RECOVERY;
-    return true;
   case '\n':
     lexer->result_symbol = EXPRESSION_RECOVERY;
     return true;
@@ -975,29 +872,6 @@ static bool emit_word_closer_recovery(
   return false;
 }
 
-static bool
-scan_fixed_statement_recovery(TSLexer *lexer, const bool *valid_symbols) {
-  if (
-    valid_symbols[PRINT_EXPRESSION_RECOVERY] &&
-    (lexer->lookahead == '>' || lexer->lookahead == '|')
-  ) {
-    if (!scan_print_output_boundary(lexer)) {
-      return false;
-    }
-    lexer->result_symbol = PRINT_EXPRESSION_RECOVERY;
-    return true;
-  }
-
-  if (
-    valid_symbols[STATEMENT_RECOVERY] &&
-    (lexer->lookahead == '}' || lexer->eof(lexer))
-  ) {
-    lexer->result_symbol = STATEMENT_RECOVERY;
-    return true;
-  }
-  return false;
-}
-
 static bool emit_word_statement_recovery(
   TSLexer *lexer,
   const bool *valid_symbols,
@@ -1088,22 +962,8 @@ static bool scan_action_item_terminator_boundary(
   }
 
   lexer->advance(lexer, false);
-  for (;;) {
-    (void)skip_ascii_blanks(lexer);
-    (void)advance_comment_to_boundary(lexer);
-    if (lexer->lookahead == '\n') {
-      lexer->advance(lexer, false);
-      continue;
-    }
-    if (lexer->lookahead == '\\') {
-      lexer->advance(lexer, false);
-      if (lexer->lookahead != '\n') {
-        return false;
-      }
-      lexer->advance(lexer, false);
-      continue;
-    }
-    break;
+  if (!advance_layout_gap(lexer)) {
+    return false;
   }
 
   if (!is_word_start(lexer->lookahead)) {
@@ -1117,29 +977,6 @@ static bool scan_action_item_terminator_boundary(
     ? ACTION_EMPTY_SEMICOLON_ITEM_BOUNDARY_GUARD
     : ACTION_CLOSE_ITEM_BOUNDARY_GUARD;
   return true;
-}
-
-static bool advance_required_target_layout(TSLexer *lexer) {
-  lexer->advance(lexer, false);
-  for (;;) {
-    (void)skip_ascii_blanks(lexer);
-    if (advance_comment_to_boundary(lexer)) {
-      continue;
-    }
-    if (lexer->lookahead == '\n') {
-      lexer->advance(lexer, false);
-      continue;
-    }
-    if (lexer->lookahead == '\\') {
-      lexer->advance(lexer, false);
-      if (lexer->lookahead != '\n') {
-        return false;
-      }
-      lexer->advance(lexer, false);
-      continue;
-    }
-    return true;
-  }
 }
 
 static bool
@@ -1162,8 +999,11 @@ emit_required_target_recovery(TSLexer *lexer, const bool *valid_symbols) {
 static bool
 scan_required_target_guard(TSLexer *lexer, const bool *valid_symbols) {
   const bool at_newline = lexer->lookahead == '\n';
-  if (at_newline && !advance_required_target_layout(lexer)) {
-    return emit_required_target_recovery(lexer, valid_symbols);
+  if (at_newline) {
+    lexer->advance(lexer, false);
+    if (!advance_layout_gap(lexer)) {
+      return emit_required_target_recovery(lexer, valid_symbols);
+    }
   }
   if (
     at_newline && valid_symbols[ACTION_TARGET_GUARD] && lexer->lookahead == '{'
@@ -1281,175 +1121,17 @@ scan_parameter_recovery_or_word(TSLexer *lexer, const bool *valid_symbols) {
   return false;
 }
 
-static bool
-scan_string_context_marker(TSLexer *lexer, const bool *valid_symbols) {
-  if (lexer->lookahead != '\\') {
+static bool scan_string_lone_escape(TSLexer *lexer, const bool *valid_symbols) {
+  if (!valid_symbols[STRING_LONE_ESCAPE] || lexer->lookahead != '\\') {
     return false;
   }
 
   lexer->advance(lexer, false);
-  if (lexer->lookahead == '\n') {
-    lexer->advance(lexer, false);
-
-    for (;;) {
-      if (lexer->lookahead == '\\') {
-        lexer->advance(lexer, false);
-        if (lexer->lookahead == '\n') {
-          lexer->advance(lexer, false);
-          continue;
-        }
-        if (valid_symbols[LC_BEFORE_ESCAPE_CHARACTER]) {
-          lexer->result_symbol = LC_BEFORE_ESCAPE_CHARACTER;
-          return true;
-        }
-        return false;
-      }
-
-      if (
-        valid_symbols[LC_BEFORE_OCTAL_DIGIT] && is_octal_digit(lexer->lookahead)
-      ) {
-        lexer->result_symbol = LC_BEFORE_OCTAL_DIGIT;
-        return true;
-      }
-      if (
-        valid_symbols[LC_BEFORE_ESCAPE_CHARACTER] &&
-        !is_octal_digit(lexer->lookahead) &&
-        lexer->lookahead !=
-        '\n' &&
-        !lexer->eof(lexer)
-      ) {
-        lexer->result_symbol = LC_BEFORE_ESCAPE_CHARACTER;
-        return true;
-      }
-      return false;
-    }
-  }
-
-  if (!valid_symbols[STRING_LONE_ESCAPE]) {
-    return false;
-  }
-
-  while (lexer->lookahead == '\\') {
-    lexer->advance(lexer, false);
-    if (lexer->lookahead != '\n') {
-      return false;
-    }
-    lexer->advance(lexer, false);
-  }
-
   if (lexer->lookahead != '\n' && !lexer->eof(lexer)) {
     return false;
   }
   lexer->result_symbol = STRING_LONE_ESCAPE;
   return true;
-}
-
-static bool has_ere_run_guard(const bool *valid_symbols) {
-  return valid_symbols[ERE_RUN_GUARD] ||
-    valid_symbols[ERE_EXPRESSION_RUN_GUARD] ||
-    valid_symbols[ERE_ALTERNATION_RUN_GUARD] ||
-    valid_symbols[ERE_DUPLICATION_RUN_GUARD] ||
-    valid_symbols[ERE_MODIFIER_RUN_GUARD] ||
-    valid_symbols[ERE_GROUP_CLOSE_RUN_GUARD] ||
-    valid_symbols[ERE_GROUP_RECOVERY_RUN_GUARD] ||
-    valid_symbols[ERE_BRACKET_CLOSE_RUN_GUARD] ||
-    valid_symbols[ERE_END_RUN_GUARD] ||
-    valid_symbols[ERE_ESCAPE_RUN_GUARD] ||
-    valid_symbols[ERE_OCTAL_RUN_GUARD] ||
-    valid_symbols[ERE_DIGIT_RUN_GUARD] ||
-    valid_symbols[ERE_CLASS_RUN_GUARD];
-}
-
-static bool emit_ere_run_guard(
-  TSLexer *lexer,
-  const bool *valid_symbols,
-  int32_t target,
-  bool at_eof
-) {
-  if (valid_symbols[ERE_DIGIT_RUN_GUARD] && is_ascii_digit(target)) {
-    lexer->result_symbol = ERE_DIGIT_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_OCTAL_RUN_GUARD] && is_octal_digit(target)) {
-    lexer->result_symbol = ERE_OCTAL_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_CLASS_RUN_GUARD] && is_ascii_alphanumeric(target)) {
-    lexer->result_symbol = ERE_CLASS_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_ESCAPE_RUN_GUARD]) {
-    lexer->result_symbol = ERE_ESCAPE_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_MODIFIER_RUN_GUARD] && target == '?') {
-    lexer->result_symbol = ERE_MODIFIER_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_ALTERNATION_RUN_GUARD] && target == '|') {
-    lexer->result_symbol = ERE_ALTERNATION_RUN_GUARD;
-    return true;
-  }
-  if (
-    valid_symbols[ERE_DUPLICATION_RUN_GUARD] &&
-    (target == '*' || target == '+' || target == '?' || target == '{')
-  ) {
-    lexer->result_symbol = ERE_DUPLICATION_RUN_GUARD;
-    return true;
-  }
-  const bool at_ere_boundary =
-    target == ')' || target == '/' || target == '\n' || at_eof;
-  if (valid_symbols[ERE_GROUP_RECOVERY_RUN_GUARD] && at_ere_boundary) {
-    lexer->result_symbol = ERE_GROUP_RECOVERY_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_GROUP_CLOSE_RUN_GUARD] && at_ere_boundary) {
-    lexer->result_symbol = ERE_GROUP_CLOSE_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_BRACKET_CLOSE_RUN_GUARD] && target == ']') {
-    lexer->result_symbol = ERE_BRACKET_CLOSE_RUN_GUARD;
-    return true;
-  }
-  if (
-    valid_symbols[ERE_END_RUN_GUARD] &&
-    (target == '/' || target == '\n' || at_eof)
-  ) {
-    lexer->result_symbol = ERE_END_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_EXPRESSION_RUN_GUARD]) {
-    lexer->result_symbol = ERE_EXPRESSION_RUN_GUARD;
-    return true;
-  }
-  if (valid_symbols[ERE_RUN_GUARD]) {
-    lexer->result_symbol = ERE_RUN_GUARD;
-    return true;
-  }
-  return false;
-}
-
-static bool
-scan_ere_run_guard_after_backslash(TSLexer *lexer, const bool *valid_symbols) {
-  if (lexer->lookahead != '\n') {
-    return false;
-  }
-
-  for (;;) {
-    lexer->advance(lexer, false);
-    if (lexer->lookahead != '\\') {
-      return emit_ere_run_guard(
-        lexer,
-        valid_symbols,
-        lexer->lookahead,
-        lexer->eof(lexer)
-      );
-    }
-    lexer->advance(lexer, false);
-    if (lexer->lookahead != '\n') {
-      return emit_ere_run_guard(lexer, valid_symbols, '\\', false);
-    }
-  }
 }
 
 static bool scan_ere_backslash_context(
@@ -1462,49 +1144,6 @@ static bool scan_ere_backslash_context(
   }
 
   lexer->advance(lexer, false);
-  if (lexer->lookahead == '\n') {
-    if (has_ere_run_guard(valid_symbols)) {
-      return scan_ere_run_guard_after_backslash(lexer, valid_symbols);
-    }
-    lexer->advance(lexer, false);
-    lexer->mark_end(lexer);
-    if (valid_symbols[ERE_LINE_CONTINUATION]) {
-      lexer->result_symbol = ERE_LINE_CONTINUATION;
-      return true;
-    }
-    return false;
-  }
-
-  if (lexer->lookahead == '/' && valid_symbols[ERE_ESCAPED_DELIMITER_START]) {
-    lexer->result_symbol = ERE_ESCAPED_DELIMITER_START;
-    state->ere_mode = ERE_MODE_ESCAPED_DELIMITER;
-    return true;
-  }
-  if (
-    lexer->lookahead !=
-    '\\' &&
-    lexer->lookahead !=
-    '\n' &&
-    !lexer->eof(lexer) &&
-    !valid_symbols[ERROR_SENTINEL] &&
-    valid_symbols[ERE_ESCAPE_START]
-  ) {
-    lexer->result_symbol = ERE_ESCAPE_START;
-    return true;
-  }
-
-  while (lexer->lookahead == '\\') {
-    lexer->advance(lexer, false);
-    if (lexer->lookahead != '\n') {
-      if (!valid_symbols[ERROR_SENTINEL] && valid_symbols[ERE_ESCAPE_START]) {
-        lexer->result_symbol = ERE_ESCAPE_START;
-        return true;
-      }
-      return false;
-    }
-    lexer->advance(lexer, false);
-  }
-
   if (lexer->lookahead == '/' && valid_symbols[ERE_ESCAPED_DELIMITER_START]) {
     lexer->result_symbol = ERE_ESCAPED_DELIMITER_START;
     state->ere_mode = ERE_MODE_ESCAPED_DELIMITER;
@@ -1553,14 +1192,6 @@ static bool scan_ere_compound_guard(TSLexer *lexer, enum TokenType guard) {
   }
 
   lexer->advance(lexer, false);
-  while (lexer->lookahead == '\\') {
-    lexer->advance(lexer, false);
-    if (lexer->lookahead != '\n') {
-      return false;
-    }
-    lexer->advance(lexer, false);
-  }
-
   const bool matches = guard == ERE_COMPOUND_OPEN_GUARD
     ? lexer->lookahead ==
       '.' ||
@@ -1743,35 +1374,9 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
 
   const int32_t first = lexer->lookahead;
   int32_t second = 0;
-  if (
-    first ==
-    '/' ||
-    first ==
-    '!' ||
-    first ==
-    '^' ||
-    first ==
-    '*' ||
-    first ==
-    '%' ||
-    first ==
-    '+' ||
-    first ==
-    '-' ||
-    first ==
-    '<' ||
-    first ==
-    '>' ||
-    first ==
-    '=' ||
-    first ==
-    '|' ||
-    first == '&'
-  ) {
+  if (is_composite_operator_start(first)) {
     lexer->advance(lexer, false);
-    if (advance_to_logical_second_character(lexer)) {
-      second = lexer->lookahead;
-    }
+    second = lexer->lookahead;
   }
 
   enum TokenType marker = ERROR_SENTINEL;
@@ -1889,10 +1494,10 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
   return false;
 }
 
-static bool has_line_continuation_boundary_marker(const bool *valid_symbols) {
+static bool has_line_continuation_marker(const bool *valid_symbols) {
+  // The LC_BEFORE_* tokens form one contiguous enum range.
   for (
-    enum TokenType token = LC_BEFORE_OPERATOR;
-    token <= LC_BEFORE_TERMINATOR_RECOVERY;
+    enum TokenType token = LC_BEFORE_OPERATOR; token <= LC_BEFORE_ACTION_EOF;
     token++
   ) {
     if (valid_symbols[token]) {
@@ -1902,65 +1507,11 @@ static bool has_line_continuation_boundary_marker(const bool *valid_symbols) {
   return false;
 }
 
-static bool scan_line_continuation_marker(
-  TSLexer *lexer,
-  const bool *valid_symbols,
-  bool allow_token_internal
-) {
-  if (!advance_line_continuations(lexer)) {
-    return false;
-  }
-
+static bool
+scan_line_continuation_marker(TSLexer *lexer, const bool *valid_symbols) {
   if (
-    allow_token_internal &&
-    valid_symbols[WORD_CONTINUES] &&
-    is_word_continue(lexer->lookahead)
+    !advance_line_continuations(lexer) || !advance_boundary_gap_remainder(lexer)
   ) {
-    lexer->result_symbol = WORD_CONTINUES;
-    return true;
-  }
-  if (
-    allow_token_internal &&
-    valid_symbols[LC_BEFORE_DIGIT] &&
-    is_ascii_digit(lexer->lookahead)
-  ) {
-    lexer->result_symbol = LC_BEFORE_DIGIT;
-    return true;
-  }
-  if (
-    allow_token_internal &&
-    valid_symbols[LC_BEFORE_DOT] &&
-    lexer->lookahead == '.'
-  ) {
-    lexer->result_symbol = LC_BEFORE_DOT;
-    return true;
-  }
-  if (
-    allow_token_internal &&
-    valid_symbols[LC_BEFORE_EXPONENT] &&
-    (lexer->lookahead == 'e' || lexer->lookahead == 'E')
-  ) {
-    lexer->result_symbol = LC_BEFORE_EXPONENT;
-    return true;
-  }
-  if (
-    allow_token_internal &&
-    valid_symbols[LC_BEFORE_SIGN] &&
-    (lexer->lookahead == '+' || lexer->lookahead == '-')
-  ) {
-    lexer->result_symbol = LC_BEFORE_SIGN;
-    return true;
-  }
-
-  const bool has_boundary_marker =
-    has_line_continuation_boundary_marker(valid_symbols) ||
-    valid_symbols[LC_BEFORE_EXPRESSION] ||
-    valid_symbols[LC_BEFORE_COMMA] ||
-    valid_symbols[LC_BEFORE_OPEN_BRACKET] ||
-    valid_symbols[LC_BEFORE_CLOSE_PARENTHESIS] ||
-    valid_symbols[LC_BEFORE_CLOSE_BRACKET] ||
-    valid_symbols[LC_BEFORE_ACTION_EOF];
-  if (!has_boundary_marker || !advance_boundary_gap_remainder(lexer)) {
     return false;
   }
 
@@ -2117,13 +1668,6 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     return true;
   }
 
-  if (state->ere_mode == ERE_MODE_OUTSIDE) {
-    lexer->mark_end(lexer);
-    if (scan_operator_end(lexer, valid_symbols)) {
-      return true;
-    }
-  }
-
   if (
     state->ere_mode ==
     ERE_MODE_OUTSIDE &&
@@ -2175,10 +1719,7 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     return false;
   }
 
-  const bool has_string_context_marker = valid_symbols[STRING_LONE_ESCAPE] ||
-    valid_symbols[LC_BEFORE_ESCAPE_CHARACTER] ||
-    valid_symbols[LC_BEFORE_OCTAL_DIGIT];
-  if (valid_symbols[STRING_END_BOUNDARY] || has_string_context_marker) {
+  if (valid_symbols[STRING_END_BOUNDARY] || valid_symbols[STRING_LONE_ESCAPE]) {
     lexer->mark_end(lexer);
     if (
       valid_symbols[STRING_END_BOUNDARY] &&
@@ -2187,10 +1728,7 @@ bool tree_sitter_posix_awk_external_scanner_scan(
       lexer->result_symbol = STRING_END_BOUNDARY;
       return true;
     }
-    if (lexer->lookahead == '\\' && has_string_context_marker) {
-      return scan_string_context_marker(lexer, valid_symbols);
-    }
-    return false;
+    return scan_string_lone_escape(lexer, valid_symbols);
   }
 
   const bool had_leading_blank = skip_ascii_blanks(lexer);
@@ -2241,12 +1779,22 @@ bool tree_sitter_posix_awk_external_scanner_scan(
   }
 
   if (
-    (valid_symbols[PRINT_EXPRESSION_RECOVERY] &&
-      (lexer->lookahead == '>' || lexer->lookahead == '|')) ||
-    (valid_symbols[STATEMENT_RECOVERY] &&
-      (lexer->lookahead == '}' || lexer->eof(lexer)))
+    valid_symbols[PRINT_EXPRESSION_RECOVERY] &&
+    (lexer->lookahead == '>' || lexer->lookahead == '|')
   ) {
-    return scan_fixed_statement_recovery(lexer, valid_symbols);
+    if (!scan_print_output_boundary(lexer)) {
+      return false;
+    }
+    lexer->result_symbol = PRINT_EXPRESSION_RECOVERY;
+    return true;
+  }
+
+  if (
+    valid_symbols[STATEMENT_RECOVERY] &&
+    (lexer->lookahead == '}' || lexer->eof(lexer))
+  ) {
+    lexer->result_symbol = STATEMENT_RECOVERY;
+    return true;
   }
 
   if (scan_expression_recovery(lexer, valid_symbols)) {
@@ -2274,24 +1822,8 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     return true;
   }
 
-  const bool has_line_continuation_marker = valid_symbols[WORD_CONTINUES] ||
-    valid_symbols[LC_BEFORE_DIGIT] ||
-    valid_symbols[LC_BEFORE_DOT] ||
-    valid_symbols[LC_BEFORE_EXPONENT] ||
-    valid_symbols[LC_BEFORE_SIGN] ||
-    has_line_continuation_boundary_marker(valid_symbols) ||
-    valid_symbols[LC_BEFORE_EXPRESSION] ||
-    valid_symbols[LC_BEFORE_COMMA] ||
-    valid_symbols[LC_BEFORE_OPEN_BRACKET] ||
-    valid_symbols[LC_BEFORE_CLOSE_PARENTHESIS] ||
-    valid_symbols[LC_BEFORE_CLOSE_BRACKET] ||
-    valid_symbols[LC_BEFORE_ACTION_EOF];
-  if (lexer->lookahead == '\\' && has_line_continuation_marker) {
-    return scan_line_continuation_marker(
-      lexer,
-      valid_symbols,
-      !had_leading_blank
-    );
+  if (lexer->lookahead == '\\' && has_line_continuation_marker(valid_symbols)) {
+    return scan_line_continuation_marker(lexer, valid_symbols);
   }
 
   const bool word_marker_is_valid = has_word_marker(valid_symbols);
@@ -2353,7 +1885,7 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     '/' &&
     (valid_symbols[DIVISION_SLASH] ||
       valid_symbols[ERE_OPENING_SLASH] ||
-      valid_symbols[DIV_ASSIGN_OPERATOR_SLASH])
+      valid_symbols[DIV_ASSIGN_OPERATOR])
   ) {
     return scan_slash_start(state, lexer, valid_symbols, true);
   }

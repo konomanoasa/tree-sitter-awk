@@ -53,18 +53,10 @@ static MockLexer make_mock_lexer(const char *source) {
   };
 }
 
-static void reset_mock_token(MockLexer *mock) {
-  mock->offset = mock->token_end;
-  mock->advance_count = 0;
-  mock->lexer.lookahead = (unsigned char)mock->source[mock->offset];
-  mock->lexer.result_symbol = 0;
-}
-
-static int check_ere_line_continuation_run(
+static int check_line_continuation_run(
   const char *test_name,
   size_t continuation_count,
-  char target,
-  enum TokenType run_guard
+  char target
 ) {
   char *source = malloc((continuation_count * 2U) + 2U);
   if (source == NULL) {
@@ -79,12 +71,9 @@ static int check_ere_line_continuation_run(
   source[(continuation_count * 2U) + 1U] = '\0';
 
   MockLexer mock = make_mock_lexer(source);
-  ScannerState state = {.ere_mode = ERE_MODE_BODY};
+  ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
   bool valid_symbols[ERROR_SENTINEL + 1] = {false};
-  valid_symbols[run_guard] = true;
-  if (run_guard == ERE_RUN_GUARD) {
-    valid_symbols[ERE_DIGIT_RUN_GUARD] = true;
-  }
+  valid_symbols[LC_BEFORE_EXPRESSION] = true;
 
   int failed = 0;
   const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
@@ -92,19 +81,19 @@ static int check_ere_line_continuation_run(
     &mock.lexer,
     valid_symbols
   );
-  size_t total_advances = mock.advance_count;
   if (
     !scanned ||
     mock.lexer.result_symbol !=
-    run_guard ||
-    mock.advance_count !=
+    LC_BEFORE_EXPRESSION ||
+    mock.token_end !=
+    0 ||
+    mock.advance_count >
     continuation_count *
-    2U ||
-    mock.token_end != 0
+    4U
   ) {
     fprintf(
       stderr,
-      "%s guard: scanned=%u symbol=%u advances=%zu end=%zu\n",
+      "%s: scanned=%u symbol=%u advances=%zu end=%zu\n",
       test_name,
       scanned,
       mock.lexer.result_symbol,
@@ -114,100 +103,12 @@ static int check_ere_line_continuation_run(
     failed = 1;
   }
 
-  reset_mock_token(&mock);
-  valid_symbols[run_guard] = false;
-  valid_symbols[ERE_DIGIT_RUN_GUARD] = false;
-  valid_symbols[ERE_LINE_CONTINUATION] = true;
-  for (size_t i = 0; i < continuation_count; i++) {
-    const bool continuation_scanned =
-      tree_sitter_posix_awk_external_scanner_scan(
-        &state,
-        &mock.lexer,
-        valid_symbols
-      );
-    total_advances += mock.advance_count;
-    if (
-      !continuation_scanned ||
-      mock.lexer.result_symbol !=
-      ERE_LINE_CONTINUATION ||
-      mock.advance_count !=
-      2U ||
-      mock.token_end !=
-      (i + 1U) *
-      2U
-    ) {
-      fprintf(
-        stderr,
-        "%s continuation %zu: scanned=%u symbol=%u advances=%zu "
-        "end=%zu\n",
-        test_name,
-        i,
-        continuation_scanned,
-        mock.lexer.result_symbol,
-        mock.advance_count,
-        mock.token_end
-      );
-      failed = 1;
-      break;
-    }
-    reset_mock_token(&mock);
-  }
-  if (total_advances > continuation_count * 4U) {
-    fprintf(
-      stderr,
-      "%s: total advances=%zu for %zu continuations\n",
-      test_name,
-      total_advances,
-      continuation_count
-    );
-    failed = 1;
-  }
-
   free(source);
   return failed;
 }
 
-static int check_ere_line_continuation_lookahead(void) {
-  return check_ere_line_continuation_run(
-    "ERE linear lookahead",
-    32768,
-    'a',
-    ERE_EXPRESSION_RUN_GUARD
-  );
-}
-
-static int check_ere_line_continuation_owners(void) {
-  static const struct {
-    const char *name;
-    size_t continuation_count;
-    char target;
-    enum TokenType owner;
-  } cases[] = {
-    {"generic owner", 2, ',', ERE_RUN_GUARD},
-    {"expression owner", 2, 'b', ERE_EXPRESSION_RUN_GUARD},
-    {"alternation owner", 3, '|', ERE_ALTERNATION_RUN_GUARD},
-    {"duplication owner", 2, '*', ERE_DUPLICATION_RUN_GUARD},
-    {"modifier owner", 3, '?', ERE_MODIFIER_RUN_GUARD},
-    {"group-close owner", 3, ')', ERE_GROUP_CLOSE_RUN_GUARD},
-    {"group-recovery owner", 2, '/', ERE_GROUP_RECOVERY_RUN_GUARD},
-    {"bracket-close owner", 2, ']', ERE_BRACKET_CLOSE_RUN_GUARD},
-    {"end owner", 3, '/', ERE_END_RUN_GUARD},
-    {"escape owner", 2, 'q', ERE_ESCAPE_RUN_GUARD},
-    {"octal owner", 3, '7', ERE_OCTAL_RUN_GUARD},
-    {"digit owner", 2, '9', ERE_DIGIT_RUN_GUARD},
-    {"class owner", 3, 'a', ERE_CLASS_RUN_GUARD},
-  };
-
-  int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    failed |= check_ere_line_continuation_run(
-      cases[i].name,
-      cases[i].continuation_count,
-      cases[i].target,
-      cases[i].owner
-    );
-  }
-  return failed;
+static int check_line_continuation_lookahead(void) {
+  return check_line_continuation_run("linear lookahead", 32768, 'a');
 }
 
 static int check_required_target_leading_dot_number(void) {
@@ -223,18 +124,13 @@ static int check_required_target_leading_dot_number(void) {
       EXPRESSION_TARGET_GUARD,
       false,
       EXPRESSION_TARGET_GUARD},
-    {"continued leading-dot number",
-      "\n.\\\n5",
-      EXPRESSION_TARGET_GUARD,
-      false,
-      EXPRESSION_TARGET_GUARD},
-    {"multiply continued print leading-dot number",
-      "\n.\\\n\\\n5",
+    {"direct leading-dot print number",
+      "\n.5",
       PRINT_EXPRESSION_TARGET_GUARD,
       false,
       PRINT_EXPRESSION_TARGET_GUARD},
-    {"continued dot without a digit",
-      "\n.\\\n+",
+    {"dot without a digit",
+      "\n.",
       EXPRESSION_TARGET_GUARD,
       true,
       EXPRESSION_RECOVERY},
@@ -355,7 +251,6 @@ static int check_parameter_recovery_boundaries(void) {
     {"function", true, PARAMETER_RECOVERY},
     {"42", false, ERROR_SENTINEL},
     {".5", false, ERROR_SENTINEL},
-    {".\\\n5", false, ERROR_SENTINEL},
     {"\"", false, ERROR_SENTINEL},
     {"/", false, ERROR_SENTINEL},
     {"$", false, ERROR_SENTINEL},
@@ -405,9 +300,7 @@ static int check_function_body_recovery_boundaries(void) {
   } cases[] = {
     {"42", true},
     {".5", true},
-    {".\\\n5", true},
     {".", false},
-    {".\\\nx", false},
     {")", false},
     {"]", false},
     {",", false},
@@ -550,8 +443,7 @@ int main(void) {
     destination.ere_mode
   );
 
-  failed |= check_ere_line_continuation_lookahead();
-  failed |= check_ere_line_continuation_owners();
+  failed |= check_line_continuation_lookahead();
   failed |= check_required_target_leading_dot_number();
   failed |= check_required_target_invalid_layout_recovery();
   failed |= check_parameter_recovery_boundaries();
