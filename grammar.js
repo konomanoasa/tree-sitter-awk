@@ -236,6 +236,20 @@ const ereEscapeWithCharacter = ($, character) =>
 const ereEscapeWithOctal = ($) =>
   seq($._ere_escape_start, $._escape_introducer, $._escape_octal_digits);
 
+const ereBracketListAlternatives = ($, followList) => [
+  followList,
+  prec.dynamic(2, seq(followList, $._ere_bracket_hyphen)),
+];
+
+const ereRangeExpressionWith = ($, startRange) =>
+  prec.dynamic(
+    3,
+    choice(
+      seq(startRange, $.end_range),
+      seq(startRange, $._ere_bracket_hyphen),
+    ),
+  );
+
 const logicalWord = ($, classification) =>
   seq(classification, $._word_spelling);
 
@@ -954,8 +968,10 @@ module.exports = grammar({
       $._builtin_function_call,
     ],
     [$.single_expression, $.start_range],
+    [$._initial_close_single_expression, $._initial_close_start_range],
     [$.bracket_list, $.collating_element],
     [$.range_expression, $.collating_element],
+    [$._initial_close_range_expression, $.collating_element],
     [$.param_list, $._recovered_parameter_tail],
   ],
 
@@ -1892,9 +1908,47 @@ module.exports = grammar({
 
     bracket_list: ($) =>
       choice(
-        $.follow_list,
-        prec.dynamic(2, seq($.follow_list, $._ere_bracket_hyphen)),
+        ...ereBracketListAlternatives($, $.follow_list),
+        ...ereBracketListAlternatives(
+          $,
+          alias($._initial_close_follow_list, $.follow_list),
+        ),
       ),
+
+    _initial_close_follow_list: ($) =>
+      choice(
+        alias($._initial_close_expression_term, $.expression_term),
+        prec.left(
+          seq(
+            alias($._initial_close_follow_list, $.follow_list),
+            $.expression_term,
+          ),
+        ),
+      ),
+
+    _initial_close_expression_term: ($) =>
+      choice(
+        alias($._initial_close_single_expression, $.single_expression),
+        alias($._initial_close_range_expression, $.range_expression),
+      ),
+
+    _initial_close_single_expression: ($) =>
+      alias($._initial_close_end_range, $.end_range),
+
+    _initial_close_range_expression: ($) =>
+      ereRangeExpressionWith(
+        $,
+        alias($._initial_close_start_range, $.start_range),
+      ),
+
+    _initial_close_start_range: ($) =>
+      seq(
+        alias($._initial_close_end_range, $.end_range),
+        $._ere_bracket_hyphen,
+      ),
+
+    _initial_close_end_range: ($) =>
+      alias($._ere_bracket_close_character, $.collating_element),
 
     follow_list: ($) =>
       choice(
@@ -1907,14 +1961,7 @@ module.exports = grammar({
     single_expression: ($) =>
       choice($.end_range, $.character_class, $.equivalence_class),
 
-    range_expression: ($) =>
-      prec.dynamic(
-        3,
-        choice(
-          seq($.start_range, $.end_range),
-          seq($.start_range, $._ere_bracket_hyphen),
-        ),
-      ),
+    range_expression: ($) => ereRangeExpressionWith($, $.start_range),
 
     start_range: ($) => seq($.end_range, $._ere_bracket_hyphen),
 
@@ -1924,7 +1971,6 @@ module.exports = grammar({
       choice(
         $._ere_bracket_character,
         $._ere_bracket_open_character,
-        $._ere_bracket_close_character,
         $._ere_bracket_hyphen,
         $.escaped_delimiter,
         alias($._ere_bracket_escape_sequence, $.escape_sequence),

@@ -434,6 +434,30 @@ assert_not_contains "ERROR" "$ere_tree"
 assert_not_contains "MISSING" "$ere_tree"
 assert_not_contains "_recovery" "$ere_tree"
 
+plain_bracket_list_source="$runtime_directory/plain-bracket-list.awk"
+trailing_hyphen_bracket_list_source="$runtime_directory/trailing-hyphen-bracket-list.awk"
+printf '%s\n' 'BEGIN { print /[+]?[a]/ }' >"$plain_bracket_list_source"
+printf '%s\n' 'BEGIN { print /[+-]?[a]/ }' \
+  >"$trailing_hyphen_bracket_list_source"
+assert_incremental_equals_fresh \
+  "$plain_bracket_list_source" \
+  "$trailing_hyphen_bracket_list_source" \
+  "insert-trailing-bracket-hyphen" \
+  0 \
+  '17 0 -'
+trailing_hyphen_bracket_tree="$runtime_directory/insert-trailing-bracket-hyphen.native.fresh.tree"
+bracket_expression_count=$(grep -Ec \
+  '^[[:space:][:digit:]:-]+bracket_expression$' \
+  "$trailing_hyphen_bracket_tree")
+if [ "$bracket_expression_count" -ne 2 ]; then
+  fail "Expected trailing bracket hyphen source to contain two bracket expressions"
+fi
+assert_contains "ere_dupl_symbol" "$trailing_hyphen_bracket_tree"
+assert_not_contains "range_expression" "$trailing_hyphen_bracket_tree"
+assert_not_contains "ERROR" "$trailing_hyphen_bracket_tree"
+assert_not_contains "MISSING" "$trailing_hyphen_bracket_tree"
+assert_not_contains "_recovery" "$trailing_hyphen_bracket_tree"
+
 closed_ere_source="$runtime_directory/closed-ere.awk"
 unclosed_ere_source="$runtime_directory/unclosed-ere.awk"
 printf '%s\n' 'BEGIN { print /abc/' 'print /ok/ }' >"$closed_ere_source"
