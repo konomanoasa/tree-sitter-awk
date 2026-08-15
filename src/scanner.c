@@ -392,11 +392,7 @@ static WordKind classify_word(const char *word, size_t length) {
   }
 
   for (size_t i = 0; i < sizeof(WORDS) / sizeof(WORDS[0]); i++) {
-    if (
-      strlen(WORDS[i].spelling) ==
-      length &&
-      memcmp(WORDS[i].spelling, word, length) == 0
-    ) {
+    if (strcmp(WORDS[i].spelling, word) == 0) {
       return WORDS[i].kind;
     }
   }
@@ -519,6 +515,11 @@ static bool word_is_do_tail_recovery_boundary(WordKind kind) {
     WORD_KIND_WHILE &&
     (word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
       word_is_statement_recovery_boundary(kind));
+}
+
+static bool word_is_terminator_recovery_boundary(WordKind kind) {
+  return word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
+    word_has_role(kind, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY);
 }
 
 static enum TokenType number_kind_token(NumberKind kind) {
@@ -943,8 +944,7 @@ static bool emit_word_terminator_recovery(
 ) {
   if (
     valid_symbols[TERMINATOR_RECOVERY] &&
-    (word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
-      word_has_role(kind, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY))
+    word_is_terminator_recovery_boundary(kind)
   ) {
     lexer->result_symbol = TERMINATOR_RECOVERY;
     return true;
@@ -1405,8 +1405,7 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
     }
     if (
       valid_symbols[LC_BEFORE_TERMINATOR_RECOVERY] &&
-      (word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
-        word_has_role(kind, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY))
+      word_is_terminator_recovery_boundary(kind)
     ) {
       lexer->result_symbol = LC_BEFORE_TERMINATOR_RECOVERY;
       return true;

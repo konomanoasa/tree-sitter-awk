@@ -2784,21 +2784,59 @@
                   }
                 },
                 {
-                  "type": "FIELD",
-                  "name": "closing",
-                  "content": {
-                    "type": "PREC_DYNAMIC",
-                    "value": -1,
-                    "content": {
-                      "type": "ALIAS",
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "FIELD",
+                      "name": "closing",
                       "content": {
-                        "type": "SYMBOL",
-                        "name": "_action_eof_recovery"
-                      },
-                      "named": true,
-                      "value": "closer_recovery"
+                        "type": "PREC_DYNAMIC",
+                        "value": -1,
+                        "content": {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_action_eof_recovery"
+                          },
+                          "named": true,
+                          "value": "closer_recovery"
+                        }
+                      }
+                    },
+                    {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_lc_before_action_eof"
+                        },
+                        {
+                          "type": "REPEAT1",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "line_continuation"
+                          }
+                        },
+                        {
+                          "type": "FIELD",
+                          "name": "closing",
+                          "content": {
+                            "type": "PREC_DYNAMIC",
+                            "value": -1,
+                            "content": {
+                              "type": "ALIAS",
+                              "content": {
+                                "type": "SYMBOL",
+                                "name": "_action_eof_recovery"
+                              },
+                              "named": true,
+                              "value": "closer_recovery"
+                            }
+                          }
+                        }
+                      ]
                     }
-                  }
+                  ]
                 },
                 {
                   "type": "FIELD",
@@ -2816,39 +2854,6 @@
                       "value": "closer_recovery"
                     }
                   }
-                },
-                {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "_lc_before_action_eof"
-                    },
-                    {
-                      "type": "REPEAT1",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "line_continuation"
-                      }
-                    },
-                    {
-                      "type": "FIELD",
-                      "name": "closing",
-                      "content": {
-                        "type": "PREC_DYNAMIC",
-                        "value": -1,
-                        "content": {
-                          "type": "ALIAS",
-                          "content": {
-                            "type": "SYMBOL",
-                            "name": "_action_eof_recovery"
-                          },
-                          "named": true,
-                          "value": "closer_recovery"
-                        }
-                      }
-                    }
-                  ]
                 }
               ]
             }
@@ -2877,21 +2882,59 @@
                   }
                 },
                 {
-                  "type": "FIELD",
-                  "name": "closing",
-                  "content": {
-                    "type": "PREC_DYNAMIC",
-                    "value": -1,
-                    "content": {
-                      "type": "ALIAS",
+                  "type": "CHOICE",
+                  "members": [
+                    {
+                      "type": "FIELD",
+                      "name": "closing",
                       "content": {
-                        "type": "SYMBOL",
-                        "name": "_action_eof_recovery"
-                      },
-                      "named": true,
-                      "value": "closer_recovery"
+                        "type": "PREC_DYNAMIC",
+                        "value": -1,
+                        "content": {
+                          "type": "ALIAS",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "_action_eof_recovery"
+                          },
+                          "named": true,
+                          "value": "closer_recovery"
+                        }
+                      }
+                    },
+                    {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_lc_before_action_eof"
+                        },
+                        {
+                          "type": "REPEAT1",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "line_continuation"
+                          }
+                        },
+                        {
+                          "type": "FIELD",
+                          "name": "closing",
+                          "content": {
+                            "type": "PREC_DYNAMIC",
+                            "value": -1,
+                            "content": {
+                              "type": "ALIAS",
+                              "content": {
+                                "type": "SYMBOL",
+                                "name": "_action_eof_recovery"
+                              },
+                              "named": true,
+                              "value": "closer_recovery"
+                            }
+                          }
+                        }
+                      ]
                     }
-                  }
+                  ]
                 },
                 {
                   "type": "FIELD",
@@ -2909,39 +2952,6 @@
                       "value": "closer_recovery"
                     }
                   }
-                },
-                {
-                  "type": "SEQ",
-                  "members": [
-                    {
-                      "type": "SYMBOL",
-                      "name": "_lc_before_action_eof"
-                    },
-                    {
-                      "type": "REPEAT1",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "line_continuation"
-                      }
-                    },
-                    {
-                      "type": "FIELD",
-                      "name": "closing",
-                      "content": {
-                        "type": "PREC_DYNAMIC",
-                        "value": -1,
-                        "content": {
-                          "type": "ALIAS",
-                          "content": {
-                            "type": "SYMBOL",
-                            "name": "_action_eof_recovery"
-                          },
-                          "named": true,
-                          "value": "closer_recovery"
-                        }
-                      }
-                    }
-                  ]
                 }
               ]
             }
@@ -13597,45 +13607,25 @@
       }
     },
     "_parenthesized_expression": {
-      "type": "CHOICE",
+      "type": "SEQ",
       "members": [
         {
-          "type": "SEQ",
+          "type": "STRING",
+          "value": "("
+        },
+        {
+          "type": "REPEAT",
+          "content": {
+            "type": "SYMBOL",
+            "name": "line_continuation"
+          }
+        },
+        {
+          "type": "CHOICE",
           "members": [
-            {
-              "type": "STRING",
-              "value": "("
-            },
-            {
-              "type": "REPEAT",
-              "content": {
-                "type": "SYMBOL",
-                "name": "line_continuation"
-              }
-            },
             {
               "type": "SYMBOL",
               "name": "expr"
-            },
-            {
-              "type": "SYMBOL",
-              "name": "_continued_close_parenthesis"
-            }
-          ]
-        },
-        {
-          "type": "SEQ",
-          "members": [
-            {
-              "type": "STRING",
-              "value": "("
-            },
-            {
-              "type": "REPEAT",
-              "content": {
-                "type": "SYMBOL",
-                "name": "line_continuation"
-              }
             },
             {
               "type": "PREC_DYNAMIC",
@@ -13649,12 +13639,12 @@
                 "named": true,
                 "value": "expression_recovery"
               }
-            },
-            {
-              "type": "SYMBOL",
-              "name": "_continued_close_parenthesis"
             }
           ]
+        },
+        {
+          "type": "SYMBOL",
+          "name": "_continued_close_parenthesis"
         }
       ]
     },
@@ -16359,37 +16349,11 @@
       }
     },
     "_ere_quoted_escape_character": {
-      "type": "CHOICE",
-      "members": [
-        {
-          "type": "IMMEDIATE_TOKEN",
-          "content": {
-            "type": "PATTERN",
-            "value": "\\\\"
-          }
-        },
-        {
-          "type": "IMMEDIATE_TOKEN",
-          "content": {
-            "type": "PATTERN",
-            "value": "[().*+?{}|^$]"
-          }
-        },
-        {
-          "type": "IMMEDIATE_TOKEN",
-          "content": {
-            "type": "PATTERN",
-            "value": "\\["
-          }
-        },
-        {
-          "type": "IMMEDIATE_TOKEN",
-          "content": {
-            "type": "STRING",
-            "value": "]"
-          }
-        }
-      ]
+      "type": "IMMEDIATE_TOKEN",
+      "content": {
+        "type": "PATTERN",
+        "value": "[().*+?{}|^$\\x5B\\x5C\\x5D]"
+      }
     },
     "_ere_undefined_escape_character": {
       "type": "IMMEDIATE_TOKEN",

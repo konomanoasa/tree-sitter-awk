@@ -53,6 +53,43 @@ static MockLexer make_mock_lexer(const char *source) {
   };
 }
 
+static int expect_scan_result(
+  const char *test_name,
+  const char *source,
+  const bool *valid_symbols,
+  bool expected_scanned,
+  enum TokenType expected_symbol,
+  size_t expected_token_end
+) {
+  MockLexer mock = make_mock_lexer(source);
+  ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
+  const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
+    &state,
+    &mock.lexer,
+    valid_symbols
+  );
+  if (
+    scanned ==
+    expected_scanned &&
+    (!scanned ||
+      (mock.lexer.result_symbol ==
+        expected_symbol &&
+        mock.token_end == expected_token_end))
+  ) {
+    return 0;
+  }
+
+  fprintf(
+    stderr,
+    "%s: scanned=%u symbol=%u end=%zu\n",
+    test_name,
+    scanned,
+    mock.lexer.result_symbol,
+    mock.token_end
+  );
+  return 1;
+}
+
 static int check_line_continuation_run(
   const char *test_name,
   size_t continuation_count,
@@ -138,33 +175,17 @@ static int check_required_target_leading_dot_number(void) {
 
   int failed = 0;
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    MockLexer mock = make_mock_lexer(cases[i].source);
-    ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[cases[i].guard] = true;
     valid_symbols[EXPRESSION_RECOVERY] = cases[i].recovery_valid;
-
-    const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
-      &state,
-      &mock.lexer,
-      valid_symbols
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      true,
+      cases[i].expected,
+      0
     );
-    if (
-      !scanned ||
-      mock.lexer.result_symbol !=
-      cases[i].expected ||
-      mock.token_end != 0
-    ) {
-      fprintf(
-        stderr,
-        "%s: scanned=%u symbol=%u end=%zu\n",
-        cases[i].name,
-        scanned,
-        mock.lexer.result_symbol,
-        mock.token_end
-      );
-      failed = 1;
-    }
   }
   return failed;
 }
@@ -200,180 +221,102 @@ static int check_required_target_invalid_layout_recovery(void) {
 
   int failed = 0;
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    MockLexer mock = make_mock_lexer("\n\\q\nEND");
-    ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[cases[i].guard] = true;
     valid_symbols[PARAMETER_RECOVERY] = cases[i].parameter_recovery;
     valid_symbols[FUNCTION_BODY_RECOVERY] = cases[i].function_body_recovery;
     valid_symbols[EXPRESSION_RECOVERY] = cases[i].expression_recovery;
-
-    const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
-      &state,
-      &mock.lexer,
-      valid_symbols
+    failed |= expect_scan_result(
+      cases[i].name,
+      "\n\\q\nEND",
+      valid_symbols,
+      true,
+      cases[i].expected,
+      0
     );
-    if (
-      !scanned ||
-      mock.lexer.result_symbol !=
-      cases[i].expected ||
-      mock.token_end != 0
-    ) {
-      fprintf(
-        stderr,
-        "%s: scanned=%u symbol=%u end=%zu\n",
-        cases[i].name,
-        scanned,
-        mock.lexer.result_symbol,
-        mock.token_end
-      );
-      failed = 1;
-    }
   }
   return failed;
 }
 
 static int check_parameter_recovery_boundaries(void) {
   static const struct {
+    const char *name;
     const char *source;
     bool scanned;
     enum TokenType expected;
+    size_t expected_token_end;
   } cases[] = {
-    {"name", true, NAME_WORD},
-    {")", true, PARAMETER_RECOVERY},
-    {"\n", true, PARAMETER_RECOVERY},
-    {"", true, PARAMETER_RECOVERY},
-    {"{", true, PARAMETER_RECOVERY},
-    {"}", true, PARAMETER_RECOVERY},
-    {";", true, PARAMETER_RECOVERY},
-    {"BEGIN", true, PARAMETER_RECOVERY},
-    {"END", true, PARAMETER_RECOVERY},
-    {"function", true, PARAMETER_RECOVERY},
-    {"42", false, ERROR_SENTINEL},
-    {".5", false, ERROR_SENTINEL},
-    {"\"", false, ERROR_SENTINEL},
-    {"/", false, ERROR_SENTINEL},
-    {"$", false, ERROR_SENTINEL},
-    {"+", false, ERROR_SENTINEL},
-    {"!", false, ERROR_SENTINEL},
-    {"print", false, ERROR_SENTINEL},
-    {"in", false, ERROR_SENTINEL},
-    {"else", false, ERROR_SENTINEL},
-    {"length", false, ERROR_SENTINEL},
+    {"name parameter", "name", true, NAME_WORD, 4},
+    {"close parenthesis", ")", true, PARAMETER_RECOVERY, 0},
+    {"raw newline", "\n", true, PARAMETER_RECOVERY, 0},
+    {"physical EOF", "", true, PARAMETER_RECOVERY, 0},
+    {"action opener", "{", true, PARAMETER_RECOVERY, 0},
+    {"action closer", "}", true, PARAMETER_RECOVERY, 0},
+    {"semicolon", ";", true, PARAMETER_RECOVERY, 0},
+    {"BEGIN item boundary", "BEGIN", true, PARAMETER_RECOVERY, 0},
+    {"END item boundary", "END", true, PARAMETER_RECOVERY, 0},
+    {"function item boundary", "function", true, PARAMETER_RECOVERY, 0},
+    {"integer", "42", false, ERROR_SENTINEL, 0},
+    {"fraction", ".5", false, ERROR_SENTINEL, 0},
+    {"string opener", "\"", false, ERROR_SENTINEL, 0},
+    {"slash", "/", false, ERROR_SENTINEL, 0},
+    {"field operator", "$", false, ERROR_SENTINEL, 0},
+    {"plus operator", "+", false, ERROR_SENTINEL, 0},
+    {"negation operator", "!", false, ERROR_SENTINEL, 0},
+    {"print keyword", "print", false, ERROR_SENTINEL, 0},
+    {"in keyword", "in", false, ERROR_SENTINEL, 0},
+    {"else keyword", "else", false, ERROR_SENTINEL, 0},
+    {"builtin name", "length", false, ERROR_SENTINEL, 0},
   };
 
   int failed = 0;
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    MockLexer mock = make_mock_lexer(cases[i].source);
-    ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[PARAMETER_RECOVERY] = true;
     valid_symbols[NAME_WORD] = true;
-
-    const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
-      &state,
-      &mock.lexer,
-      valid_symbols
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].scanned,
+      cases[i].expected,
+      cases[i].expected_token_end
     );
-    if (
-      scanned !=
-      cases[i].scanned ||
-      (scanned && mock.lexer.result_symbol != cases[i].expected)
-    ) {
-      fprintf(
-        stderr,
-        "parameter boundary %zu: scanned=%u symbol=%u\n",
-        i,
-        scanned,
-        mock.lexer.result_symbol
-      );
-      failed = 1;
-    }
   }
   return failed;
 }
 
 static int check_function_body_recovery_boundaries(void) {
   static const struct {
+    const char *name;
     const char *source;
     bool recovered;
   } cases[] = {
-    {"42", true},
-    {".5", true},
-    {".", false},
-    {")", false},
-    {"]", false},
-    {",", false},
-    {":", false},
-    {";", true},
-    {"}", true},
+    {"integer statement", "42", true},
+    {"fraction statement", ".5", true},
+    {"lone dot", ".", false},
+    {"close parenthesis", ")", false},
+    {"close bracket", "]", false},
+    {"comma", ",", false},
+    {"colon", ":", false},
+    {"semicolon", ";", true},
+    {"action closer", "}", true},
   };
 
   int failed = 0;
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    MockLexer mock = make_mock_lexer(cases[i].source);
-    ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[FUNCTION_BODY_RECOVERY] = true;
-
-    const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
-      &state,
-      &mock.lexer,
-      valid_symbols
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].recovered,
+      FUNCTION_BODY_RECOVERY,
+      0
     );
-    if (
-      scanned !=
-      cases[i].recovered ||
-      (scanned && mock.lexer.result_symbol != FUNCTION_BODY_RECOVERY)
-    ) {
-      fprintf(
-        stderr,
-        "function-body boundary %zu: scanned=%u symbol=%u\n",
-        i,
-        scanned,
-        mock.lexer.result_symbol
-      );
-      failed = 1;
-    }
   }
   return failed;
-}
-
-static int expect_scan_result(
-  const char *test_name,
-  const char *source,
-  const bool *valid_symbols,
-  bool expected_scanned,
-  enum TokenType expected_symbol,
-  size_t expected_token_end
-) {
-  MockLexer mock = make_mock_lexer(source);
-  ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
-  const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
-    &state,
-    &mock.lexer,
-    valid_symbols
-  );
-  if (
-    scanned ==
-    expected_scanned &&
-    (!scanned ||
-      (mock.lexer.result_symbol ==
-        expected_symbol &&
-        mock.token_end == expected_token_end))
-  ) {
-    return 0;
-  }
-
-  fprintf(
-    stderr,
-    "%s: scanned=%u symbol=%u end=%zu\n",
-    test_name,
-    scanned,
-    mock.lexer.result_symbol,
-    mock.token_end
-  );
-  return 1;
 }
 
 static int check_statement_recovery_boundaries(void) {

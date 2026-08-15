@@ -29,17 +29,16 @@ const recoveryAlias = (rule, target) => prec.dynamic(-1, alias(rule, target));
 const actionEnd = ($, itemBoundaryGuard) =>
   choice(
     field("closing", "}"),
-    actionCloserRecovery($, $._action_eof_recovery),
-    actionCloserRecovery($, itemBoundaryGuard),
-    seq(
+    continuedMember(
+      $,
       $._lc_before_action_eof,
-      repeat1($.line_continuation),
       actionCloserRecovery($, $._action_eof_recovery),
     ),
+    actionCloserRecovery($, itemBoundaryGuard),
   );
 
 const actionCloserRecovery = ($, guard) =>
-  field("closing", recoveryAlias(guard, $.closer_recovery));
+  field("closing", closerRecovery($, guard));
 
 const optionalNewlineLayout = ($) =>
   seq(
@@ -57,14 +56,7 @@ const closerRecovery = ($, recovery) =>
   recoveryAlias(recovery, $.closer_recovery);
 
 const continuedClosingRecovery = ($, recovery) =>
-  choice(
-    closerRecovery($, recovery),
-    seq(
-      $._lc_before_closer_recovery,
-      repeat1($.line_continuation),
-      closerRecovery($, recovery),
-    ),
-  );
+  continuedMember($, $._lc_before_closer_recovery, closerRecovery($, recovery));
 
 const continuedClosingMember = ($, marker, member, recovery) =>
   choice(
@@ -136,13 +128,15 @@ const functionBody = ($) =>
 const parameterRecovery = ($) =>
   recoveryAlias($._parameter_recovery, $.parameter_recovery);
 
-const requiredParameter = ($) =>
-  requiredAfterOptionalNewline(
+const requiredParameter = ($) => {
+  const parameter = continuedMember($, $._lc_before_expression, $.name);
+  return requiredAfterOptionalNewline(
     $,
     $._parameter_target_guard,
-    continuedMember($, $._lc_before_expression, $.name),
-    continuedMember($, $._lc_before_expression, $.name),
+    parameter,
+    parameter,
   );
+};
 
 const continuedParameter = ($) =>
   seq(continuedMember($, $._lc_before_comma, ","), requiredParameter($));
@@ -239,10 +233,7 @@ const directDoTail = ($) =>
   );
 
 const continuedDoTail = ($) =>
-  choice(
-    directDoTail($),
-    seq($._lc_before_do_tail, repeat1($.line_continuation), directDoTail($)),
-  );
+  continuedMember($, $._lc_before_do_tail, directDoTail($));
 
 const controlStatements = ($, body) => [
   seq($._if_header, field("consequence", body)),
@@ -328,6 +319,9 @@ const terminatedStatements = ($) =>
     $.terminated_statement,
     repeat(seq(repeat($.line_continuation), $.terminated_statement)),
   );
+
+const statementListWithTail = ($, tail) =>
+  choice(tail, withLineContinuations($, terminatedStatements($), tail));
 
 const rawNewlines = ($) =>
   seq($.newline, repeat(seq(repeat($.line_continuation), $.newline)));
@@ -1192,18 +1186,11 @@ module.exports = grammar({
       choice($.action, $._self_terminating_statement),
 
     _boundary_recovered_terminated_statement_list: ($) =>
-      choice(
+      statementListWithTail(
+        $,
         alias(
           $._boundary_recovered_terminated_statement,
           $.terminated_statement,
-        ),
-        withLineContinuations(
-          $,
-          terminatedStatements($),
-          alias(
-            $._boundary_recovered_terminated_statement,
-            $.terminated_statement,
-          ),
         ),
       ),
 
@@ -1236,14 +1223,7 @@ module.exports = grammar({
     terminated_statement_list: ($) => terminatedStatements($),
 
     unterminated_statement_list: ($) =>
-      choice(
-        $.unterminated_statement,
-        withLineContinuations(
-          $,
-          terminatedStatements($),
-          $.unterminated_statement,
-        ),
-      ),
+      statementListWithTail($, $.unterminated_statement),
 
     _parenthesized_condition: ($) =>
       seq(
@@ -1542,19 +1522,11 @@ module.exports = grammar({
       ),
 
     _parenthesized_expression: ($) =>
-      choice(
-        seq(
-          "(",
-          repeat($.line_continuation),
-          $.expr,
-          $._continued_close_parenthesis,
-        ),
-        seq(
-          "(",
-          repeat($.line_continuation),
-          expressionRecovery($),
-          $._continued_close_parenthesis,
-        ),
+      seq(
+        "(",
+        repeat($.line_continuation),
+        choice($.expr, expressionRecovery($)),
+        $._continued_close_parenthesis,
       ),
 
     _user_function_call: ($) => seq($.func_name, callArguments($)),
@@ -2082,12 +2054,7 @@ module.exports = grammar({
     _ere_named_escape_character: () => token.immediate(/[abfnrtv]/),
 
     _ere_quoted_escape_character: () =>
-      choice(
-        token.immediate(/\\/),
-        token.immediate(/[().*+?{}|^$]/),
-        token.immediate(/\[/),
-        token.immediate("]"),
-      ),
+      token.immediate(/[().*+?{}|^$\x5B\x5C\x5D]/),
 
     _ere_undefined_escape_character: () =>
       token.immediate(prec(-1, /[^0-7\x2F\x5C\n]/)),
