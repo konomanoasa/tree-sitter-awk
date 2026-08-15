@@ -4458,44 +4458,67 @@
               "type": "CHOICE",
               "members": [
                 {
-                  "type": "SYMBOL",
-                  "name": "while_keyword"
-                },
-                {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
-                      "type": "SYMBOL",
-                      "name": "_lc_before_do_while"
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "while_keyword"
+                        },
+                        {
+                          "type": "CHOICE",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "_parenthesized_condition"
+                            },
+                            {
+                              "type": "SEQ",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_lc_before_expression"
+                                },
+                                {
+                                  "type": "REPEAT1",
+                                  "content": {
+                                    "type": "SYMBOL",
+                                    "name": "line_continuation"
+                                  }
+                                },
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_parenthesized_condition"
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
                     },
                     {
-                      "type": "REPEAT1",
+                      "type": "PREC_DYNAMIC",
+                      "value": -1,
                       "content": {
-                        "type": "SYMBOL",
-                        "name": "line_continuation"
+                        "type": "ALIAS",
+                        "content": {
+                          "type": "SYMBOL",
+                          "name": "_do_tail_recovery"
+                        },
+                        "named": true,
+                        "value": "do_tail_recovery"
                       }
-                    },
-                    {
-                      "type": "SYMBOL",
-                      "name": "while_keyword"
                     }
                   ]
-                }
-              ]
-            },
-            {
-              "type": "CHOICE",
-              "members": [
-                {
-                  "type": "SYMBOL",
-                  "name": "_parenthesized_condition"
                 },
                 {
                   "type": "SEQ",
                   "members": [
                     {
                       "type": "SYMBOL",
-                      "name": "_lc_before_expression"
+                      "name": "_lc_before_do_tail"
                     },
                     {
                       "type": "REPEAT1",
@@ -4505,8 +4528,60 @@
                       }
                     },
                     {
-                      "type": "SYMBOL",
-                      "name": "_parenthesized_condition"
+                      "type": "CHOICE",
+                      "members": [
+                        {
+                          "type": "SEQ",
+                          "members": [
+                            {
+                              "type": "SYMBOL",
+                              "name": "while_keyword"
+                            },
+                            {
+                              "type": "CHOICE",
+                              "members": [
+                                {
+                                  "type": "SYMBOL",
+                                  "name": "_parenthesized_condition"
+                                },
+                                {
+                                  "type": "SEQ",
+                                  "members": [
+                                    {
+                                      "type": "SYMBOL",
+                                      "name": "_lc_before_expression"
+                                    },
+                                    {
+                                      "type": "REPEAT1",
+                                      "content": {
+                                        "type": "SYMBOL",
+                                        "name": "line_continuation"
+                                      }
+                                    },
+                                    {
+                                      "type": "SYMBOL",
+                                      "name": "_parenthesized_condition"
+                                    }
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        },
+                        {
+                          "type": "PREC_DYNAMIC",
+                          "value": -1,
+                          "content": {
+                            "type": "ALIAS",
+                            "content": {
+                              "type": "SYMBOL",
+                              "name": "_do_tail_recovery"
+                            },
+                            "named": true,
+                            "value": "do_tail_recovery"
+                          }
+                        }
+                      ]
                     }
                   ]
                 }
@@ -4530,38 +4605,43 @@
               }
             },
             {
-              "type": "ALIAS",
-              "content": {
-                "type": "SYMBOL",
-                "name": "_while_keyword_body"
-              },
-              "named": true,
-              "value": "while_keyword"
-            },
-            {
-              "type": "CHOICE",
+              "type": "SEQ",
               "members": [
                 {
-                  "type": "SYMBOL",
-                  "name": "_parenthesized_condition"
+                  "type": "ALIAS",
+                  "content": {
+                    "type": "SYMBOL",
+                    "name": "_while_keyword_body"
+                  },
+                  "named": true,
+                  "value": "while_keyword"
                 },
                 {
-                  "type": "SEQ",
+                  "type": "CHOICE",
                   "members": [
                     {
                       "type": "SYMBOL",
-                      "name": "_lc_before_expression"
-                    },
-                    {
-                      "type": "REPEAT1",
-                      "content": {
-                        "type": "SYMBOL",
-                        "name": "line_continuation"
-                      }
-                    },
-                    {
-                      "type": "SYMBOL",
                       "name": "_parenthesized_condition"
+                    },
+                    {
+                      "type": "SEQ",
+                      "members": [
+                        {
+                          "type": "SYMBOL",
+                          "name": "_lc_before_expression"
+                        },
+                        {
+                          "type": "REPEAT1",
+                          "content": {
+                            "type": "SYMBOL",
+                            "name": "line_continuation"
+                          }
+                        },
+                        {
+                          "type": "SYMBOL",
+                          "name": "_parenthesized_condition"
+                        }
+                      ]
                     }
                   ]
                 }
@@ -17236,7 +17316,7 @@
     },
     {
       "type": "SYMBOL",
-      "name": "_lc_before_do_while"
+      "name": "_lc_before_do_tail"
     },
     {
       "type": "SYMBOL",
@@ -17425,6 +17505,10 @@
     {
       "type": "SYMBOL",
       "name": "_error_sentinel"
+    },
+    {
+      "type": "SYMBOL",
+      "name": "_do_tail_recovery"
     }
   ],
   "inline": [

@@ -89,6 +89,294 @@ END {}
     (action)))
 
 ==================
+missing control bodies preserve reserved following items
+==================
+BEGIN { if (condition)
+END { print end_target }
+BEGIN { if (condition) consequence; else
+END { print alternative_target }
+BEGIN { if (outer) while (inner) \
+BEGIN { print begin_target }
+BEGIN { for (;;)
+function classic_follow() { print classic_target }
+BEGIN { for (name in values)
+function in_follow() { print in_target }
+---
+
+(program
+  (item_list
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (newline_opt
+              (newline))
+            consequence: (statement_recovery)))
+        closing: (action_item_boundary_recovery)))
+    terminator: (terminator_recovery)
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (end_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            consequence: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name)))))))
+            (else_keyword)
+            (newline_opt
+              (newline))
+            alternative: (statement_recovery)))
+        closing: (action_item_boundary_recovery)))
+    terminator: (terminator_recovery)
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (end_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            consequence: (unterminated_statement
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name))))
+              (line_continuation)
+              body: (statement_recovery))))
+        closing: (action_item_boundary_recovery)))
+    terminator: (terminator_recovery)
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            (newline_opt
+              (newline))
+            body: (statement_recovery)))
+        closing: (action_item_boundary_recovery)))
+    terminator: (terminator_recovery)
+    item: (item
+      (function_keyword)
+      name: (func_name)
+      body: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            variable: (name)
+            (in_keyword)
+            array: (name)
+            (newline_opt
+              (newline))
+            body: (statement_recovery)))
+        closing: (action_item_boundary_recovery)))
+    terminator: (terminator_recovery))
+  item: (item
+    (function_keyword)
+    name: (func_name)
+    body: (action
+      body: (unterminated_statement_list
+        (unterminated_statement
+          statement: (terminatable_statement
+            (simple_statement
+              (print_statement
+                statement: (simple_print_statement
+                  (print_keyword)
+                  arguments: (print_expr_list
+                    (print_expr
+                      (non_unary_print_expr
+                        (lvalue
+                          (name))))))))))))))
+
+==================
+missing do body and tail preserve the following item
+==================
+BEGIN { do
+END { print end_target }
+BEGIN { do print body; \
+function follow() { print function_target }
+---
+
+(program
+  (item_list
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              (newline_opt
+                (newline))
+              body: (statement_recovery)
+              (do_tail_recovery))))
+        closing: (action_item_boundary_recovery)))
+    terminator: (terminator_recovery)
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (end_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (print_statement
+                      statement: (simple_print_statement
+                        (print_keyword)
+                        arguments: (print_expr_list
+                          (print_expr
+                            (non_unary_print_expr
+                              (lvalue
+                                (name))))))))))
+              (line_continuation)
+              (do_tail_recovery))))
+        closing: (action_item_boundary_recovery)))
+    terminator: (terminator_recovery))
+  item: (item
+    (function_keyword)
+    name: (func_name)
+    body: (action
+      body: (unterminated_statement_list
+        (unterminated_statement
+          statement: (terminatable_statement
+            (simple_statement
+              (print_statement
+                statement: (simple_print_statement
+                  (print_keyword)
+                  arguments: (print_expr_list
+                    (print_expr
+                      (non_unary_print_expr
+                        (lvalue
+                          (name))))))))))))))
+
+==================
 a mixed subscript closer composes with a direct item boundary
 ==================
 BEGIN { f(array[offset) END {}

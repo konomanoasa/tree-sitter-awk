@@ -118,6 +118,9 @@ const printExpressionRecovery = ($) =>
 const statementRecovery = ($) =>
   prec.dynamic(-1, alias($._statement_recovery, $.statement_recovery));
 
+const doTailRecovery = ($) =>
+  prec.dynamic(-1, alias($._do_tail_recovery, $.do_tail_recovery));
+
 const terminatorRecovery = ($) =>
   prec.dynamic(-1, alias($._terminator_recovery, $.terminator_recovery));
 
@@ -279,6 +282,21 @@ const conditionalHeader = ($, keyword) =>
   );
 
 const keywordHeader = ($, keyword) => seq(keyword, optionalNewlineLayout($));
+
+const doWhileTail = ($, whileKeyword) =>
+  seq(
+    whileKeyword,
+    continuedMember($, $._lc_before_expression, $._parenthesized_condition),
+  );
+
+const directDoTail = ($) =>
+  choice(doWhileTail($, $.while_keyword), doTailRecovery($));
+
+const continuedDoTail = ($) =>
+  choice(
+    directDoTail($),
+    seq($._lc_before_do_tail, repeat1($.line_continuation), directDoTail($)),
+  );
 
 const controlStatements = ($, body) => [
   seq($._if_header, field("consequence", body)),
@@ -881,7 +899,7 @@ module.exports = grammar({
     $._lc_before_input_pipe,
     $._lc_before_output_redirection,
     $._lc_before_else,
-    $._lc_before_do_while,
+    $._lc_before_do_tail,
     $._lc_before_for_semicolon,
     $._lc_before_for_update,
     $._lc_before_closer_recovery,
@@ -929,6 +947,7 @@ module.exports = grammar({
     $._action_target_guard,
     $._parameter_target_guard,
     $._error_sentinel,
+    $._do_tail_recovery,
   ],
 
   extras: ($) => [token(repeat1(choice(" ", "\t"))), $.comment],
@@ -1383,22 +1402,12 @@ module.exports = grammar({
         seq(
           $._do_header,
           field("body", $._terminated_statement_or_recovery),
-          continuedMember($, $._lc_before_do_while, $.while_keyword),
-          continuedMember(
-            $,
-            $._lc_before_expression,
-            $._parenthesized_condition,
-          ),
+          continuedDoTail($),
         ),
         seq(
           $._do_header,
           field("body", $._recovered_do_body),
-          alias($._while_keyword_body, $.while_keyword),
-          continuedMember(
-            $,
-            $._lc_before_expression,
-            $._parenthesized_condition,
-          ),
+          doWhileTail($, alias($._while_keyword_body, $.while_keyword)),
         ),
       ),
 

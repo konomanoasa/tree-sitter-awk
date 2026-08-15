@@ -65,7 +65,7 @@ enum TokenType {
   LC_BEFORE_INPUT_PIPE,
   LC_BEFORE_OUTPUT_REDIRECTION,
   LC_BEFORE_ELSE,
-  LC_BEFORE_DO_WHILE,
+  LC_BEFORE_DO_TAIL,
   LC_BEFORE_FOR_SEMICOLON,
   LC_BEFORE_FOR_UPDATE,
   LC_BEFORE_CLOSER_RECOVERY,
@@ -113,6 +113,8 @@ enum TokenType {
   ACTION_TARGET_GUARD,
   PARAMETER_TARGET_GUARD,
   ERROR_SENTINEL,
+  DO_TAIL_RECOVERY,
+  TOKEN_TYPE_COUNT,
 };
 
 enum {
@@ -475,6 +477,18 @@ static bool word_starts_print_expression(WordKind kind) {
   return kind != WORD_KIND_GETLINE && word_starts_expression(kind);
 }
 
+static bool word_is_statement_recovery_boundary(WordKind kind) {
+  return word_has_role(kind, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY) ||
+    word_has_role(kind, WORD_ROLE_RESERVED_ITEM_START);
+}
+
+static bool word_is_do_tail_recovery_boundary(WordKind kind) {
+  return kind !=
+    WORD_KIND_WHILE &&
+    (word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
+      word_is_statement_recovery_boundary(kind));
+}
+
 static NumberKind scan_number_kind(TSLexer *lexer) {
   enum {
     STATE_START,
@@ -805,8 +819,15 @@ static bool emit_range_right_expression_recovery(
 static bool word_is_unambiguous_statement_boundary(WordKind kind) {
   return !word_has_role(kind, WORD_ROLE_EXPRESSION_START) &&
     (word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
-      word_has_role(kind, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY) ||
-      word_has_role(kind, WORD_ROLE_RESERVED_ITEM_START));
+      word_is_statement_recovery_boundary(kind));
+}
+
+static bool character_is_do_tail_recovery_boundary(int32_t character) {
+  return character ==
+    ';' ||
+    character ==
+    '}' ||
+    character_starts_statement(character);
 }
 
 static bool is_closer_recovery_punctuation(int32_t character) {
@@ -872,18 +893,32 @@ static bool emit_word_closer_recovery(
   return false;
 }
 
-static bool emit_word_statement_recovery(
+static bool emit_word_required_recovery(
   TSLexer *lexer,
   const bool *valid_symbols,
   WordKind kind
 ) {
   if (
     valid_symbols[STATEMENT_RECOVERY] &&
-    word_has_role(kind, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY)
+    word_is_statement_recovery_boundary(kind)
   ) {
     lexer->result_symbol = STATEMENT_RECOVERY;
     return true;
   }
+  if (
+    valid_symbols[DO_TAIL_RECOVERY] && word_is_do_tail_recovery_boundary(kind)
+  ) {
+    lexer->result_symbol = DO_TAIL_RECOVERY;
+    return true;
+  }
+  return false;
+}
+
+static bool emit_word_terminator_recovery(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  WordKind kind
+) {
   if (
     valid_symbols[TERMINATOR_RECOVERY] &&
     (word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
@@ -1318,8 +1353,11 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
       lexer->result_symbol = LC_BEFORE_ELSE;
       return true;
     }
-    if (kind == WORD_KIND_WHILE && valid_symbols[LC_BEFORE_DO_WHILE]) {
-      lexer->result_symbol = LC_BEFORE_DO_WHILE;
+    if (
+      valid_symbols[LC_BEFORE_DO_TAIL] &&
+      (kind == WORD_KIND_WHILE || word_is_do_tail_recovery_boundary(kind))
+    ) {
+      lexer->result_symbol = LC_BEFORE_DO_TAIL;
       return true;
     }
     if (kind == WORD_KIND_IN && valid_symbols[LC_BEFORE_MEMBERSHIP_OPERATOR]) {
@@ -1356,6 +1394,10 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
 
   if (is_ascii_digit(lexer->lookahead) || lexer->lookahead == '.') {
     const NumberKind kind = scan_number_kind(lexer);
+    if (kind != NUMBER_KIND_NONE && valid_symbols[LC_BEFORE_DO_TAIL]) {
+      lexer->result_symbol = LC_BEFORE_DO_TAIL;
+      return true;
+    }
     if (kind != NUMBER_KIND_NONE && valid_symbols[LC_BEFORE_FOR_UPDATE]) {
       lexer->result_symbol = LC_BEFORE_FOR_UPDATE;
       return true;
@@ -1373,6 +1415,13 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
   }
 
   const int32_t first = lexer->lookahead;
+  if (
+    valid_symbols[LC_BEFORE_DO_TAIL] &&
+    (character_is_do_tail_recovery_boundary(first) || lexer->eof(lexer))
+  ) {
+    lexer->result_symbol = LC_BEFORE_DO_TAIL;
+    return true;
+  }
   int32_t second = 0;
   if (is_composite_operator_start(first)) {
     lexer->advance(lexer, false);
@@ -1806,6 +1855,15 @@ bool tree_sitter_posix_awk_external_scanner_scan(
   }
 
   if (
+    valid_symbols[DO_TAIL_RECOVERY] &&
+    (character_is_do_tail_recovery_boundary(lexer->lookahead) ||
+      lexer->eof(lexer))
+  ) {
+    lexer->result_symbol = DO_TAIL_RECOVERY;
+    return true;
+  }
+
+  if (
     valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY] &&
     character_starts_statement(lexer->lookahead) &&
     !is_word_start(lexer->lookahead)
@@ -1834,6 +1892,7 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     is_word_start(lexer->lookahead) &&
     (word_marker_is_valid ||
       valid_symbols[STATEMENT_RECOVERY] ||
+      valid_symbols[DO_TAIL_RECOVERY] ||
       valid_symbols[TERMINATOR_RECOVERY] ||
       valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY] ||
       valid_symbols[NORMAL_ITEM_TERMINATOR_RECOVERY] ||
@@ -1845,6 +1904,9 @@ bool tree_sitter_posix_awk_external_scanner_scan(
       valid_symbols[CLOSE_BRACKET_RECOVERY])
   ) {
     const WordKind kind = scan_word_kind(lexer);
+    if (emit_word_required_recovery(lexer, valid_symbols, kind)) {
+      return true;
+    }
     if (emit_word_structural_boundary(lexer, valid_symbols, kind)) {
       return true;
     }
@@ -1854,16 +1916,21 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     if (emit_word_closer_recovery(lexer, valid_symbols, kind)) {
       return true;
     }
-    return emit_word_statement_recovery(lexer, valid_symbols, kind);
+    return emit_word_terminator_recovery(lexer, valid_symbols, kind);
   }
 
   if (
     (is_ascii_digit(lexer->lookahead) || lexer->lookahead == '.') &&
     (has_number_marker ||
+      valid_symbols[DO_TAIL_RECOVERY] ||
       valid_symbols[TERMINATOR_RECOVERY] ||
       valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY])
   ) {
     const NumberKind kind = scan_number_kind(lexer);
+    if (kind != NUMBER_KIND_NONE && valid_symbols[DO_TAIL_RECOVERY]) {
+      lexer->result_symbol = DO_TAIL_RECOVERY;
+      return true;
+    }
     if (
       kind !=
       NUMBER_KIND_NONE &&

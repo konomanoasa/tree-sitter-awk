@@ -2191,6 +2191,10 @@
           "named": true
         },
         {
+          "type": "do_tail_recovery",
+          "named": true
+        },
+        {
           "type": "exit_keyword",
           "named": true
         },
@@ -3090,6 +3094,10 @@
     "type": "comment",
     "named": true,
     "extra": true
+  },
+  {
+    "type": "do_tail_recovery",
+    "named": true
   },
   {
     "type": "ere_inner_recovery",

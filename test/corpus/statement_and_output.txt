@@ -1402,6 +1402,172 @@ BEGIN {
       (newline))))
 
 ==================
+missing do tails preserve their following structural boundaries
+==================
+
+BEGIN {
+  do print body
+  print following
+  do print semicolon_body; ;
+  if (condition) do print nested
+  else print alternative
+}
+BEGIN { do { print closed } }
+BEGIN { do { print eof }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (print_statement
+                      statement: (simple_print_statement
+                        (print_keyword)
+                        arguments: (print_expr_list
+                          (print_expr
+                            (non_unary_print_expr
+                              (lvalue
+                                (name)))))))))
+                terminator: (newline))
+              (do_tail_recovery))
+            terminator: (terminator_recovery))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            (name)))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (print_statement
+                      statement: (simple_print_statement
+                        (print_keyword)
+                        arguments: (print_expr_list
+                          (print_expr
+                            (non_unary_print_expr
+                              (lvalue
+                                (name))))))))))
+              (do_tail_recovery))
+            (newline_opt
+              (newline)))
+          (terminated_statement
+            (if_keyword)
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            consequence: (terminated_statement
+              statement: (terminatable_statement
+                (do_keyword)
+                body: (terminated_statement
+                  statement: (terminatable_statement
+                    (simple_statement
+                      (print_statement
+                        statement: (simple_print_statement
+                          (print_keyword)
+                          arguments: (print_expr_list
+                            (print_expr
+                              (non_unary_print_expr
+                                (lvalue
+                                  (name)))))))))
+                  terminator: (newline))
+                (do_tail_recovery))
+              terminator: (terminator_recovery))
+            (else_keyword)
+            alternative: (terminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (print_statement
+                    statement: (simple_print_statement
+                      (print_keyword)
+                      arguments: (print_expr_list
+                        (print_expr
+                          (non_unary_print_expr
+                            (lvalue
+                              (name)))))))))
+              terminator: (newline))))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (terminated_statement
+                (action
+                  body: (unterminated_statement_list
+                    (unterminated_statement
+                      statement: (terminatable_statement
+                        (simple_statement
+                          (print_statement
+                            statement: (simple_print_statement
+                              (print_keyword)
+                              arguments: (print_expr_list
+                                (print_expr
+                                  (non_unary_print_expr
+                                    (lvalue
+                                      (name)))))))))))))
+              (do_tail_recovery))))))
+    terminator: (terminator
+      (newline)))
+  item: (item
+    pattern: (pattern
+      (special_pattern
+        (begin_keyword)))
+    action: (action
+      body: (unterminated_statement_list
+        (unterminated_statement
+          statement: (terminatable_statement
+            (do_keyword)
+            body: (terminated_statement
+              (action
+                body: (unterminated_statement_list
+                  (unterminated_statement
+                    statement: (terminatable_statement
+                      (simple_statement
+                        (print_statement
+                          statement: (simple_print_statement
+                            (print_keyword)
+                            arguments: (print_expr_list
+                              (print_expr
+                                (non_unary_print_expr
+                                  (lvalue
+                                    (name))))))))))))
+              (newline_opt
+                (newline)))
+            (do_tail_recovery))))
+      closing: (closer_recovery))))
+
+==================
 missing closers retain their owners continuations and following statements
 ==================
 

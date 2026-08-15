@@ -72,7 +72,7 @@ static int check_line_continuation_run(
 
   MockLexer mock = make_mock_lexer(source);
   ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
-  bool valid_symbols[ERROR_SENTINEL + 1] = {false};
+  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
   valid_symbols[LC_BEFORE_EXPRESSION] = true;
 
   int failed = 0;
@@ -140,7 +140,7 @@ static int check_required_target_leading_dot_number(void) {
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
     MockLexer mock = make_mock_lexer(cases[i].source);
     ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
-    bool valid_symbols[ERROR_SENTINEL + 1] = {false};
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[cases[i].guard] = true;
     valid_symbols[EXPRESSION_RECOVERY] = cases[i].recovery_valid;
 
@@ -202,7 +202,7 @@ static int check_required_target_invalid_layout_recovery(void) {
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
     MockLexer mock = make_mock_lexer("\n\\q\nEND");
     ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
-    bool valid_symbols[ERROR_SENTINEL + 1] = {false};
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[cases[i].guard] = true;
     valid_symbols[PARAMETER_RECOVERY] = cases[i].parameter_recovery;
     valid_symbols[FUNCTION_BODY_RECOVERY] = cases[i].function_body_recovery;
@@ -266,7 +266,7 @@ static int check_parameter_recovery_boundaries(void) {
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
     MockLexer mock = make_mock_lexer(cases[i].source);
     ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
-    bool valid_symbols[ERROR_SENTINEL + 1] = {false};
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[PARAMETER_RECOVERY] = true;
     valid_symbols[NAME_WORD] = true;
 
@@ -313,7 +313,7 @@ static int check_function_body_recovery_boundaries(void) {
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
     MockLexer mock = make_mock_lexer(cases[i].source);
     ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
-    bool valid_symbols[ERROR_SENTINEL + 1] = {false};
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[FUNCTION_BODY_RECOVERY] = true;
 
     const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
@@ -336,6 +336,194 @@ static int check_function_body_recovery_boundaries(void) {
       failed = 1;
     }
   }
+  return failed;
+}
+
+static int expect_scan_result(
+  const char *test_name,
+  const char *source,
+  const bool *valid_symbols,
+  bool expected_scanned,
+  enum TokenType expected_symbol
+) {
+  MockLexer mock = make_mock_lexer(source);
+  ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
+  const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
+    &state,
+    &mock.lexer,
+    valid_symbols
+  );
+  if (
+    scanned ==
+    expected_scanned &&
+    (!scanned ||
+      (mock.lexer.result_symbol == expected_symbol && mock.token_end == 0))
+  ) {
+    return 0;
+  }
+
+  fprintf(
+    stderr,
+    "%s: scanned=%u symbol=%u end=%zu\n",
+    test_name,
+    scanned,
+    mock.lexer.result_symbol,
+    mock.token_end
+  );
+  return 1;
+}
+
+static int check_statement_recovery_boundaries(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    bool recovered;
+  } cases[] = {
+    {"BEGIN item boundary", "BEGIN", true},
+    {"END item boundary", "END", true},
+    {"function item boundary", "function", true},
+    {"else boundary", "else", true},
+    {"print statement", "print", false},
+    {"while statement", "while", false},
+    {"name statement", "name", false},
+    {"getline statement", "getline", false},
+    {"builtin statement", "length", false},
+    {"membership operator", "in", false},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[STATEMENT_RECOVERY] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].recovered,
+      STATEMENT_RECOVERY
+    );
+  }
+  return failed;
+}
+
+static int check_do_tail_word_boundaries(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    enum TokenType expected;
+  } cases[] = {
+    {"BEGIN after do body", "BEGIN", DO_TAIL_RECOVERY},
+    {"END after do body", "END", DO_TAIL_RECOVERY},
+    {"function after do body", "function", DO_TAIL_RECOVERY},
+    {"else after do body", "else", DO_TAIL_RECOVERY},
+    {"print after do body", "print", DO_TAIL_RECOVERY},
+    {"if after do body", "if", DO_TAIL_RECOVERY},
+    {"name after do body", "name", DO_TAIL_RECOVERY},
+    {"getline after do body", "getline", DO_TAIL_RECOVERY},
+    {"builtin after do body", "length", DO_TAIL_RECOVERY},
+    {"function call after do body", "follow(", DO_TAIL_RECOVERY},
+    {"real do tail", "while", WHILE_WORD},
+    {"membership operator", "in", IN_WORD},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    for (enum TokenType token = BEGIN_WORD; token <= FUNC_NAME_WORD; token++) {
+      valid_symbols[token] = true;
+    }
+    valid_symbols[DO_TAIL_RECOVERY] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      true,
+      cases[i].expected
+    );
+  }
+  return failed;
+}
+
+static int check_do_tail_character_boundaries(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    bool recovered;
+  } cases[] = {
+    {"block statement", "{", true},
+    {"string expression", "\"", true},
+    {"group expression", "(", true},
+    {"field expression", "$", true},
+    {"positive expression", "+", true},
+    {"negative expression", "-", true},
+    {"ERE expression", "/", true},
+    {"negated expression", "!", true},
+    {"integer expression", "42", true},
+    {"fraction expression", ".5", true},
+    {"semicolon terminator", ";", true},
+    {"action closer", "}", true},
+    {"physical EOF", "", true},
+    {"raw newline", "\n", false},
+    {"lone dot", ".", false},
+    {"close parenthesis", ")", false},
+    {"close bracket", "]", false},
+    {"comma", ",", false},
+    {"colon", ":", false},
+    {"multiplication operator", "*", false},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[DO_TAIL_RECOVERY] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].recovered,
+      DO_TAIL_RECOVERY
+    );
+  }
+  return failed;
+}
+
+static int check_required_recovery_priority(void) {
+  static const struct {
+    const char *name;
+    bool statement_recovery;
+    bool do_tail_recovery;
+    enum TokenType expected;
+  } cases[] = {
+    {"statement before do tail", true, true, STATEMENT_RECOVERY},
+    {"do tail before action boundary", false, true, DO_TAIL_RECOVERY},
+    {"action boundary fallback", false, false, ACTION_ITEM_BOUNDARY_RECOVERY},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[STATEMENT_RECOVERY] = cases[i].statement_recovery;
+    valid_symbols[DO_TAIL_RECOVERY] = cases[i].do_tail_recovery;
+    valid_symbols[ACTION_ITEM_BOUNDARY_RECOVERY] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      "END",
+      valid_symbols,
+      true,
+      cases[i].expected
+    );
+  }
+
+  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+  valid_symbols[LC_BEFORE_DO_TAIL] = true;
+  valid_symbols[DO_TAIL_RECOVERY] = true;
+  failed |= expect_scan_result(
+    "continued do tail boundary",
+    "\\\nEND",
+    valid_symbols,
+    true,
+    LC_BEFORE_DO_TAIL
+  );
   return failed;
 }
 
@@ -448,6 +636,10 @@ int main(void) {
   failed |= check_required_target_invalid_layout_recovery();
   failed |= check_parameter_recovery_boundaries();
   failed |= check_function_body_recovery_boundaries();
+  failed |= check_statement_recovery_boundaries();
+  failed |= check_do_tail_word_boundaries();
+  failed |= check_do_tail_character_boundaries();
+  failed |= check_required_recovery_priority();
 
   return failed;
 }

@@ -775,6 +775,109 @@ assert_not_contains "terminator_recovery" "$missing_consequence_tree"
 assert_not_contains "ERROR" "$missing_consequence_tree"
 assert_not_contains "MISSING" "$missing_consequence_tree"
 
+complete_reserved_if_source="$runtime_directory/complete-reserved-if.awk"
+missing_reserved_if_source="$runtime_directory/missing-reserved-if.awk"
+printf '%s\n' \
+  'BEGIN { if (condition) print body }' \
+  'END { print target }' \
+  >"$complete_reserved_if_source"
+printf '%s\n' \
+  'BEGIN { if (condition)' \
+  'END { print target }' \
+  >"$missing_reserved_if_source"
+assert_incremental_equals_fresh \
+  "$complete_reserved_if_source" \
+  "$missing_reserved_if_source" \
+  "delete-if-body-before-end-item" \
+  0 \
+  "22 14 $raw_newline"
+missing_reserved_if_tree="$runtime_directory/delete-if-body-before-end-item.native.fresh.tree"
+assert_contains "consequence: statement_recovery" "$missing_reserved_if_tree"
+assert_contains "closing: action_item_boundary_recovery" "$missing_reserved_if_tree"
+assert_contains "end_keyword" "$missing_reserved_if_tree"
+assert_not_contains "ERROR" "$missing_reserved_if_tree"
+assert_not_contains "MISSING" "$missing_reserved_if_tree"
+assert_incremental_equals_fresh \
+  "$missing_reserved_if_source" \
+  "$complete_reserved_if_source" \
+  "restore-if-body-before-end-item" \
+  0 \
+  "22 1  print body }$raw_newline"
+complete_reserved_if_tree="$runtime_directory/restore-if-body-before-end-item.native.fresh.tree"
+assert_not_contains "ERROR" "$complete_reserved_if_tree"
+assert_not_contains "MISSING" "$complete_reserved_if_tree"
+assert_not_contains "_recovery" "$complete_reserved_if_tree"
+
+complete_do_tail_source="$runtime_directory/complete-do-tail.awk"
+missing_do_tail_source="$runtime_directory/missing-do-tail.awk"
+continued_function_do_tail_source="$runtime_directory/continued-function-do-tail.awk"
+continued_begin_do_tail_source="$runtime_directory/continued-begin-do-tail.awk"
+printf '%s\n' \
+  'BEGIN { do print body; while (condition) }' \
+  'END { print target }' \
+  >"$complete_do_tail_source"
+printf '%s\n' \
+  'BEGIN { do print body;' \
+  'END { print target }' \
+  >"$missing_do_tail_source"
+printf '%s\n' \
+  "BEGIN { do print body; $backslash" \
+  'function follow() { print target }' \
+  >"$continued_function_do_tail_source"
+printf '%s\n' \
+  "BEGIN { do print body; $backslash" \
+  'BEGIN { print target }' \
+  >"$continued_begin_do_tail_source"
+assert_incremental_equals_fresh \
+  "$complete_do_tail_source" \
+  "$missing_do_tail_source" \
+  "delete-do-tail-before-end-item" \
+  0 \
+  "22 21 $raw_newline"
+missing_do_tail_tree="$runtime_directory/delete-do-tail-before-end-item.native.fresh.tree"
+assert_contains "do_tail_recovery" "$missing_do_tail_tree"
+assert_contains "closing: action_item_boundary_recovery" "$missing_do_tail_tree"
+assert_contains "end_keyword" "$missing_do_tail_tree"
+assert_not_contains "statement_recovery" "$missing_do_tail_tree"
+assert_not_contains "ERROR" "$missing_do_tail_tree"
+assert_not_contains "MISSING" "$missing_do_tail_tree"
+assert_incremental_equals_fresh \
+  "$missing_do_tail_source" \
+  "$complete_do_tail_source" \
+  "restore-do-tail-before-end-item" \
+  0 \
+  "22 1  while (condition) }$raw_newline"
+complete_do_tail_tree="$runtime_directory/restore-do-tail-before-end-item.native.fresh.tree"
+assert_not_contains "ERROR" "$complete_do_tail_tree"
+assert_not_contains "MISSING" "$complete_do_tail_tree"
+assert_not_contains "_recovery" "$complete_do_tail_tree"
+assert_incremental_equals_fresh \
+  "$complete_do_tail_source" \
+  "$continued_function_do_tail_source" \
+  "recover-do-tail-through-reserved-boundaries" \
+  0 \
+  "22 21 $raw_newline" \
+  "22 0  $backslash" \
+  "25 21 function follow() { print target }$raw_newline"
+continued_function_do_tail_tree="$runtime_directory/recover-do-tail-through-reserved-boundaries.native.fresh.tree"
+assert_contains "line_continuation" "$continued_function_do_tail_tree"
+assert_contains "do_tail_recovery" "$continued_function_do_tail_tree"
+assert_contains "function_keyword" "$continued_function_do_tail_tree"
+assert_not_contains "ERROR" "$continued_function_do_tail_tree"
+assert_not_contains "MISSING" "$continued_function_do_tail_tree"
+assert_incremental_equals_fresh \
+  "$continued_function_do_tail_source" \
+  "$continued_begin_do_tail_source" \
+  "replace-function-with-begin-after-do-tail" \
+  0 \
+  "25 35 BEGIN { print target }$raw_newline"
+continued_begin_do_tail_tree="$runtime_directory/replace-function-with-begin-after-do-tail.native.fresh.tree"
+assert_contains "line_continuation" "$continued_begin_do_tail_tree"
+assert_contains "do_tail_recovery" "$continued_begin_do_tail_tree"
+assert_contains "begin_keyword" "$continued_begin_do_tail_tree"
+assert_not_contains "ERROR" "$continued_begin_do_tail_tree"
+assert_not_contains "MISSING" "$continued_begin_do_tail_tree"
+
 closed_subscript_eof_source="$runtime_directory/closed-subscript-eof.awk"
 open_subscript_eof_source="$runtime_directory/open-subscript-eof.awk"
 printf '%s' 'BEGIN { delete array[offset] }' >"$closed_subscript_eof_source"
