@@ -253,27 +253,6 @@ const ereRangeExpressionWith = ($, startRange) =>
     ),
   );
 
-const logicalWord = ($, classification) =>
-  seq(classification, $._word_spelling);
-
-const fractionalDigits = ($) =>
-  seq($._number_fraction_digits, $._number_digit_chunk);
-
-const numberFraction = ($) =>
-  choice(
-    seq($._number_digit_chunk, $._number_dot, optional(fractionalDigits($))),
-    seq($._number_dot, fractionalDigits($)),
-  );
-
-const numberBase = ($) => choice($._number_digit_chunk, numberFraction($));
-
-const numberExponent = ($) =>
-  seq(
-    $._number_exponent_character,
-    optional($._number_sign),
-    $._number_digit_chunk,
-  );
-
 const conditionalHeader = ($, keyword) =>
   seq(
     keyword,
@@ -864,7 +843,6 @@ module.exports = grammar({
     $._number_integer,
     $._number_fraction,
     $._number_exponent,
-    $._number_fraction_digits,
     $._division_slash,
     $._ere_opening_slash,
     $._div_assign_operator,
@@ -916,6 +894,7 @@ module.exports = grammar({
     $._print_expression_recovery,
     $._parameter_recovery,
     $._function_body_recovery,
+    $._do_body_recovery_guard,
     $._statement_recovery,
     $._terminator_recovery,
     $._closed_item_terminator_recovery,
@@ -975,12 +954,12 @@ module.exports = grammar({
     [$._self_terminating_statement, $.unterminated_statement],
     [$.terminated_statement],
     [$._self_terminating_statement],
+    [$._recovered_do_body, $.terminatable_statement],
     [$._for_in_clause, $.lvalue],
     [
       $._terminated_statement_or_recovery,
       $._unterminated_statement_or_recovery,
     ],
-    [$._recovered_do_body, $.while_keyword],
     [
       $._normal_non_unary_atom_expr,
       $._normal_non_unary_field_atom_expr,
@@ -1219,11 +1198,11 @@ module.exports = grammar({
 
     special_pattern: ($) => choice($.begin_keyword, $.end_keyword),
 
-    begin_keyword: ($) => prec(10, logicalWord($, $._begin_word)),
+    begin_keyword: ($) => prec(10, $._begin_word),
 
-    end_keyword: ($) => prec(10, logicalWord($, $._end_word)),
+    end_keyword: ($) => prec(10, $._end_word),
 
-    function_keyword: ($) => prec(10, logicalWord($, $._function_word)),
+    function_keyword: ($) => prec(10, $._function_word),
 
     _action_opening_layout: ($) => actionOpeningLayout($),
 
@@ -1312,9 +1291,7 @@ module.exports = grammar({
     _do_header: ($) => keywordHeader($, $.do_keyword),
 
     _recovered_do_body: ($) =>
-      prec.dynamic(-1, alias($._while_word, $.statement_recovery)),
-
-    _while_keyword_body: ($) => $._word_spelling,
+      prec.dynamic(-1, alias($._do_body_recovery_guard, $.statement_recovery)),
 
     _for_classic_clause: ($) =>
       seq(
@@ -1401,13 +1378,19 @@ module.exports = grammar({
         ),
         seq(
           $._do_header,
-          field("body", $._terminated_statement_or_recovery),
+          choice(
+            field("body", $._terminated_statement_or_recovery),
+            seq(
+              $._do_body_recovery_guard,
+              field("body", $._terminated_statement_or_recovery),
+            ),
+          ),
           continuedDoTail($),
         ),
         seq(
           $._do_header,
           field("body", $._recovered_do_body),
-          doWhileTail($, alias($._while_keyword_body, $.while_keyword)),
+          doWhileTail($, $.while_keyword),
         ),
       ),
 
@@ -1494,33 +1477,33 @@ module.exports = grammar({
         continuedRequiredMember($, $.expr),
       ),
 
-    print_keyword: ($) => prec(10, logicalWord($, $._print_word)),
+    print_keyword: ($) => prec(10, $._print_word),
 
-    printf_keyword: ($) => prec(10, logicalWord($, $._printf_word)),
+    printf_keyword: ($) => prec(10, $._printf_word),
 
-    break_keyword: ($) => logicalWord($, $._break_word),
+    break_keyword: ($) => $._break_word,
 
-    continue_keyword: ($) => logicalWord($, $._continue_word),
+    continue_keyword: ($) => $._continue_word,
 
-    delete_keyword: ($) => logicalWord($, $._delete_word),
+    delete_keyword: ($) => $._delete_word,
 
-    do_keyword: ($) => logicalWord($, $._do_word),
+    do_keyword: ($) => $._do_word,
 
-    else_keyword: ($) => logicalWord($, $._else_word),
+    else_keyword: ($) => $._else_word,
 
-    exit_keyword: ($) => logicalWord($, $._exit_word),
+    exit_keyword: ($) => $._exit_word,
 
-    for_keyword: ($) => logicalWord($, $._for_word),
+    for_keyword: ($) => $._for_word,
 
-    if_keyword: ($) => logicalWord($, $._if_word),
+    if_keyword: ($) => $._if_word,
 
-    next_keyword: ($) => logicalWord($, $._next_word),
+    next_keyword: ($) => $._next_word,
 
-    nextfile_keyword: ($) => logicalWord($, $._nextfile_word),
+    nextfile_keyword: ($) => $._nextfile_word,
 
-    return_keyword: ($) => logicalWord($, $._return_word),
+    return_keyword: ($) => $._return_word,
 
-    while_keyword: ($) => logicalWord($, $._while_word),
+    while_keyword: ($) => $._while_word,
 
     _recovered_print_expr_list: ($) => printListExpressionRecovery($),
 
@@ -1685,22 +1668,18 @@ module.exports = grammar({
 
     _recovered_expr_list: ($) => expressionRecovery($),
 
-    getline_keyword: ($) => logicalWord($, $._getline_word),
+    getline_keyword: ($) => $._getline_word,
 
-    in_keyword: ($) => logicalWord($, $._in_word),
+    in_keyword: ($) => $._in_word,
 
-    func_name: ($) => logicalWord($, $._func_name_word),
+    func_name: ($) => $._func_name_word,
 
-    builtin_func_name: ($) => logicalWord($, $._builtin_func_name_word),
+    builtin_func_name: ($) => $._builtin_func_name_word,
 
-    name: ($) => logicalWord($, $._name_word),
+    name: ($) => $._name_word,
 
     number: ($) =>
-      choice(
-        seq($._number_integer, $._number_digit_chunk),
-        seq($._number_fraction, numberFraction($)),
-        seq($._number_exponent, numberBase($), numberExponent($)),
-      ),
+      choice($._number_integer, $._number_fraction, $._number_exponent),
 
     string: ($) =>
       seq(
@@ -2171,15 +2150,7 @@ module.exports = grammar({
 
     comment: () => token(seq("#", /[^\n]*/)),
 
-    _word_spelling: () => token.immediate(/[A-Za-z_][A-Za-z0-9_]*/),
-
     _number_digit_chunk: () => token.immediate(/[0-9]+/),
-
-    _number_dot: () => token.immediate(/\./),
-
-    _number_exponent_character: () => token.immediate(/[eE]/),
-
-    _number_sign: () => token.immediate(/[+-]/),
 
     _escape_introducer: () => token.immediate(/\\/),
 

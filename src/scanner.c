@@ -30,7 +30,6 @@ enum TokenType {
   NUMBER_INTEGER,
   NUMBER_FRACTION,
   NUMBER_EXPONENT,
-  NUMBER_FRACTION_DIGITS,
   DIVISION_SLASH,
   ERE_OPENING_SLASH,
   DIV_ASSIGN_OPERATOR,
@@ -82,6 +81,7 @@ enum TokenType {
   PRINT_EXPRESSION_RECOVERY,
   PARAMETER_RECOVERY,
   FUNCTION_BODY_RECOVERY,
+  DO_BODY_RECOVERY_GUARD,
   STATEMENT_RECOVERY,
   TERMINATOR_RECOVERY,
   CLOSED_ITEM_TERMINATOR_RECOVERY,
@@ -362,22 +362,17 @@ static bool advance_line_continuations(TSLexer *lexer) {
   return found;
 }
 
-static bool skip_ascii_blanks(TSLexer *lexer) {
-  bool found = false;
-
+static void skip_ascii_blanks(TSLexer *lexer) {
   while (is_ascii_blank(lexer->lookahead)) {
     lexer->advance(lexer, true);
-    found = true;
   }
-
-  return found;
 }
 
 static bool advance_comment_to_boundary(TSLexer *lexer);
 
 static bool advance_layout_gap(TSLexer *lexer) {
   for (;;) {
-    (void)skip_ascii_blanks(lexer);
+    skip_ascii_blanks(lexer);
     (void)advance_comment_to_boundary(lexer);
     if (lexer->lookahead == '\n') {
       lexer->advance(lexer, false);
@@ -410,7 +405,7 @@ static WordKind classify_word(const char *word, size_t length) {
   return WORD_KIND_NAME;
 }
 
-static WordKind scan_word_kind(TSLexer *lexer) {
+static WordKind scan_word_spelling(TSLexer *lexer) {
   char word[MAX_RESERVED_WORD_LENGTH + 1] = {0};
   size_t length = 0;
 
@@ -428,7 +423,10 @@ static WordKind scan_word_kind(TSLexer *lexer) {
     lexer->advance(lexer, false);
   }
 
-  const WordKind kind = classify_word(word, length);
+  return classify_word(word, length);
+}
+
+static WordKind scan_func_name_suffix(TSLexer *lexer, WordKind kind) {
   if (kind != WORD_KIND_NAME) {
     return kind;
   }
@@ -437,6 +435,10 @@ static WordKind scan_word_kind(TSLexer *lexer) {
     return kind;
   }
   return lexer->lookahead == '(' ? WORD_KIND_FUNC_NAME : kind;
+}
+
+static WordKind scan_word_kind(TSLexer *lexer) {
+  return scan_func_name_suffix(lexer, scan_word_spelling(lexer));
 }
 
 static bool
@@ -449,6 +451,41 @@ emit_word_kind(TSLexer *lexer, const bool *valid_symbols, WordKind kind) {
   }
 
   return false;
+}
+
+static bool scan_word_token(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  WordKind kind,
+  bool *marked_end
+) {
+  if (
+    kind ==
+    WORD_KIND_NAME &&
+    !valid_symbols[NAME_WORD] &&
+    !valid_symbols[FUNC_NAME_WORD]
+  ) {
+    return false;
+  }
+
+  bool token_is_valid = false;
+  for (size_t i = 0; i < sizeof(WORD_TOKENS) / sizeof(WORD_TOKENS[0]); i++) {
+    if (WORD_TOKENS[i].kind == kind && valid_symbols[WORD_TOKENS[i].token]) {
+      token_is_valid = true;
+      break;
+    }
+  }
+  if (kind != WORD_KIND_NAME && !token_is_valid) {
+    return false;
+  }
+
+  lexer->mark_end(lexer);
+  *marked_end = true;
+  return emit_word_kind(
+    lexer,
+    valid_symbols,
+    scan_func_name_suffix(lexer, kind)
+  );
 }
 
 static bool has_word_marker(const bool *valid_symbols) {
@@ -489,7 +526,42 @@ static bool word_is_do_tail_recovery_boundary(WordKind kind) {
       word_is_statement_recovery_boundary(kind));
 }
 
-static NumberKind scan_number_kind(TSLexer *lexer) {
+static bool number_kind_is_valid(const bool *valid_symbols, NumberKind kind) {
+  if (valid_symbols == NULL) {
+    return false;
+  }
+  switch (kind) {
+  case NUMBER_KIND_INTEGER:
+    return valid_symbols[NUMBER_INTEGER];
+  case NUMBER_KIND_FRACTION:
+    return valid_symbols[NUMBER_FRACTION];
+  case NUMBER_KIND_EXPONENT:
+    return valid_symbols[NUMBER_EXPONENT];
+  case NUMBER_KIND_NONE:
+    return false;
+  }
+  return false;
+}
+
+static void accept_number(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  NumberKind kind,
+  NumberKind *accepted,
+  NumberKind *token_kind
+) {
+  *accepted = kind;
+  if (number_kind_is_valid(valid_symbols, kind)) {
+    lexer->mark_end(lexer);
+    *token_kind = kind;
+  }
+}
+
+static NumberKind scan_number_kind_with_end(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  NumberKind *token_kind
+) {
   enum {
     STATE_START,
     STATE_INTEGER,
@@ -507,7 +579,13 @@ static NumberKind scan_number_kind(TSLexer *lexer) {
       if (is_ascii_digit(lexer->lookahead)) {
         lexer->advance(lexer, false);
         state = STATE_INTEGER;
-        accepted = NUMBER_KIND_INTEGER;
+        accept_number(
+          lexer,
+          valid_symbols,
+          NUMBER_KIND_INTEGER,
+          &accepted,
+          token_kind
+        );
         continue;
       }
       if (lexer->lookahead == '.') {
@@ -520,12 +598,25 @@ static NumberKind scan_number_kind(TSLexer *lexer) {
     case STATE_INTEGER:
       if (is_ascii_digit(lexer->lookahead)) {
         lexer->advance(lexer, false);
+        accept_number(
+          lexer,
+          valid_symbols,
+          NUMBER_KIND_INTEGER,
+          &accepted,
+          token_kind
+        );
         continue;
       }
       if (lexer->lookahead == '.') {
         lexer->advance(lexer, false);
         state = STATE_FRACTION;
-        accepted = NUMBER_KIND_FRACTION;
+        accept_number(
+          lexer,
+          valid_symbols,
+          NUMBER_KIND_FRACTION,
+          &accepted,
+          token_kind
+        );
         continue;
       }
       if (lexer->lookahead == 'e' || lexer->lookahead == 'E') {
@@ -541,12 +632,25 @@ static NumberKind scan_number_kind(TSLexer *lexer) {
       }
       lexer->advance(lexer, false);
       state = STATE_FRACTION;
-      accepted = NUMBER_KIND_FRACTION;
+      accept_number(
+        lexer,
+        valid_symbols,
+        NUMBER_KIND_FRACTION,
+        &accepted,
+        token_kind
+      );
       continue;
 
     case STATE_FRACTION:
       if (is_ascii_digit(lexer->lookahead)) {
         lexer->advance(lexer, false);
+        accept_number(
+          lexer,
+          valid_symbols,
+          NUMBER_KIND_FRACTION,
+          &accepted,
+          token_kind
+        );
         continue;
       }
       if (lexer->lookahead == 'e' || lexer->lookahead == 'E') {
@@ -565,7 +669,13 @@ static NumberKind scan_number_kind(TSLexer *lexer) {
       if (is_ascii_digit(lexer->lookahead)) {
         lexer->advance(lexer, false);
         state = STATE_EXPONENT_DIGITS;
-        accepted = NUMBER_KIND_EXPONENT;
+        accept_number(
+          lexer,
+          valid_symbols,
+          NUMBER_KIND_EXPONENT,
+          &accepted,
+          token_kind
+        );
         continue;
       }
       return accepted;
@@ -576,7 +686,13 @@ static NumberKind scan_number_kind(TSLexer *lexer) {
       }
       lexer->advance(lexer, false);
       state = STATE_EXPONENT_DIGITS;
-      accepted = NUMBER_KIND_EXPONENT;
+      accept_number(
+        lexer,
+        valid_symbols,
+        NUMBER_KIND_EXPONENT,
+        &accepted,
+        token_kind
+      );
       continue;
 
     case STATE_EXPONENT_DIGITS:
@@ -584,9 +700,21 @@ static NumberKind scan_number_kind(TSLexer *lexer) {
         return accepted;
       }
       lexer->advance(lexer, false);
+      accept_number(
+        lexer,
+        valid_symbols,
+        NUMBER_KIND_EXPONENT,
+        &accepted,
+        token_kind
+      );
       continue;
     }
   }
+}
+
+static NumberKind scan_number_kind(TSLexer *lexer) {
+  NumberKind token_kind = NUMBER_KIND_NONE;
+  return scan_number_kind_with_end(lexer, NULL, &token_kind);
 }
 
 static bool scan_number_start(TSLexer *lexer) {
@@ -898,6 +1026,10 @@ static bool emit_word_required_recovery(
   const bool *valid_symbols,
   WordKind kind
 ) {
+  if (valid_symbols[DO_BODY_RECOVERY_GUARD] && kind == WORD_KIND_WHILE) {
+    lexer->result_symbol = DO_BODY_RECOVERY_GUARD;
+    return true;
+  }
   if (
     valid_symbols[STATEMENT_RECOVERY] &&
     word_is_statement_recovery_boundary(kind)
@@ -1144,7 +1276,11 @@ scan_parameter_recovery_or_word(TSLexer *lexer, const bool *valid_symbols) {
   }
 
   if (is_word_start(lexer->lookahead)) {
-    const WordKind kind = scan_word_kind(lexer);
+    WordKind kind = scan_word_spelling(lexer);
+    if (kind == WORD_KIND_NAME) {
+      lexer->mark_end(lexer);
+      kind = scan_func_name_suffix(lexer, kind);
+    }
     if (kind == WORD_KIND_NAME) {
       return emit_word_kind(lexer, valid_symbols, kind);
     }
@@ -1723,7 +1859,7 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     valid_symbols[PARAMETER_RECOVERY] &&
     !valid_symbols[ERROR_SENTINEL]
   ) {
-    (void)skip_ascii_blanks(lexer);
+    skip_ascii_blanks(lexer);
     lexer->mark_end(lexer);
     if (lexer->lookahead == '\n' && valid_symbols[PARAMETER_TARGET_GUARD]) {
       return scan_required_target_guard(lexer, valid_symbols);
@@ -1780,7 +1916,7 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     return scan_string_lone_escape(lexer, valid_symbols);
   }
 
-  const bool had_leading_blank = skip_ascii_blanks(lexer);
+  skip_ascii_blanks(lexer);
   lexer->mark_end(lexer);
 
   const bool at_required_target_newline = lexer->lookahead == '\n';
@@ -1871,15 +2007,6 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     return emit_closed_item_terminator_recovery(lexer, valid_symbols);
   }
 
-  if (
-    !had_leading_blank &&
-    valid_symbols[NUMBER_FRACTION_DIGITS] &&
-    is_ascii_digit(lexer->lookahead)
-  ) {
-    lexer->result_symbol = NUMBER_FRACTION_DIGITS;
-    return true;
-  }
-
   if (lexer->lookahead == '\\' && has_line_continuation_marker(valid_symbols)) {
     return scan_line_continuation_marker(lexer, valid_symbols);
   }
@@ -1891,6 +2018,7 @@ bool tree_sitter_posix_awk_external_scanner_scan(
   if (
     is_word_start(lexer->lookahead) &&
     (word_marker_is_valid ||
+      valid_symbols[DO_BODY_RECOVERY_GUARD] ||
       valid_symbols[STATEMENT_RECOVERY] ||
       valid_symbols[DO_TAIL_RECOVERY] ||
       valid_symbols[TERMINATOR_RECOVERY] ||
@@ -1903,15 +2031,22 @@ bool tree_sitter_posix_awk_external_scanner_scan(
       valid_symbols[CLOSE_PARENTHESIS_RECOVERY] ||
       valid_symbols[CLOSE_BRACKET_RECOVERY])
   ) {
-    const WordKind kind = scan_word_kind(lexer);
+    const WordKind kind = scan_word_spelling(lexer);
     if (emit_word_required_recovery(lexer, valid_symbols, kind)) {
       return true;
     }
     if (emit_word_structural_boundary(lexer, valid_symbols, kind)) {
       return true;
     }
-    if (word_marker_is_valid && emit_word_kind(lexer, valid_symbols, kind)) {
+    bool marked_word_end = false;
+    if (
+      word_marker_is_valid &&
+      scan_word_token(lexer, valid_symbols, kind, &marked_word_end)
+    ) {
       return true;
+    }
+    if (marked_word_end) {
+      return false;
     }
     if (emit_word_closer_recovery(lexer, valid_symbols, kind)) {
       return true;
@@ -1926,7 +2061,14 @@ bool tree_sitter_posix_awk_external_scanner_scan(
       valid_symbols[TERMINATOR_RECOVERY] ||
       valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY])
   ) {
-    const NumberKind kind = scan_number_kind(lexer);
+    const bool recovery_precedes_number = valid_symbols[DO_TAIL_RECOVERY] ||
+      valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY];
+    NumberKind number_token_kind = NUMBER_KIND_NONE;
+    const NumberKind kind = scan_number_kind_with_end(
+      lexer,
+      recovery_precedes_number ? NULL : valid_symbols,
+      &number_token_kind
+    );
     if (kind != NUMBER_KIND_NONE && valid_symbols[DO_TAIL_RECOVERY]) {
       lexer->result_symbol = DO_TAIL_RECOVERY;
       return true;
@@ -1938,8 +2080,14 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     ) {
       return true;
     }
-    if (has_number_marker && emit_number_kind(lexer, valid_symbols, kind)) {
+    if (
+      has_number_marker &&
+      emit_number_kind(lexer, valid_symbols, number_token_kind)
+    ) {
       return true;
+    }
+    if (number_token_kind != NUMBER_KIND_NONE) {
+      return false;
     }
     if (kind != NUMBER_KIND_NONE) {
       return emit_terminator_recovery(lexer, valid_symbols);

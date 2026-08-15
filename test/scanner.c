@@ -344,7 +344,8 @@ static int expect_scan_result(
   const char *source,
   const bool *valid_symbols,
   bool expected_scanned,
-  enum TokenType expected_symbol
+  enum TokenType expected_symbol,
+  size_t expected_token_end
 ) {
   MockLexer mock = make_mock_lexer(source);
   ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
@@ -357,7 +358,9 @@ static int expect_scan_result(
     scanned ==
     expected_scanned &&
     (!scanned ||
-      (mock.lexer.result_symbol == expected_symbol && mock.token_end == 0))
+      (mock.lexer.result_symbol ==
+        expected_symbol &&
+        mock.token_end == expected_token_end))
   ) {
     return 0;
   }
@@ -400,7 +403,8 @@ static int check_statement_recovery_boundaries(void) {
       cases[i].source,
       valid_symbols,
       cases[i].recovered,
-      STATEMENT_RECOVERY
+      STATEMENT_RECOVERY,
+      0
     );
   }
   return failed;
@@ -411,19 +415,20 @@ static int check_do_tail_word_boundaries(void) {
     const char *name;
     const char *source;
     enum TokenType expected;
+    size_t expected_token_end;
   } cases[] = {
-    {"BEGIN after do body", "BEGIN", DO_TAIL_RECOVERY},
-    {"END after do body", "END", DO_TAIL_RECOVERY},
-    {"function after do body", "function", DO_TAIL_RECOVERY},
-    {"else after do body", "else", DO_TAIL_RECOVERY},
-    {"print after do body", "print", DO_TAIL_RECOVERY},
-    {"if after do body", "if", DO_TAIL_RECOVERY},
-    {"name after do body", "name", DO_TAIL_RECOVERY},
-    {"getline after do body", "getline", DO_TAIL_RECOVERY},
-    {"builtin after do body", "length", DO_TAIL_RECOVERY},
-    {"function call after do body", "follow(", DO_TAIL_RECOVERY},
-    {"real do tail", "while", WHILE_WORD},
-    {"membership operator", "in", IN_WORD},
+    {"BEGIN after do body", "BEGIN", DO_TAIL_RECOVERY, 0},
+    {"END after do body", "END", DO_TAIL_RECOVERY, 0},
+    {"function after do body", "function", DO_TAIL_RECOVERY, 0},
+    {"else after do body", "else", DO_TAIL_RECOVERY, 0},
+    {"print after do body", "print", DO_TAIL_RECOVERY, 0},
+    {"if after do body", "if", DO_TAIL_RECOVERY, 0},
+    {"name after do body", "name", DO_TAIL_RECOVERY, 0},
+    {"getline after do body", "getline", DO_TAIL_RECOVERY, 0},
+    {"builtin after do body", "length", DO_TAIL_RECOVERY, 0},
+    {"function call after do body", "follow(", DO_TAIL_RECOVERY, 0},
+    {"real do tail", "while", WHILE_WORD, 5},
+    {"membership operator", "in", IN_WORD, 2},
   };
 
   int failed = 0;
@@ -438,7 +443,8 @@ static int check_do_tail_word_boundaries(void) {
       cases[i].source,
       valid_symbols,
       true,
-      cases[i].expected
+      cases[i].expected,
+      cases[i].expected_token_end
     );
   }
   return failed;
@@ -481,7 +487,8 @@ static int check_do_tail_character_boundaries(void) {
       cases[i].source,
       valid_symbols,
       cases[i].recovered,
-      DO_TAIL_RECOVERY
+      DO_TAIL_RECOVERY,
+      0
     );
   }
   return failed;
@@ -510,7 +517,8 @@ static int check_required_recovery_priority(void) {
       "END",
       valid_symbols,
       true,
-      cases[i].expected
+      cases[i].expected,
+      0
     );
   }
 
@@ -522,9 +530,60 @@ static int check_required_recovery_priority(void) {
     "\\\nEND",
     valid_symbols,
     true,
-    LC_BEFORE_DO_TAIL
+    LC_BEFORE_DO_TAIL,
+    0
   );
   return failed;
+}
+
+static int check_source_token_ranges(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    enum TokenType token;
+    size_t expected_token_end;
+  } cases[] = {
+    {"keyword spelling", "END", END_WORD, 3},
+    {"name spelling", "value", NAME_WORD, 5},
+    {"function name excludes parenthesis", "follow(", FUNC_NAME_WORD, 6},
+    {"continued function name excludes continuation",
+      "follow\\\n(",
+      FUNC_NAME_WORD,
+      6},
+    {"integer spelling", "123", NUMBER_INTEGER, 3},
+    {"fraction spelling", ".5", NUMBER_FRACTION, 2},
+    {"exponent spelling", "1.5e+2", NUMBER_EXPONENT, 6},
+    {"incomplete exponent keeps integer", "1e+", NUMBER_INTEGER, 1},
+    {"integer prefix remains available", "1.2", NUMBER_INTEGER, 1},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[cases[i].token] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      true,
+      cases[i].token,
+      cases[i].expected_token_end
+    );
+  }
+  return failed;
+}
+
+static int check_do_body_recovery_guard_range(void) {
+  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+  valid_symbols[DO_BODY_RECOVERY_GUARD] = true;
+  return expect_scan_result(
+    "do body recovery guard",
+    "while",
+    valid_symbols,
+    true,
+    DO_BODY_RECOVERY_GUARD,
+    0
+  );
 }
 
 static int
@@ -640,6 +699,8 @@ int main(void) {
   failed |= check_do_tail_word_boundaries();
   failed |= check_do_tail_character_boundaries();
   failed |= check_required_recovery_priority();
+  failed |= check_source_token_ranges();
+  failed |= check_do_body_recovery_guard_range();
 
   return failed;
 }

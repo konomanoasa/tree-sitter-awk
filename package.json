@@ -28,7 +28,8 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "2.5.5",
-    "tree-sitter-cli": "0.26.11"
+    "tree-sitter-cli": "0.26.11",
+    "web-tree-sitter": "0.26.11"
   },
   "allowScripts": {
     "tree-sitter-cli": true

@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { after, before, test } = require("node:test");
+const { Language, Parser } = require("web-tree-sitter");
 
 const {
   createEnvironment,
@@ -16,9 +17,10 @@ const {
 const runtime = createEnvironment("tree-sitter-posix-awk-runtime.");
 const nativeLibrary = path.join(runtime.directory, "parser");
 const wasmLibrary = path.join(runtime.libraryDirectory, `${grammar.name}.wasm`);
+let includedRangeLanguage;
 let sourceSequence = 0;
 
-before(() => {
+before(async () => {
   runChecked(["build", "--output", nativeLibrary, repositoryDirectory], {
     environment: runtime,
     stdio: "inherit",
@@ -27,6 +29,8 @@ before(() => {
     ["build", "--wasm", "--output", wasmLibrary, repositoryDirectory],
     { environment: runtime, stdio: "inherit" },
   );
+  await Parser.init();
+  includedRangeLanguage = await Language.load(wasmLibrary);
 });
 
 after(() => {
@@ -250,6 +254,121 @@ function freshTest(name, source, assertions) {
 function incrementalTest(name, initial, final, edits, assertions = () => {}) {
   test(name, () => assertions(assertIncremental(name, initial, final, edits)));
 }
+
+function assertIncludedRanges(source, includedRanges, assertions) {
+  const parser = new Parser();
+  parser.setLanguage(includedRangeLanguage);
+  const tree = parser.parse(source, null, { includedRanges });
+  assert.notEqual(
+    tree,
+    null,
+    "Expected included-range parse to produce a tree",
+  );
+  try {
+    assertions(tree.rootNode);
+  } finally {
+    tree.delete();
+    parser.delete();
+  }
+}
+
+function assertSingleNode(root, type, expected) {
+  assert.equal(root.hasError, false, root.toString());
+  const nodes = root.descendantsOfType(type);
+  assert.equal(nodes.length, 1, root.toString());
+  assert.equal(nodes[0].startIndex, expected.startIndex);
+  assert.equal(nodes[0].endIndex, expected.endIndex);
+  assert.deepEqual(nodes[0].startPosition, expected.startPosition);
+  assert.deepEqual(nodes[0].endPosition, expected.endPosition);
+  assert.equal(nodes[0].text, expected.text);
+}
+
+test("included range starts a keyword after skipped layout", () => {
+  const source = "BEGIN {}\n HOSTEND {}\n";
+  assertIncludedRanges(
+    source,
+    [
+      {
+        startIndex: 0,
+        endIndex: 10,
+        startPosition: { row: 0, column: 0 },
+        endPosition: { row: 1, column: 1 },
+      },
+      {
+        startIndex: 14,
+        endIndex: 21,
+        startPosition: { row: 1, column: 5 },
+        endPosition: { row: 2, column: 0 },
+      },
+    ],
+    (root) =>
+      assertSingleNode(root, "end_keyword", {
+        startIndex: 14,
+        endIndex: 17,
+        startPosition: { row: 1, column: 5 },
+        endPosition: { row: 1, column: 8 },
+        text: "END",
+      }),
+  );
+});
+
+test("included range starts a number at the current range boundary", () => {
+  const source = "BEGIN {}\nHOST123 {}\n";
+  assertIncludedRanges(
+    source,
+    [
+      {
+        startIndex: 0,
+        endIndex: 9,
+        startPosition: { row: 0, column: 0 },
+        endPosition: { row: 1, column: 0 },
+      },
+      {
+        startIndex: 13,
+        endIndex: 20,
+        startPosition: { row: 1, column: 4 },
+        endPosition: { row: 2, column: 0 },
+      },
+    ],
+    (root) =>
+      assertSingleNode(root, "number", {
+        startIndex: 13,
+        endIndex: 16,
+        startPosition: { row: 1, column: 4 },
+        endPosition: { row: 1, column: 7 },
+        text: "123",
+      }),
+  );
+});
+
+test("included ranges preserve a logically continued word", () => {
+  const source = "BEHOSTGIN {}\n";
+  assertIncludedRanges(
+    source,
+    [
+      {
+        startIndex: 0,
+        endIndex: 2,
+        startPosition: { row: 0, column: 0 },
+        endPosition: { row: 0, column: 2 },
+      },
+      {
+        startIndex: 6,
+        endIndex: 13,
+        startPosition: { row: 0, column: 6 },
+        endPosition: { row: 1, column: 0 },
+      },
+    ],
+    (root) =>
+      assertSingleNode(root, "begin_keyword", {
+        startIndex: 0,
+        endIndex: 9,
+        startPosition: { row: 0, column: 0 },
+        endPosition: { row: 0, column: 9 },
+        text: "BEHOSTGIN",
+      }),
+  );
+});
 
 const fieldContractSource = `/(a|b)/, /c/ {
   $1 = "value";
