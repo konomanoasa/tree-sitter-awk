@@ -9,20 +9,18 @@
   },
   "type": "commonjs",
   "scripts": {
-    "check": "npm run check:generated && npm run check:parser-budget && npm run check:shellcheck && npm run check:biome && npm run check:clangd && npm run check:scanner-state && npm test && npm run test:wasm && npm run test:fuzz && npm run check:cst-fields && npm run check:runtime",
-    "check:biome": "biome check .",
-    "check:clangd": "clangd --check=src/scanner.c --tweaks= && clangd --check=test/scanner_state.c --tweaks=",
-    "check:cst-fields": "scripts/check-cst-fields.sh",
-    "check:generated": "scripts/check-generated.sh",
-    "check:parser-budget": "scripts/check-parser-budget.sh",
-    "check:runtime": "scripts/check-runtime.sh",
-    "check:scanner-state": "scripts/check-scanner-state.sh",
-    "check:shellcheck": "shellcheck scripts/*.sh",
-    "format": "biome check --write . && shfmt -w scripts/*.sh && clang-format -i src/scanner.c test/scanner_state.c",
-    "generate": "tree-sitter generate",
-    "test": "tree-sitter test",
-    "test:fuzz": "TREE_SITTER_SEED=1 tree-sitter fuzz --iterations 10 --edits 5",
-    "test:wasm": "tree-sitter test --wasm"
+    "tree-sitter": "node scripts/tree-sitter.js",
+    "generate": "npm run tree-sitter -- generate",
+    "format": "biome check --write . && node scripts/check-scanner.js --write",
+    "check:js": "biome check .",
+    "check:generated": "node scripts/check-generated.js",
+    "check:scanner": "node scripts/check-scanner.js",
+    "test:corpus": "npm run tree-sitter -- test --rebuild",
+    "test:wasm": "npm run tree-sitter -- test --wasm --rebuild",
+    "test:parser": "node --test test/parser.test.js",
+    "test:fuzz": "npm run tree-sitter -- fuzz --rebuild --iterations 100 --edits 5",
+    "test": "npm run test:corpus && npm run test:wasm && npm run test:parser",
+    "check": "npm run check:js && npm run check:scanner && npm run check:generated && npm test"
   },
   "engines": {
     "node": ">=22"
