@@ -434,15 +434,119 @@ static int check_do_tail_word_boundaries(void) {
   int failed = 0;
   for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    for (enum TokenType token = BEGIN_WORD; token <= FUNC_NAME_WORD; token++) {
-      valid_symbols[token] = true;
-    }
+    valid_symbols[WHILE_WORD] = true;
+    valid_symbols[IN_WORD] = true;
     valid_symbols[DO_TAIL_RECOVERY] = true;
     failed |= expect_scan_result(
       cases[i].name,
       cases[i].source,
       valid_symbols,
       true,
+      cases[i].expected,
+      cases[i].expected_token_end
+    );
+  }
+  return failed;
+}
+
+static int check_word_recovery_prefers_valid_word(void) {
+  static const struct {
+    const char *name;
+    enum TokenType recovery;
+  } cases[] = {
+    {"else beats do-tail recovery", DO_TAIL_RECOVERY},
+    {"else beats statement recovery", STATEMENT_RECOVERY},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[ELSE_WORD] = true;
+    valid_symbols[cases[i].recovery] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      "else",
+      valid_symbols,
+      true,
+      ELSE_WORD,
+      4
+    );
+  }
+  return failed;
+}
+
+static int check_greater_dispatch(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    bool guard_valid;
+    bool ge_valid;
+    bool append_valid;
+    bool scanned;
+    enum TokenType expected;
+    size_t expected_token_end;
+  } cases[] = {
+    {"plain redirection beside GE branch",
+      ">f",
+      true,
+      true,
+      false,
+      true,
+      OUTPUT_GREATER_GUARD,
+      0},
+    {"append redirection beside GE branch",
+      ">>f",
+      true,
+      true,
+      false,
+      true,
+      OUTPUT_GREATER_GUARD,
+      0},
+    {"GE beside redirection guard",
+      ">=1",
+      true,
+      true,
+      false,
+      true,
+      GE_OPERATOR,
+      2},
+    {"GE without comparison context",
+      ">=1",
+      true,
+      false,
+      false,
+      false,
+      GE_OPERATOR,
+      0},
+    {"append after the guard",
+      ">>f",
+      false,
+      false,
+      true,
+      true,
+      APPEND_OPERATOR,
+      2},
+    {"plain comparison stays internal",
+      ">x",
+      false,
+      true,
+      false,
+      false,
+      GE_OPERATOR,
+      0},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[OUTPUT_GREATER_GUARD] = cases[i].guard_valid;
+    valid_symbols[GE_OPERATOR] = cases[i].ge_valid;
+    valid_symbols[APPEND_OPERATOR] = cases[i].append_valid;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].scanned,
       cases[i].expected,
       cases[i].expected_token_end
     );
@@ -697,6 +801,8 @@ int main(void) {
   failed |= check_function_body_recovery_boundaries();
   failed |= check_statement_recovery_boundaries();
   failed |= check_do_tail_word_boundaries();
+  failed |= check_word_recovery_prefers_valid_word();
+  failed |= check_greater_dispatch();
   failed |= check_do_tail_character_boundaries();
   failed |= check_required_recovery_priority();
   failed |= check_source_token_ranges();

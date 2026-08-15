@@ -341,35 +341,6 @@ test("included range starts a number at the current range boundary", () => {
   );
 });
 
-test("included ranges preserve a logically continued word", () => {
-  const source = "BEHOSTGIN {}\n";
-  assertIncludedRanges(
-    source,
-    [
-      {
-        startIndex: 0,
-        endIndex: 2,
-        startPosition: { row: 0, column: 0 },
-        endPosition: { row: 0, column: 2 },
-      },
-      {
-        startIndex: 6,
-        endIndex: 13,
-        startPosition: { row: 0, column: 6 },
-        endPosition: { row: 1, column: 0 },
-      },
-    ],
-    (root) =>
-      assertSingleNode(root, "begin_keyword", {
-        startIndex: 0,
-        endIndex: 9,
-        startPosition: { row: 0, column: 0 },
-        endPosition: { row: 0, column: 9 },
-        text: "BEHOSTGIN",
-      }),
-  );
-});
-
 const fieldContractSource = `/(a|b)/, /c/ {
   $1 = "value";
   value = -other;

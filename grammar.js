@@ -24,6 +24,8 @@ const withLineContinuations = ($, ...members) =>
       .flatMap((member) => [repeat($.line_continuation), member]),
   );
 
+const recoveryAlias = (rule, target) => prec.dynamic(-1, alias(rule, target));
+
 const actionEnd = ($, itemBoundaryGuard) =>
   choice(
     field("closing", "}"),
@@ -37,25 +39,13 @@ const actionEnd = ($, itemBoundaryGuard) =>
   );
 
 const actionCloserRecovery = ($, guard) =>
-  field("closing", prec.dynamic(-1, alias(guard, $.closer_recovery)));
-
-const actionItemBoundaryEnd = ($) =>
-  field(
-    "closing",
-    prec.dynamic(
-      -1,
-      alias($._action_item_boundary_recovery, $.action_item_boundary_recovery),
-    ),
-  );
+  field("closing", recoveryAlias(guard, $.closer_recovery));
 
 const optionalNewlineLayout = ($) =>
   seq(
     repeat($.line_continuation),
     optional(seq($.newline_opt, repeat($.line_continuation))),
   );
-
-const actionOpeningLayout = ($) =>
-  seq(field("opening", "{"), optionalNewlineLayout($));
 
 const actionBody = ($, statements) =>
   seq(field("body", statements), repeat($.line_continuation));
@@ -64,7 +54,7 @@ const continuedMember = ($, marker, member) =>
   choice(member, seq(marker, repeat1($.line_continuation), member));
 
 const closerRecovery = ($, recovery) =>
-  prec.dynamic(-1, alias(recovery, $.closer_recovery));
+  recoveryAlias(recovery, $.closer_recovery);
 
 const continuedClosingRecovery = ($, recovery) =>
   choice(
@@ -98,51 +88,24 @@ const requiredAfterOptionalNewline = ($, targetGuard, present, required) =>
   );
 
 const expressionRecovery = ($) =>
-  prec.dynamic(-1, alias($._expression_recovery, $.expression_recovery));
+  recoveryAlias($._expression_recovery, $.expression_recovery);
 
 const rangeRightExpressionRecovery = ($) =>
   choice(
     expressionRecovery($),
-    prec.dynamic(
-      -1,
-      alias($._range_right_expression_recovery, $.expression_recovery),
-    ),
+    recoveryAlias($._range_right_expression_recovery, $.expression_recovery),
   );
 
 const listExpressionRecovery = ($) =>
-  prec.dynamic(-1, alias($._list_expression_recovery, $.expression_recovery));
-
-const printExpressionRecovery = ($) =>
-  prec.dynamic(-1, alias($._print_expression_recovery, $.expression_recovery));
+  recoveryAlias($._list_expression_recovery, $.expression_recovery);
 
 const statementRecovery = ($) =>
-  prec.dynamic(-1, alias($._statement_recovery, $.statement_recovery));
-
-const doTailRecovery = ($) =>
-  prec.dynamic(-1, alias($._do_tail_recovery, $.do_tail_recovery));
-
-const terminatorRecovery = ($) =>
-  prec.dynamic(-1, alias($._terminator_recovery, $.terminator_recovery));
-
-const closedItemTerminatorRecovery = ($) =>
-  prec.dynamic(
-    -1,
-    alias($._closed_item_terminator_recovery, $.terminator_recovery),
-  );
-
-const normalItemTerminatorRecovery = ($) =>
-  prec.dynamic(
-    -1,
-    alias($._normal_item_terminator_recovery, $.terminator_recovery),
-  );
+  recoveryAlias($._statement_recovery, $.statement_recovery);
 
 const functionBodyRecovery = ($) =>
   field(
     "body",
-    prec.dynamic(
-      -1,
-      alias($._function_body_recovery, $.function_body_recovery),
-    ),
+    recoveryAlias($._function_body_recovery, $.function_body_recovery),
   );
 
 const continuedFunctionBodyRecovery = ($) =>
@@ -171,7 +134,7 @@ const functionBody = ($) =>
   );
 
 const parameterRecovery = ($) =>
-  prec.dynamic(-1, alias($._parameter_recovery, $.parameter_recovery));
+  recoveryAlias($._parameter_recovery, $.parameter_recovery);
 
 const requiredParameter = ($) =>
   requiredAfterOptionalNewline(
@@ -191,15 +154,12 @@ const continuedParameterRecovery = ($) =>
     parameterRecovery($),
   );
 
-const continuedRequiredMemberWith = ($, member, recovery) =>
-  choice(
-    choice(member, recovery($)),
-    seq($._lc_before_expression, repeat1($.line_continuation), member),
-    seq(repeat1($.line_continuation), recovery($)),
-  );
-
 const continuedRequiredMember = ($, member) =>
-  continuedRequiredMemberWith($, member, expressionRecovery);
+  choice(
+    choice(member, expressionRecovery($)),
+    seq($._lc_before_expression, repeat1($.line_continuation), member),
+    seq(repeat1($.line_continuation), expressionRecovery($)),
+  );
 
 const continuedRequiredExpressionWith = ($, name, expression, recovery) =>
   choice(
@@ -215,11 +175,8 @@ const continuedRequiredExpressionWith = ($, name, expression, recovery) =>
 const continuedRequiredExpression = ($, name, expression) =>
   continuedRequiredExpressionWith($, name, expression, expressionRecovery);
 
-const repeatedWithLineContinuations = ($, member) =>
-  seq(member, repeat(seq(repeat($.line_continuation), member)));
-
 const ereRecoveryBoundary = ($, boundary) =>
-  prec.dynamic(-1, alias(boundary, $.ere_inner_recovery));
+  recoveryAlias(boundary, $.ere_inner_recovery);
 
 const ereRecoveredMember = ($) =>
   choice(
@@ -236,9 +193,6 @@ const ereCompoundBoundary = ($) =>
 const ereEscapeWithCharacter = ($, character) =>
   seq($._ere_escape_start, $._escape_introducer, character);
 
-const ereEscapeWithOctal = ($) =>
-  seq($._ere_escape_start, $._escape_introducer, $._escape_octal_digits);
-
 const ereBracketListAlternatives = ($, followList) => [
   followList,
   prec.dynamic(2, seq(followList, $._ere_bracket_hyphen)),
@@ -252,6 +206,16 @@ const ereRangeExpressionWith = ($, startRange) =>
       seq(startRange, $._ere_bracket_hyphen),
     ),
   );
+
+const ereCompoundOpening = ($, punctuation) =>
+  seq(
+    $._ere_compound_open_guard,
+    token.immediate("["),
+    token.immediate(punctuation),
+  );
+
+const ereCompoundClosing = (guard, punctuation) =>
+  seq(guard, token.immediate(punctuation), token.immediate("]"));
 
 const conditionalHeader = ($, keyword) =>
   seq(
@@ -269,7 +233,10 @@ const doWhileTail = ($, whileKeyword) =>
   );
 
 const directDoTail = ($) =>
-  choice(doWhileTail($, $.while_keyword), doTailRecovery($));
+  choice(
+    doWhileTail($, $.while_keyword),
+    recoveryAlias($._do_tail_recovery, $.do_tail_recovery),
+  );
 
 const continuedDoTail = ($) =>
   choice(
@@ -342,27 +309,25 @@ const terminatedItemWith = ($, item, terminator) =>
     field("terminator", terminator),
   );
 
-const terminatedItem = ($) => terminatedItemWith($, $.item, $.terminator);
-
-const recoveredClosedTerminatedItem = ($) =>
-  terminatedItemWith(
-    $,
-    alias($._closed_item, $.item),
-    closedItemTerminatorRecovery($),
-  );
-
 const recoveredTerminatedItem = ($) =>
   choice(
-    recoveredClosedTerminatedItem($),
+    terminatedItemWith(
+      $,
+      alias($._closed_item, $.item),
+      recoveryAlias($._closed_item_terminator_recovery, $.terminator_recovery),
+    ),
     terminatedItemWith(
       $,
       alias($._normal_pattern_item, $.item),
-      normalItemTerminatorRecovery($),
+      recoveryAlias($._normal_item_terminator_recovery, $.terminator_recovery),
     ),
   );
 
 const terminatedStatements = ($) =>
-  repeatedWithLineContinuations($, $.terminated_statement);
+  seq(
+    $.terminated_statement,
+    repeat(seq(repeat($.line_continuation), $.terminated_statement)),
+  );
 
 const rawNewlines = ($) =>
   seq($.newline, repeat(seq(repeat($.line_continuation), $.newline)));
@@ -394,17 +359,14 @@ const anyTierName = (context, tier) => `_${context.prefix}_${tier}_expr`;
 const classTier = ($, context, classification, tier) =>
   $[classTierName(context, classification, tier)];
 
-const publicClass = ($, context, classification) =>
-  $[
-    classification === "unary"
-      ? context.unaryExpression
-      : context.nonUnaryExpression
-  ];
-
 const aliasedClassTier = ($, context, classification, tier) =>
   alias(
     classTier($, context, classification, tier),
-    publicClass($, context, classification),
+    $[
+      classification === "unary"
+        ? context.unaryExpression
+        : context.nonUnaryExpression
+    ],
   );
 
 const aliasedAnyTier = ($, context, tier) =>
@@ -418,13 +380,6 @@ const continuedTierExpression = ($, context, name, tier) =>
 
 const continuedPresentTierExpression = ($, context, name, tier) =>
   continuedExpression($, name, aliasedAnyTier($, context, tier));
-
-const continuedClassTier = ($, context, name, classification, tier) =>
-  continuedMember(
-    $,
-    $._lc_before_expression,
-    field(name, aliasedClassTier($, context, classification, tier)),
-  );
 
 const nonUnaryAtom = ($, context) => {
   const atoms = [
@@ -663,7 +618,14 @@ const tieredExpressionRules = (context) => {
               "left",
               aliasedClassTier($, context, classification, "concatenation"),
             ),
-            continuedClassTier($, context, "right", "non_unary", "additive"),
+            continuedMember(
+              $,
+              $._lc_before_expression,
+              field(
+                "right",
+                aliasedClassTier($, context, "non_unary", "additive"),
+              ),
+            ),
           ),
         ),
       );
@@ -691,18 +653,13 @@ const tieredExpressionRules = (context) => {
       alternatives.push(classTier($, context, "unary", "exponentiation"));
     }
     alternatives.push(
-      prec.right(
-        PRECEDENCE.unary,
-        seq(
-          field("operator", "+"),
-          continuedTierExpression($, context, "operand", "unary"),
-        ),
-      ),
-      prec.right(
-        PRECEDENCE.unary,
-        seq(
-          field("operator", "-"),
-          continuedTierExpression($, context, "operand", "unary"),
+      ...["+", "-"].map((operator) =>
+        prec.right(
+          PRECEDENCE.unary,
+          seq(
+            field("operator", operator),
+            continuedTierExpression($, context, "operand", "unary"),
+          ),
         ),
       ),
     );
@@ -778,12 +735,6 @@ const tieredExpressionRules = (context) => {
 const normalExpressionRules = tieredExpressionRules(EXPRESSION_CONTEXT.normal);
 const printExpressionRules = tieredExpressionRules(EXPRESSION_CONTEXT.print);
 
-const requiredListElementWith = ($, element, recovery) =>
-  choice(
-    continuedMember($, $._lc_before_expression, element),
-    seq(repeat($.line_continuation), recovery($)),
-  );
-
 const continuedListElementWith = ($, targetGuard, element, recovery) =>
   seq(
     continuedMember($, $._lc_before_comma, ","),
@@ -791,7 +742,10 @@ const continuedListElementWith = ($, targetGuard, element, recovery) =>
       $,
       targetGuard,
       continuedMember($, $._lc_before_expression, element),
-      requiredListElementWith($, element, recovery),
+      choice(
+        continuedMember($, $._lc_before_expression, element),
+        seq(repeat($.line_continuation), recovery($)),
+      ),
     ),
   );
 
@@ -804,7 +758,10 @@ const continuedListElement = ($, element) =>
   );
 
 const printListExpressionRecovery = ($) =>
-  choice(expressionRecovery($), printExpressionRecovery($));
+  choice(
+    expressionRecovery($),
+    recoveryAlias($._print_expression_recovery, $.expression_recovery),
+  );
 
 const continuedPrintListElement = ($, element) =>
   continuedListElementWith(
@@ -1071,7 +1028,10 @@ module.exports = grammar({
       ),
 
     _terminated_item: ($) =>
-      choice(terminatedItem($), recoveredTerminatedItem($)),
+      choice(
+        terminatedItemWith($, $.item, $.terminator),
+        recoveredTerminatedItem($),
+      ),
 
     _terminated_items: ($) =>
       choice(
@@ -1204,7 +1164,8 @@ module.exports = grammar({
 
     function_keyword: ($) => prec(10, $._function_word),
 
-    _action_opening_layout: ($) => actionOpeningLayout($),
+    _action_opening_layout: ($) =>
+      seq(field("opening", "{"), optionalNewlineLayout($)),
 
     _action_body: ($) =>
       actionBody(
@@ -1247,7 +1208,16 @@ module.exports = grammar({
       ),
 
     _boundary_recovered_action: ($) =>
-      seq($._boundary_action_prefix, actionItemBoundaryEnd($)),
+      seq(
+        $._boundary_action_prefix,
+        field(
+          "closing",
+          recoveryAlias(
+            $._action_item_boundary_recovery,
+            $.action_item_boundary_recovery,
+          ),
+        ),
+      ),
 
     action: ($) =>
       choice(
@@ -1291,7 +1261,7 @@ module.exports = grammar({
     _do_header: ($) => keywordHeader($, $.do_keyword),
 
     _recovered_do_body: ($) =>
-      prec.dynamic(-1, alias($._do_body_recovery_guard, $.statement_recovery)),
+      recoveryAlias($._do_body_recovery_guard, $.statement_recovery),
 
     _for_classic_clause: ($) =>
       seq(
@@ -1350,7 +1320,10 @@ module.exports = grammar({
           continuedMember(
             $,
             $._lc_before_terminator_recovery,
-            field("terminator", terminatorRecovery($)),
+            field(
+              "terminator",
+              recoveryAlias($._terminator_recovery, $.terminator_recovery),
+            ),
           ),
         ),
       ),
@@ -2036,35 +2009,17 @@ module.exports = grammar({
         alias($._ere_bracket_escape_sequence, $.escape_sequence),
       ),
 
-    _ere_open_dot: ($) =>
-      seq(
-        $._ere_compound_open_guard,
-        token.immediate("["),
-        token.immediate("."),
-      ),
+    _ere_open_dot: ($) => ereCompoundOpening($, "."),
 
-    _ere_dot_close: ($) =>
-      seq($._ere_dot_close_guard, token.immediate("."), token.immediate("]")),
+    _ere_dot_close: ($) => ereCompoundClosing($._ere_dot_close_guard, "."),
 
-    _ere_open_equal: ($) =>
-      seq(
-        $._ere_compound_open_guard,
-        token.immediate("["),
-        token.immediate("="),
-      ),
+    _ere_open_equal: ($) => ereCompoundOpening($, "="),
 
-    _ere_equal_close: ($) =>
-      seq($._ere_equal_close_guard, token.immediate("="), token.immediate("]")),
+    _ere_equal_close: ($) => ereCompoundClosing($._ere_equal_close_guard, "="),
 
-    _ere_open_colon: ($) =>
-      seq(
-        $._ere_compound_open_guard,
-        token.immediate("["),
-        token.immediate(":"),
-      ),
+    _ere_open_colon: ($) => ereCompoundOpening($, ":"),
 
-    _ere_colon_close: ($) =>
-      seq($._ere_colon_close_guard, token.immediate(":"), token.immediate("]")),
+    _ere_colon_close: ($) => ereCompoundClosing($._ere_colon_close_guard, ":"),
 
     escaped_delimiter: ($) =>
       seq(
@@ -2079,7 +2034,8 @@ module.exports = grammar({
     _ere_quoted_escape_sequence: ($) =>
       ereEscapeWithCharacter($, $._ere_quoted_escape_character),
 
-    _ere_octal_escape_sequence: ($) => ereEscapeWithOctal($),
+    _ere_octal_escape_sequence: ($) =>
+      seq($._ere_escape_start, $._escape_introducer, $._escape_octal_digits),
 
     _ere_undefined_escape_sequence: ($) =>
       ereEscapeWithCharacter($, $._ere_undefined_escape_character),

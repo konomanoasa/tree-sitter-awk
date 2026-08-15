@@ -481,6 +481,102 @@ BEGIN {
       (newline))))
 
 ==================
+field arguments keep the following output redirection
+==================
+
+BEGIN {
+  print $1 > file
+  print $1, $2 >> archive
+  printf "%s", $field > target
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            operand: (expr
+                              (non_unary_expr
+                                (number))))))))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (print_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            operand: (expr
+                              (non_unary_expr
+                                (number))))))
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            operand: (expr
+                              (non_unary_expr
+                                (number))))))))
+                  redirection: (output_redirection
+                    (append)
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (print_statement
+                  statement: (simple_print_statement
+                    (printf_keyword)
+                    arguments: (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (string
+                            (string_content))))
+                      (print_expr
+                        (non_unary_print_expr
+                          (lvalue
+                            operand: (expr
+                              (non_unary_expr
+                                (lvalue
+                                  (name)))))))))
+                  redirection: (output_redirection
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name))))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
+
+==================
 conditionals bind else to the nearest eligible if and accept an empty consequence
 ==================
 
@@ -1566,6 +1662,104 @@ BEGIN { do { print eof }
                 (newline)))
             (do_tail_recovery))))
       closing: (closer_recovery))))
+
+==================
+do bodies keep an if else before the tail
+==================
+
+BEGIN {
+  do if (condition) consequence; else alternative; while (repeat)
+  do
+    if (condition) { consequence } else { alternative }
+  while (repeat)
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (terminated_statement
+                (if_keyword)
+                condition: (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))
+                consequence: (terminated_statement
+                  statement: (terminatable_statement
+                    (simple_statement
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name)))))))
+                (else_keyword)
+                alternative: (terminated_statement
+                  statement: (terminatable_statement
+                    (simple_statement
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name))))))))
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              (newline_opt
+                (newline))
+              body: (terminated_statement
+                (if_keyword)
+                condition: (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))
+                consequence: (terminated_statement
+                  (action
+                    body: (unterminated_statement_list
+                      (unterminated_statement
+                        statement: (terminatable_statement
+                          (simple_statement
+                            (expr
+                              (non_unary_expr
+                                (lvalue
+                                  (name))))))))))
+                (else_keyword)
+                alternative: (terminated_statement
+                  (action
+                    body: (unterminated_statement_list
+                      (unterminated_statement
+                        statement: (terminatable_statement
+                          (simple_statement
+                            (expr
+                              (non_unary_expr
+                                (lvalue
+                                  (name)))))))))
+                  (newline_opt
+                    (newline))))
+              (while_keyword)
+              condition: (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))))
 
 ==================
 missing closers retain their owners continuations and following statements
