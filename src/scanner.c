@@ -83,6 +83,9 @@ enum TokenType {
   FUNCTION_BODY_RECOVERY,
   DO_BODY_RECOVERY_GUARD,
   STATEMENT_RECOVERY,
+  HEADER_RECOVERY,
+  FUNCTION_HEADER_RECOVERY,
+  FOR_CLAUSE_RECOVERY,
   TERMINATOR_RECOVERY,
   CLOSED_ITEM_TERMINATOR_RECOVERY,
   NORMAL_ITEM_TERMINATOR_RECOVERY,
@@ -885,6 +888,55 @@ static bool emit_closer_recovery(TSLexer *lexer, const bool *valid_symbols) {
 
   lexer->result_symbol = recovery;
   return true;
+}
+
+static bool is_function_header_recovery_boundary(int32_t character) {
+  switch (character) {
+  case ';':
+  case '\n':
+  case '{':
+    return true;
+  default:
+    return false;
+  }
+}
+
+static bool is_for_clause_recovery_boundary(int32_t character) {
+  switch (character) {
+  case ')':
+  case '\n':
+  case '{':
+  case '}':
+    return true;
+  default:
+    return false;
+  }
+}
+
+static bool emit_header_recovery(TSLexer *lexer, const bool *valid_symbols) {
+  const bool at_eof = lexer->eof(lexer);
+  if (
+    valid_symbols[HEADER_RECOVERY] &&
+    (is_closer_recovery_punctuation(lexer->lookahead) || at_eof)
+  ) {
+    lexer->result_symbol = HEADER_RECOVERY;
+    return true;
+  }
+  if (
+    valid_symbols[FUNCTION_HEADER_RECOVERY] &&
+    (is_function_header_recovery_boundary(lexer->lookahead) || at_eof)
+  ) {
+    lexer->result_symbol = FUNCTION_HEADER_RECOVERY;
+    return true;
+  }
+  if (
+    valid_symbols[FOR_CLAUSE_RECOVERY] &&
+    (is_for_clause_recovery_boundary(lexer->lookahead) || at_eof)
+  ) {
+    lexer->result_symbol = FOR_CLAUSE_RECOVERY;
+    return true;
+  }
+  return false;
 }
 
 static bool emit_word_closer_recovery(
@@ -1821,6 +1873,10 @@ bool tree_sitter_posix_awk_external_scanner_scan(
     (lexer->lookahead == '}' || lexer->eof(lexer))
   ) {
     lexer->result_symbol = STATEMENT_RECOVERY;
+    return true;
+  }
+
+  if (emit_header_recovery(lexer, valid_symbols)) {
     return true;
   }
 

@@ -738,6 +738,10 @@
           "named": true
         },
         {
+          "type": "header_recovery",
+          "named": true
+        },
+        {
           "type": "line_continuation",
           "named": true
         },
@@ -2203,6 +2207,10 @@
           "named": true
         },
         {
+          "type": "header_recovery",
+          "named": true
+        },
+        {
           "type": "line_continuation",
           "named": true
         },
@@ -2380,6 +2388,10 @@
         },
         {
           "type": "for_keyword",
+          "named": true
+        },
+        {
+          "type": "header_recovery",
           "named": true
         },
         {
@@ -2943,6 +2955,10 @@
           "named": true
         },
         {
+          "type": "header_recovery",
+          "named": true
+        },
+        {
           "type": "if_keyword",
           "named": true
         },
@@ -3109,6 +3125,10 @@
   },
   {
     "type": "function_body_recovery",
+    "named": true
+  },
+  {
+    "type": "header_recovery",
     "named": true
   },
   {

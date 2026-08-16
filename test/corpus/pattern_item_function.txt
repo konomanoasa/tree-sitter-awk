@@ -1114,3 +1114,67 @@ function repeated(first,,,last) {}
       body: (action))
     terminator: (terminator
       (newline))))
+
+==================
+function headers without parentheses recover their names and bodies
+==================
+
+function
+function named
+function bodied {
+  value
+}
+END { done }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      (function_keyword)
+      (header_recovery)
+      body: (function_body_recovery))
+    terminator: (terminator
+      (newline))
+    item: (item
+      (function_keyword)
+      name: (name)
+      (header_recovery)
+      body: (function_body_recovery))
+    terminator: (terminator
+      (newline))
+    item: (item
+      (function_keyword)
+      name: (name)
+      (header_recovery)
+      body: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))))
+            terminator: (newline)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (end_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
+                (expr
+                  (non_unary_expr
+                    (lvalue
+                      (name))))))))))
+    terminator: (terminator
+      (newline))))

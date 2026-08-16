@@ -2067,18 +2067,285 @@ BEGIN { for (values[offset] in arrays) body }
         (special_pattern
           (begin_keyword)))
       action: (action
-        (ERROR
-          (for_keyword)
-          left: (non_unary_expr
-            (lvalue
-              (name)
-              (expr_list
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (expr
+                (non_unary_expr
+                  left: (non_unary_expr
+                    (lvalue
+                      (name)
+                      (expr_list
+                        (expr
+                          (non_unary_expr
+                            (lvalue
+                              (name)))))))
+                  operator: (in_keyword)
+                  right: (name))))
+            (header_recovery)
+            body: (unterminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name)))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+bare control keywords recover their missing headers
+==================
+
+BEGIN { if }
+BEGIN { while }
+BEGIN { for }
+BEGIN { if { consequence } }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (if_keyword)
+            (header_recovery)
+            consequence: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (while_keyword)
+            (header_recovery)
+            body: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            (header_recovery)
+            body: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (terminated_statement_list
+          (terminated_statement
+            (if_keyword)
+            (header_recovery)
+            consequence: (terminated_statement
+              (action
+                body: (unterminated_statement_list
+                  (unterminated_statement
+                    statement: (terminatable_statement
+                      (simple_statement
+                        (expr
+                          (non_unary_expr
+                            (lvalue
+                              (name))))))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+unfinished for headers keep their parsed clause members
+==================
+
+BEGIN { for ( }
+BEGIN { for () body }
+BEGIN { for (start }
+BEGIN { for (start; condition }
+BEGIN { for (key in }
+BEGIN { for (start \
+}
+END { done }
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            (header_recovery)
+            (closer_recovery)
+            body: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            (header_recovery)
+            body: (unterminated_statement
+              statement: (terminatable_statement
+                (simple_statement
+                  (expr
+                    (non_unary_expr
+                      (lvalue
+                        (name)))))))))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            (header_recovery)
+            (closer_recovery)
+            body: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            condition: (expr
+              (non_unary_expr
+                (lvalue
+                  (name))))
+            (header_recovery)
+            (closer_recovery)
+            body: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            variable: (name)
+            (in_keyword)
+            (header_recovery)
+            (closer_recovery)
+            body: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            (for_keyword)
+            initializer: (simple_statement
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name)))))
+            (line_continuation)
+            (header_recovery)
+            (closer_recovery)
+            body: (statement_recovery)))))
+    terminator: (terminator
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (end_keyword)))
+      action: (action
+        body: (unterminated_statement_list
+          (unterminated_statement
+            statement: (terminatable_statement
+              (simple_statement
                 (expr
                   (non_unary_expr
                     (lvalue
-                      (name)))))))
-          operator: (in_keyword)
-          right: (name)
-          (UNEXPECTED 'b'))))
+                      (name))))))))))
+    terminator: (terminator
+      (newline))))
+
+==================
+do tails keep a bare while before the terminator
+==================
+
+BEGIN {
+  do body; while
+  next
+}
+
+---
+
+(program
+  (item_list
+    leading: (newline_opt
+      (newline))
+    item: (item
+      pattern: (pattern
+        (special_pattern
+          (begin_keyword)))
+      action: (action
+        (newline_opt
+          (newline))
+        body: (terminated_statement_list
+          (terminated_statement
+            statement: (terminatable_statement
+              (do_keyword)
+              body: (terminated_statement
+                statement: (terminatable_statement
+                  (simple_statement
+                    (expr
+                      (non_unary_expr
+                        (lvalue
+                          (name)))))))
+              (while_keyword)
+              (header_recovery))
+            terminator: (newline))
+          (terminated_statement
+            statement: (terminatable_statement
+              (next_keyword))
+            terminator: (newline)))))
     terminator: (terminator
       (newline))))

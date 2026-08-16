@@ -52,6 +52,9 @@ const actionBody = ($, statements) =>
 const continuedMember = ($, marker, member) =>
   choice(member, seq(marker, repeat1($.line_continuation), member));
 
+const continuedRecovery = ($, recovery) =>
+  seq(repeat($.line_continuation), recovery);
+
 const closerRecovery = ($, recovery) =>
   recoveryAlias(recovery, $.closer_recovery);
 
@@ -94,6 +97,15 @@ const listExpressionRecovery = ($) =>
 const statementRecovery = ($) =>
   recoveryAlias($._statement_recovery, $.statement_recovery);
 
+const headerRecovery = ($) =>
+  recoveryAlias($._header_recovery, $.header_recovery);
+
+const functionHeaderRecovery = ($) =>
+  recoveryAlias($._function_header_recovery, $.header_recovery);
+
+const forClauseRecovery = ($) =>
+  recoveryAlias($._for_clause_recovery, $.header_recovery);
+
 const functionBodyRecovery = ($) =>
   field(
     "body",
@@ -101,10 +113,7 @@ const functionBodyRecovery = ($) =>
   );
 
 const continuedFunctionBodyRecovery = ($) =>
-  choice(
-    functionBodyRecovery($),
-    seq(repeat1($.line_continuation), functionBodyRecovery($)),
-  );
+  continuedRecovery($, functionBodyRecovery($));
 
 const directFunctionBody = ($) =>
   seq(repeat($.line_continuation), field("body", $.action));
@@ -144,8 +153,7 @@ const continuedParameter = ($) =>
 const continuedParameterRecovery = ($) =>
   seq(
     continuedMember($, $._lc_before_comma, ","),
-    repeat($.line_continuation),
-    parameterRecovery($),
+    continuedRecovery($, parameterRecovery($)),
   );
 
 const continuedRequiredMember = ($, member) =>
@@ -211,24 +219,28 @@ const ereCompoundOpening = ($, punctuation) =>
 const ereCompoundClosing = (guard, punctuation) =>
   seq(guard, token.immediate(punctuation), token.immediate("]"));
 
+const recoverableHeader = ($, keyword, rest) =>
+  seq(keyword, choice(rest, headerRecovery($)), optionalNewlineLayout($));
+
 const conditionalHeader = ($, keyword) =>
-  seq(
+  recoverableHeader(
+    $,
     keyword,
     continuedMember($, $._lc_before_expression, $._parenthesized_condition),
-    optionalNewlineLayout($),
   );
 
 const keywordHeader = ($, keyword) => seq(keyword, optionalNewlineLayout($));
 
-const doWhileTail = ($, whileKeyword) =>
+const doWhileTail = ($) =>
   seq(
-    whileKeyword,
+    $.while_keyword,
     continuedMember($, $._lc_before_expression, $._parenthesized_condition),
   );
 
 const directDoTail = ($) =>
   choice(
-    doWhileTail($, $.while_keyword),
+    doWhileTail($),
+    seq($.while_keyword, headerRecovery($)),
     recoveryAlias($._do_tail_recovery, $.do_tail_recovery),
   );
 
@@ -248,18 +260,11 @@ const controlStatements = ($, body) => [
 ];
 
 const statementTerminatedBy = ($, terminator) =>
-  choice(
-    withLineContinuations(
-      $,
-      field("statement", $.terminatable_statement),
-      field("terminator", terminator),
-    ),
-    withLineContinuations(
-      $,
-      field("statement", $.terminatable_statement),
-      field("terminator", terminator),
-      $.newline_opt,
-    ),
+  seq(
+    field("statement", $.terminatable_statement),
+    repeat($.line_continuation),
+    field("terminator", terminator),
+    optional(seq(repeat($.line_continuation), $.newline_opt)),
   );
 
 const parenthesizedPrintStatement = ($, keyword) =>
@@ -738,7 +743,7 @@ const continuedListElementWith = ($, targetGuard, element, recovery) =>
       continuedMember($, $._lc_before_expression, element),
       choice(
         continuedMember($, $._lc_before_expression, element),
-        seq(repeat($.line_continuation), recovery($)),
+        continuedRecovery($, recovery($)),
       ),
     ),
   );
@@ -847,6 +852,9 @@ module.exports = grammar({
     $._function_body_recovery,
     $._do_body_recovery_guard,
     $._statement_recovery,
+    $._header_recovery,
+    $._function_header_recovery,
+    $._for_clause_recovery,
     $._terminator_recovery,
     $._closed_item_terminator_recovery,
     $._normal_item_terminator_recovery,
@@ -906,7 +914,7 @@ module.exports = grammar({
     [$.terminated_statement],
     [$._self_terminating_statement],
     [$._recovered_do_body, $.terminatable_statement],
-    [$._for_in_clause, $.lvalue],
+    [$._for_in_clause, $._recovered_for_clause, $.lvalue],
     [
       $._terminated_statement_or_recovery,
       $._unterminated_statement_or_recovery,
@@ -1069,6 +1077,13 @@ module.exports = grammar({
             ),
           ),
         ),
+        seq(
+          $.function_keyword,
+          repeat($.line_continuation),
+          optional(field("name", choice($.name, $.func_name))),
+          functionHeaderRecovery($),
+          functionBody($),
+        ),
       ),
 
     _function_header_prefix: ($) =>
@@ -1102,8 +1117,7 @@ module.exports = grammar({
         continuedMember($, $._lc_before_comma, ","),
         choice(
           seq(
-            repeat($.line_continuation),
-            parameterRecovery($),
+            continuedRecovery($, parameterRecovery($)),
             repeat(
               choice(continuedParameter($), continuedParameterRecovery($)),
             ),
@@ -1270,13 +1284,45 @@ module.exports = grammar({
       ),
 
     _for_header: ($) =>
-      seq(
+      recoverableHeader(
+        $,
         $.for_keyword,
-        continuedMember($, $._lc_before_expression, "("),
-        repeat($.line_continuation),
-        choice($._for_classic_clause, $._for_in_clause),
-        $._continued_close_parenthesis,
-        optionalNewlineLayout($),
+        seq(
+          continuedMember($, $._lc_before_expression, "("),
+          repeat($.line_continuation),
+          choice(
+            $._for_classic_clause,
+            $._for_in_clause,
+            $._recovered_for_clause,
+          ),
+          $._continued_close_parenthesis,
+        ),
+      ),
+
+    _recovered_for_clause: ($) =>
+      choice(
+        forClauseRecovery($),
+        seq(
+          field("initializer", $.simple_statement),
+          continuedRecovery($, forClauseRecovery($)),
+        ),
+        seq(
+          optional(field("initializer", $.simple_statement)),
+          continuedMember($, $._lc_before_for_semicolon, ";"),
+          repeat($.line_continuation),
+          choice(
+            forClauseRecovery($),
+            seq(
+              field("condition", $.expr),
+              continuedRecovery($, forClauseRecovery($)),
+            ),
+          ),
+        ),
+        seq(
+          field("variable", $.name),
+          continuedMember($, $._lc_before_membership_operator, $.in_keyword),
+          continuedRecovery($, forClauseRecovery($)),
+        ),
       ),
 
     _terminated_statement_or_recovery: ($) =>
@@ -1340,11 +1386,7 @@ module.exports = grammar({
           ),
           continuedDoTail($),
         ),
-        seq(
-          $._do_header,
-          field("body", $._recovered_do_body),
-          doWhileTail($, $.while_keyword),
-        ),
+        seq($._do_header, field("body", $._recovered_do_body), doWhileTail($)),
       ),
 
     simple_statement: ($) =>
@@ -1407,12 +1449,8 @@ module.exports = grammar({
                 $._lc_before_expression,
                 field("arguments", $.print_expr_list),
               ),
-              field(
-                "arguments",
-                alias($._recovered_print_expr_list, $.print_expr_list),
-              ),
-              seq(
-                repeat1($.line_continuation),
+              continuedRecovery(
+                $,
                 field(
                   "arguments",
                   alias($._recovered_print_expr_list, $.print_expr_list),

@@ -353,6 +353,54 @@ static int check_statement_recovery_boundaries(void) {
   return failed;
 }
 
+static int check_header_recovery_boundaries(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    enum TokenType token;
+    bool recovered;
+  } cases[] = {
+    {"control header at semicolon", ";", HEADER_RECOVERY, true},
+    {"control header at raw newline", "\n", HEADER_RECOVERY, true},
+    {"control header at action opener", "{", HEADER_RECOVERY, true},
+    {"control header at action closer", "}", HEADER_RECOVERY, true},
+    {"control header at physical EOF", "", HEADER_RECOVERY, true},
+    {"control header before parenthesis", "(", HEADER_RECOVERY, false},
+    {"control header before word", "while", HEADER_RECOVERY, false},
+    {"function header at semicolon", ";", FUNCTION_HEADER_RECOVERY, true},
+    {"function header at raw newline", "\n", FUNCTION_HEADER_RECOVERY, true},
+    {"function header at action opener", "{", FUNCTION_HEADER_RECOVERY, true},
+    {"function header at physical EOF", "", FUNCTION_HEADER_RECOVERY, true},
+    {"function header at action closer", "}", FUNCTION_HEADER_RECOVERY, false},
+    {"function header before parenthesis",
+      "(",
+      FUNCTION_HEADER_RECOVERY,
+      false},
+    {"for clause at close parenthesis", ")", FOR_CLAUSE_RECOVERY, true},
+    {"for clause at raw newline", "\n", FOR_CLAUSE_RECOVERY, true},
+    {"for clause at action opener", "{", FOR_CLAUSE_RECOVERY, true},
+    {"for clause at action closer", "}", FOR_CLAUSE_RECOVERY, true},
+    {"for clause at physical EOF", "", FOR_CLAUSE_RECOVERY, true},
+    {"for clause before real separator", ";", FOR_CLAUSE_RECOVERY, false},
+    {"for clause before word", "in", FOR_CLAUSE_RECOVERY, false},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[cases[i].token] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].recovered,
+      cases[i].token,
+      0
+    );
+  }
+  return failed;
+}
+
 static int check_do_tail_word_boundaries(void) {
   static const struct {
     const char *name;
@@ -743,6 +791,7 @@ int main(void) {
   failed |= check_parameter_recovery_boundaries();
   failed |= check_function_body_recovery_boundaries();
   failed |= check_statement_recovery_boundaries();
+  failed |= check_header_recovery_boundaries();
   failed |= check_do_tail_word_boundaries();
   failed |= check_word_recovery_prefers_valid_word();
   failed |= check_greater_dispatch();
