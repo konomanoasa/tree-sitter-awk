@@ -97,8 +97,7 @@ function run(args, options = {}) {
   }
 }
 
-function runChecked(args, options = {}) {
-  const result = run(args, options);
+function throwIfFailed(result, description) {
   if (result.error !== undefined) {
     throw result.error;
   }
@@ -109,10 +108,13 @@ function runChecked(args, options = {}) {
     if (result.stderr) {
       process.stderr.write(result.stderr);
     }
-    throw new Error(
-      `tree-sitter ${args.join(" ")} exited with status ${result.status}`,
-    );
+    throw new Error(`${description} exited with status ${result.status}`);
   }
+}
+
+function runChecked(args, options = {}) {
+  const result = run(args, options);
+  throwIfFailed(result, `tree-sitter ${args.join(" ")}`);
   return result;
 }
 
@@ -123,6 +125,7 @@ module.exports = {
   repositoryDirectory,
   run,
   runChecked,
+  throwIfFailed,
 };
 
 if (require.main === module) {

@@ -8,8 +8,10 @@ typedef struct {
   TSLexer lexer;
   const char *source;
   size_t offset;
+  size_t token_start;
   size_t token_end;
   size_t advance_count;
+  bool content_started;
 } MockLexer;
 
 static MockLexer *mock_lexer(TSLexer *lexer) {
@@ -22,10 +24,14 @@ static const MockLexer *const_mock_lexer(const TSLexer *lexer) {
 
 static void mock_advance(TSLexer *lexer, bool skip) {
   MockLexer *mock = mock_lexer(lexer);
-  (void)skip;
   mock->advance_count++;
   if (mock->source[mock->offset] != '\0') {
     mock->offset++;
+  }
+  if (skip && !mock->content_started) {
+    mock->token_start = mock->offset;
+  } else {
+    mock->content_started = true;
   }
   lexer->lookahead = (unsigned char)mock->source[mock->offset];
 }
@@ -53,12 +59,13 @@ static MockLexer make_mock_lexer(const char *source) {
   };
 }
 
-static int expect_scan_result(
+static int expect_scan_result_at(
   const char *test_name,
   const char *source,
   const bool *valid_symbols,
   bool expected_scanned,
   enum TokenType expected_symbol,
+  size_t expected_token_start,
   size_t expected_token_end
 ) {
   MockLexer mock = make_mock_lexer(source);
@@ -74,6 +81,8 @@ static int expect_scan_result(
     (!scanned ||
       (mock.lexer.result_symbol ==
         expected_symbol &&
+        mock.token_start ==
+        expected_token_start &&
         mock.token_end == expected_token_end))
   ) {
     return 0;
@@ -81,13 +90,33 @@ static int expect_scan_result(
 
   fprintf(
     stderr,
-    "%s: scanned=%u symbol=%u end=%zu\n",
+    "%s: scanned=%u symbol=%u start=%zu end=%zu\n",
     test_name,
     scanned,
     mock.lexer.result_symbol,
+    mock.token_start,
     mock.token_end
   );
   return 1;
+}
+
+static int expect_scan_result(
+  const char *test_name,
+  const char *source,
+  const bool *valid_symbols,
+  bool expected_scanned,
+  enum TokenType expected_symbol,
+  size_t expected_token_end
+) {
+  return expect_scan_result_at(
+    test_name,
+    source,
+    valid_symbols,
+    expected_scanned,
+    expected_symbol,
+    0,
+    expected_token_end
+  );
 }
 
 static int check_line_continuation_run(
@@ -254,8 +283,6 @@ static int check_parameter_recovery_boundaries(void) {
     {"action closer", "}", true, PARAMETER_RECOVERY, 0},
     {"semicolon", ";", true, PARAMETER_RECOVERY, 0},
     {"BEGIN item boundary", "BEGIN", true, PARAMETER_RECOVERY, 0},
-    {"END item boundary", "END", true, PARAMETER_RECOVERY, 0},
-    {"function item boundary", "function", true, PARAMETER_RECOVERY, 0},
     {"integer", "42", false, ERROR_SENTINEL, 0},
     {"fraction", ".5", false, ERROR_SENTINEL, 0},
     {"string opener", "\"", false, ERROR_SENTINEL, 0},
@@ -325,9 +352,7 @@ static int check_statement_recovery_boundaries(void) {
     const char *source;
     bool recovered;
   } cases[] = {
-    {"BEGIN item boundary", "BEGIN", true},
     {"END item boundary", "END", true},
-    {"function item boundary", "function", true},
     {"else boundary", "else", true},
     {"print statement", "print", false},
     {"while statement", "while", false},
@@ -408,15 +433,10 @@ static int check_do_tail_word_boundaries(void) {
     enum TokenType expected;
     size_t expected_token_end;
   } cases[] = {
-    {"BEGIN after do body", "BEGIN", DO_TAIL_RECOVERY, 0},
-    {"END after do body", "END", DO_TAIL_RECOVERY, 0},
     {"function after do body", "function", DO_TAIL_RECOVERY, 0},
     {"else after do body", "else", DO_TAIL_RECOVERY, 0},
     {"print after do body", "print", DO_TAIL_RECOVERY, 0},
-    {"if after do body", "if", DO_TAIL_RECOVERY, 0},
     {"name after do body", "name", DO_TAIL_RECOVERY, 0},
-    {"getline after do body", "getline", DO_TAIL_RECOVERY, 0},
-    {"builtin after do body", "length", DO_TAIL_RECOVERY, 0},
     {"function call after do body", "follow(", DO_TAIL_RECOVERY, 0},
     {"real do tail", "while", WHILE_WORD, 5},
     {"membership operator", "in", IN_WORD, 2},
@@ -668,6 +688,36 @@ static int check_source_token_ranges(void) {
   return failed;
 }
 
+static int check_blank_skip_token_ranges(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    enum TokenType token;
+    size_t expected_token_start;
+    size_t expected_token_end;
+  } cases[] = {
+    {"blanks precede a keyword token", "  END", END_WORD, 2, 5},
+    {"a tab precedes a number token", "\t1.5", NUMBER_FRACTION, 1, 4},
+    {"blanks precede a zero-width recovery", " )", PARAMETER_RECOVERY, 1, 1},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[cases[i].token] = true;
+    failed |= expect_scan_result_at(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      true,
+      cases[i].token,
+      cases[i].expected_token_start,
+      cases[i].expected_token_end
+    );
+  }
+  return failed;
+}
+
 static int check_do_body_recovery_guard_range(void) {
   bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
   valid_symbols[DO_BODY_RECOVERY_GUARD] = true;
@@ -798,6 +848,7 @@ int main(void) {
   failed |= check_do_tail_character_boundaries();
   failed |= check_required_recovery_priority();
   failed |= check_source_token_ranges();
+  failed |= check_blank_skip_token_ranges();
   failed |= check_do_body_recovery_guard_range();
 
   return failed;

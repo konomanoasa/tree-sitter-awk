@@ -5,7 +5,11 @@ const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
 
-const { grammarDirectory, repositoryDirectory } = require("./tree-sitter.js");
+const {
+  grammarDirectory,
+  repositoryDirectory,
+  throwIfFailed,
+} = require("./tree-sitter.js");
 const scannerFiles = [
   path.join(grammarDirectory, "src", "scanner.c"),
   path.join(repositoryDirectory, "test", "scanner.c"),
@@ -17,34 +21,23 @@ function run(command, args, options = {}) {
     encoding: "utf8",
     stdio: options.stdio ?? "pipe",
   });
-  if (result.error !== undefined) {
-    throw result.error;
-  }
-  if (result.status !== 0) {
-    if (result.stdout) {
-      process.stderr.write(result.stdout);
-    }
-    if (result.stderr) {
-      process.stderr.write(result.stderr);
-    }
-    throw new Error(`${command} exited with status ${result.status}`);
-  }
+  throwIfFailed(result, command);
 }
+
+let llvmPrefix;
 
 function llvmTool(name, environmentName) {
   if (process.platform !== "darwin") {
     return process.env[environmentName] ?? name;
   }
-  const result = childProcess.spawnSync("brew", ["--prefix", "llvm"], {
-    encoding: "utf8",
-  });
-  if (result.error !== undefined) {
-    throw result.error;
+  if (llvmPrefix === undefined) {
+    const result = childProcess.spawnSync("brew", ["--prefix", "llvm"], {
+      encoding: "utf8",
+    });
+    throwIfFailed(result, "brew --prefix llvm");
+    llvmPrefix = result.stdout.trim();
   }
-  if (result.status !== 0) {
-    throw new Error(`brew --prefix llvm exited with status ${result.status}`);
-  }
-  return path.join(result.stdout.trim(), "bin", name);
+  return path.join(llvmPrefix, "bin", name);
 }
 
 if (process.argv.length === 3 && process.argv[2] === "--write") {

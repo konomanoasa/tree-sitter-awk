@@ -26,6 +26,12 @@ const withLineContinuations = ($, ...members) =>
 
 const recoveryAlias = (rule, target) => prec.dynamic(-1, alias(rule, target));
 
+// A control statement whose required body is a recovery can complete as either
+// a terminated or an unterminated statement. The lower weight makes the
+// unterminated form win that tie.
+const demotedStatementRecovery = ($) =>
+  prec.dynamic(-2, alias($._statement_recovery, $.statement_recovery));
+
 const actionEnd = ($, itemBoundaryGuard) =>
   choice(
     field("closing", "}"),
@@ -45,6 +51,12 @@ const optionalNewlineLayout = ($) =>
     repeat($.line_continuation),
     optional(seq($.newline_opt, repeat($.line_continuation))),
   );
+
+// A statement owns only the line continuations interior to its own trailing
+// newline_opt. Continuations after that gap belong to the surrounding list,
+// action, or item, keeping every continuation a single owner.
+const statementEndLayout = ($) =>
+  optional(seq(repeat($.line_continuation), $.newline_opt));
 
 const actionBody = ($, statements) =>
   seq(field("body", statements), repeat($.line_continuation));
@@ -106,14 +118,14 @@ const functionHeaderRecovery = ($) =>
 const forClauseRecovery = ($) =>
   recoveryAlias($._for_clause_recovery, $.header_recovery);
 
-const functionBodyRecovery = ($) =>
-  field(
-    "body",
-    recoveryAlias($._function_body_recovery, $.function_body_recovery),
-  );
-
 const continuedFunctionBodyRecovery = ($) =>
-  continuedRecovery($, functionBodyRecovery($));
+  continuedRecovery(
+    $,
+    field(
+      "body",
+      recoveryAlias($._function_body_recovery, $.function_body_recovery),
+    ),
+  );
 
 const directFunctionBody = ($) =>
   seq(repeat($.line_continuation), field("body", $.action));
@@ -158,7 +170,8 @@ const continuedParameterRecovery = ($) =>
 
 const continuedRequiredMember = ($, member) =>
   choice(
-    choice(member, expressionRecovery($)),
+    member,
+    expressionRecovery($),
     seq($._lc_before_expression, repeat1($.line_continuation), member),
     seq(repeat1($.line_continuation), expressionRecovery($)),
   );
@@ -192,6 +205,18 @@ const ereRecoverableMember = ($, member) =>
 const ereCompoundBoundary = ($) =>
   ereRecoveryBoundary($, $._ere_compound_boundary);
 
+const ereRecoveredAlternation = ($) =>
+  alias($._ere_recovered_alternation, $.extended_reg_exp);
+
+const ereAlternationExpression = ($) =>
+  choice($.extended_reg_exp, ereRecoveredAlternation($));
+
+const ereLeadingBranchRecovery = ($) =>
+  ereRecoveryBoundary($, $._ere_leading_branch_recovery);
+
+const ereMissingBranchRecovery = ($) =>
+  ereRecoveryBoundary($, $._ere_missing_branch_recovery);
+
 const ereEscapeWithCharacter = ($, character) =>
   seq($._ere_escape_start, $._escape_introducer, character);
 
@@ -218,6 +243,18 @@ const ereCompoundOpening = ($, punctuation) =>
 
 const ereCompoundClosing = (guard, punctuation) =>
   seq(guard, token.immediate(punctuation), token.immediate("]"));
+
+const ereCompound = ($, opening, payload, closing) =>
+  prec(
+    3,
+    seq(
+      opening,
+      choice(
+        seq(payload, choice(closing, ereCompoundBoundary($))),
+        seq(ereCompoundBoundary($), optional(closing)),
+      ),
+    ),
+  );
 
 const recoverableHeader = ($, keyword, rest) =>
   seq(keyword, choice(rest, headerRecovery($)), optionalNewlineLayout($));
@@ -264,7 +301,7 @@ const statementTerminatedBy = ($, terminator) =>
     field("statement", $.terminatable_statement),
     repeat($.line_continuation),
     field("terminator", terminator),
-    optional(seq(repeat($.line_continuation), $.newline_opt)),
+    statementEndLayout($),
   );
 
 const parenthesizedPrintStatement = ($, keyword) =>
@@ -276,9 +313,13 @@ const parenthesizedPrintStatement = ($, keyword) =>
     $._continued_close_parenthesis,
   );
 
+// The call parenthesis has its own continuation marker: after a bare
+// builtin_func_name the parser must decide between the call and the
+// name-as-atom concatenation at the marker itself, one token before the
+// parenthesis would disambiguate them.
 const callArguments = ($) =>
   seq(
-    continuedMember($, $._lc_before_expression, "("),
+    continuedMember($, $._lc_before_call_parenthesis, "("),
     choice(
       $._continued_close_parenthesis,
       seq(
@@ -501,58 +542,42 @@ const tieredExpressionRules = (context) => {
       );
   }
 
-  addAnyTier("logical_and");
-  for (const classification of ["unary", "non_unary"]) {
-    rules[classTierName(context, classification, "logical_or")] = ($) =>
-      choice(
-        classTier($, context, classification, "logical_and"),
-        prec.left(
-          PRECEDENCE.logicalOr,
-          seq(
-            field(
-              "left",
-              aliasedClassTier($, context, classification, "logical_or"),
-            ),
-            $._continued_logical_or_operator,
-            requiredAfterOptionalNewline(
-              $,
-              expressionTargetGuard($, context),
-              continuedPresentTierExpression(
+  const addNewlineContinuedTier = (tier, nextTier, operator, precedence) => {
+    addAnyTier(nextTier);
+    for (const classification of ["unary", "non_unary"]) {
+      rules[classTierName(context, classification, tier)] = ($) =>
+        choice(
+          classTier($, context, classification, nextTier),
+          prec.left(
+            precedence,
+            seq(
+              field("left", aliasedClassTier($, context, classification, tier)),
+              operator($),
+              requiredAfterOptionalNewline(
                 $,
-                context,
-                "right",
-                "logical_and",
+                expressionTargetGuard($, context),
+                continuedPresentTierExpression($, context, "right", nextTier),
+                continuedTierExpression($, context, "right", nextTier),
               ),
-              continuedTierExpression($, context, "right", "logical_and"),
             ),
           ),
-        ),
-      );
-  }
+        );
+    }
+  };
 
-  addAnyTier("membership");
-  for (const classification of ["unary", "non_unary"]) {
-    rules[classTierName(context, classification, "logical_and")] = ($) =>
-      choice(
-        classTier($, context, classification, "membership"),
-        prec.left(
-          PRECEDENCE.logicalAnd,
-          seq(
-            field(
-              "left",
-              aliasedClassTier($, context, classification, "logical_and"),
-            ),
-            $._continued_logical_and_operator,
-            requiredAfterOptionalNewline(
-              $,
-              expressionTargetGuard($, context),
-              continuedPresentTierExpression($, context, "right", "membership"),
-              continuedTierExpression($, context, "right", "membership"),
-            ),
-          ),
-        ),
-      );
-  }
+  addNewlineContinuedTier(
+    "logical_or",
+    "logical_and",
+    ($) => $._continued_logical_or_operator,
+    PRECEDENCE.logicalOr,
+  );
+
+  addNewlineContinuedTier(
+    "logical_and",
+    "membership",
+    ($) => $._continued_logical_and_operator,
+    PRECEDENCE.logicalAnd,
+  );
 
   for (const classification of ["unary", "non_unary"]) {
     rules[classTierName(context, classification, "membership")] = ($) => {
@@ -676,34 +701,29 @@ const tieredExpressionRules = (context) => {
   rules[nonUnary("unary")] = ($) =>
     choice(classTier($, context, "non_unary", "exponentiation"), $[not]);
 
-  if (context.input) {
-    rules[unary("exponentiation")] = ($) =>
+  const exponentiationClassifications = context.input
+    ? ["unary", "non_unary"]
+    : ["non_unary"];
+  for (const classification of exponentiationClassifications) {
+    rules[classTierName(context, classification, "exponentiation")] = ($) =>
       choice(
-        classTier($, context, "unary", "update"),
+        classTier($, context, classification, "update"),
         prec.right(
           PRECEDENCE.exponentiation,
           seq(
-            field("left", aliasedClassTier($, context, "unary", "update")),
+            field(
+              "left",
+              aliasedClassTier($, context, classification, "update"),
+            ),
             $._continued_exponentiation_operator,
             continuedTierExpression($, context, "right", "unary"),
           ),
         ),
       );
+  }
+  if (context.input) {
     rules[unary("update")] = ($) => $.unary_input_function;
   }
-
-  rules[nonUnary("exponentiation")] = ($) =>
-    choice(
-      classTier($, context, "non_unary", "update"),
-      prec.right(
-        PRECEDENCE.exponentiation,
-        seq(
-          field("left", aliasedClassTier($, context, "non_unary", "update")),
-          $._continued_exponentiation_operator,
-          continuedTierExpression($, context, "right", "unary"),
-        ),
-      ),
-    );
 
   rules[prefixUpdate] = ($) =>
     prec.right(
@@ -760,6 +780,12 @@ const printListExpressionRecovery = ($) =>
   choice(
     expressionRecovery($),
     recoveryAlias($._print_expression_recovery, $.expression_recovery),
+  );
+
+const continuedPipeGet = ($) =>
+  choice(
+    continuedMember($, $._lc_before_expression, field("get", $.simple_get)),
+    field("get", expressionRecovery($)),
   );
 
 const continuedPrintListElement = ($, element) =>
@@ -841,6 +867,7 @@ module.exports = grammar({
     $._lc_before_expression,
     $._lc_before_comma,
     $._lc_before_open_bracket,
+    $._lc_before_call_parenthesis,
     $._lc_before_close_parenthesis,
     $._lc_before_close_bracket,
     $._lc_before_action_eof,
@@ -851,6 +878,8 @@ module.exports = grammar({
     $._parameter_recovery,
     $._function_body_recovery,
     $._do_body_recovery_guard,
+    $._do_body_terminator_recovery,
+    $._eof_required_member_recovery,
     $._statement_recovery,
     $._header_recovery,
     $._function_header_recovery,
@@ -868,6 +897,9 @@ module.exports = grammar({
     $._ere_equal_close_guard,
     $._ere_colon_close_guard,
     $._ere_group_expression_recovery,
+    $._ere_empty_expression_recovery,
+    $._ere_missing_branch_recovery,
+    $._ere_leading_branch_recovery,
     $._ere_escape_start,
     $._ere_escaped_delimiter_start,
     $._ere_escaped_delimiter_end,
@@ -884,8 +916,8 @@ module.exports = grammar({
     $._print_expression_target_guard,
     $._action_target_guard,
     $._parameter_target_guard,
-    $._error_sentinel,
     $._do_tail_recovery,
+    $._error_sentinel,
   ],
 
   extras: ($) => [token(repeat1(choice(" ", "\t"))), $.comment],
@@ -974,7 +1006,7 @@ module.exports = grammar({
       continuedOperatorWith(
         $,
         $._lc_before_multiplicative_operator,
-        choice("*", $._division_operator, "%"),
+        choice("*", alias($._division_slash, "/"), "%"),
       ),
 
     _continued_exponentiation_operator: ($) =>
@@ -1010,7 +1042,10 @@ module.exports = grammar({
       continuedMember($, $._lc_before_conditional_question, "?"),
 
     _continued_conditional_colon: ($) =>
-      continuedMember($, $._lc_before_conditional_colon, ":"),
+      choice(
+        continuedMember($, $._lc_before_conditional_colon, ":"),
+        closerRecovery($, $._eof_required_member_recovery),
+      ),
 
     _continued_input_redirect: ($) =>
       continuedMember($, $._lc_before_less_than, "<"),
@@ -1193,9 +1228,6 @@ module.exports = grammar({
         ),
       ),
 
-    _boundary_action_prefix: ($) =>
-      seq($._action_opening_layout, optional($._boundary_action_body)),
-
     _boundary_recovered_terminated_statement: ($) =>
       choice($.action, $._self_terminating_statement),
 
@@ -1210,7 +1242,8 @@ module.exports = grammar({
 
     _boundary_recovered_action: ($) =>
       seq(
-        $._boundary_action_prefix,
+        $._action_opening_layout,
+        optional($._boundary_action_body),
         field(
           "closing",
           recoveryAlias(
@@ -1326,7 +1359,23 @@ module.exports = grammar({
       ),
 
     _terminated_statement_or_recovery: ($) =>
-      choice($.terminated_statement, statementRecovery($)),
+      choice($.terminated_statement, demotedStatementRecovery($)),
+
+    _do_body: ($) =>
+      choice(
+        $._terminated_statement_or_recovery,
+        alias($._recovered_do_body_statement, $.terminated_statement),
+      ),
+
+    _recovered_do_body_statement: ($) =>
+      seq(
+        field("statement", $.terminatable_statement),
+        repeat($.line_continuation),
+        field(
+          "terminator",
+          recoveryAlias($._do_body_terminator_recovery, $.terminator_recovery),
+        ),
+      ),
 
     _unterminated_statement_or_recovery: ($) =>
       choice($.unterminated_statement, statementRecovery($)),
@@ -1336,9 +1385,9 @@ module.exports = grammar({
 
     terminated_statement: ($) =>
       choice(
-        seq($.action, optionalNewlineLayout($)),
+        seq($.action, statementEndLayout($)),
         $._self_terminating_statement,
-        seq(field("terminator", ";"), optionalNewlineLayout($)),
+        seq(field("terminator", ";"), statementEndLayout($)),
         statementTerminatedBy($, $.newline),
         statementTerminatedBy($, ";"),
         seq(
@@ -1378,11 +1427,8 @@ module.exports = grammar({
         seq(
           $._do_header,
           choice(
-            field("body", $._terminated_statement_or_recovery),
-            seq(
-              $._do_body_recovery_guard,
-              field("body", $._terminated_statement_or_recovery),
-            ),
+            field("body", $._do_body),
+            seq($._do_body_recovery_guard, field("body", $._do_body)),
           ),
           continuedDoTail($),
         ),
@@ -1393,7 +1439,10 @@ module.exports = grammar({
       choice(
         seq(
           $.delete_keyword,
-          continuedMember($, $._lc_before_expression, field("array", $.name)),
+          choice(
+            continuedMember($, $._lc_before_expression, field("array", $.name)),
+            field("array", expressionRecovery($)),
+          ),
           optional(
             seq(
               continuedMember($, $._lc_before_open_bracket, "["),
@@ -1611,11 +1660,7 @@ module.exports = grammar({
           seq(
             field("source", $.non_unary_expr),
             $._continued_input_pipe,
-            continuedMember(
-              $,
-              $._lc_before_expression,
-              field("get", $.simple_get),
-            ),
+            continuedPipeGet($),
           ),
         ),
       ),
@@ -1626,11 +1671,7 @@ module.exports = grammar({
         seq(
           field("source", $.unary_expr),
           $._continued_input_pipe,
-          continuedMember(
-            $,
-            $._lc_before_expression,
-            field("get", $.simple_get),
-          ),
+          continuedPipeGet($),
         ),
       ),
 
@@ -1721,18 +1762,24 @@ module.exports = grammar({
 
     append: ($) => $._append_operator,
 
-    _division_operator: ($) => alias($._division_slash, "/"),
-
     ere: ($) =>
       seq(
         field("opening", alias($._ere_opening_slash, "/")),
         choice(
           seq(
-            field("expression", $.extended_reg_exp),
-            field("closing", alias($._ere_closing, "/")),
+            field(
+              "expression",
+              choice(
+                ereAlternationExpression($),
+                alias($._ere_empty_expression_recovery, $.expression_recovery),
+              ),
+            ),
+            choice(
+              field("closing", alias($._ere_closing, "/")),
+              $.ere_end_recovery,
+            ),
           ),
           $.ere_end_recovery,
-          seq(field("expression", $.extended_reg_exp), $.ere_end_recovery),
         ),
       ),
 
@@ -1755,6 +1802,23 @@ module.exports = grammar({
         ),
       ),
 
+    _ere_recovered_alternation: ($) =>
+      choice(
+        seq(
+          field(
+            "left",
+            choice(ereAlternationExpression($), ereLeadingBranchRecovery($)),
+          ),
+          field("operator", token.immediate("|")),
+          ereMissingBranchRecovery($),
+        ),
+        seq(
+          choice(ereRecoveredAlternation($), ereLeadingBranchRecovery($)),
+          field("operator", token.immediate("|")),
+          field("right", $.ere_branch),
+        ),
+      ),
+
     ere_branch: ($) =>
       choice(
         $.ere_expression,
@@ -1772,7 +1836,7 @@ module.exports = grammar({
           field("opening", token.immediate("(")),
           choice(
             seq(
-              field("expression", $.extended_reg_exp),
+              field("expression", ereAlternationExpression($)),
               ereRecoverableMember(
                 $,
                 field("closing", $._ere_close_parenthesis),
@@ -1948,52 +2012,29 @@ module.exports = grammar({
       ),
 
     collating_symbol: ($) =>
-      prec(
-        3,
-        seq(
-          $._ere_open_dot,
-          choice(
-            seq(
-              choice(
-                alias($._ere_compound_collating_element, $.collating_element),
-                $.meta_character,
-              ),
-              choice($._ere_dot_close, ereCompoundBoundary($)),
-            ),
-            ereCompoundBoundary($),
-          ),
+      ereCompound(
+        $,
+        $._ere_open_dot,
+        choice(
+          alias($._ere_compound_collating_element, $.collating_element),
+          $.meta_character,
         ),
+        $._ere_dot_close,
       ),
 
     equivalence_class: ($) =>
-      prec(
-        3,
-        seq(
-          $._ere_open_equal,
-          choice(
-            seq(
-              alias($._ere_compound_collating_element, $.collating_element),
-              choice($._ere_equal_close, ereCompoundBoundary($)),
-            ),
-            ereCompoundBoundary($),
-          ),
+      ereCompound(
+        $,
+        $._ere_open_equal,
+        choice(
+          alias($._ere_compound_collating_element, $.collating_element),
+          alias($._ere_compound_meta_character, $.collating_element),
         ),
+        $._ere_equal_close,
       ),
 
     character_class: ($) =>
-      prec(
-        3,
-        seq(
-          $._ere_open_colon,
-          choice(
-            seq(
-              $.class_name,
-              choice($._ere_colon_close, ereCompoundBoundary($)),
-            ),
-            ereCompoundBoundary($),
-          ),
-        ),
-      ),
+      ereCompound($, $._ere_open_colon, $.class_name, $._ere_colon_close),
 
     class_name: ($) => $._ere_class_name_spelling,
 
@@ -2045,7 +2086,7 @@ module.exports = grammar({
       ereEscapeWithCharacter($, $._ere_quoted_escape_character),
 
     _ere_octal_escape_sequence: ($) =>
-      seq($._ere_escape_start, $._escape_introducer, $._escape_octal_digits),
+      ereEscapeWithCharacter($, $._escape_octal_digits),
 
     _ere_undefined_escape_sequence: ($) =>
       ereEscapeWithCharacter($, $._ere_undefined_escape_character),

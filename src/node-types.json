@@ -297,6 +297,10 @@
         "required": false,
         "types": [
           {
+            "type": "expression_recovery",
+            "named": true
+          },
+          {
             "type": "extended_reg_exp",
             "named": true
           }
@@ -562,6 +566,10 @@
         "required": false,
         "types": [
           {
+            "type": "ere_inner_recovery",
+            "named": true
+          },
+          {
             "type": "extended_reg_exp",
             "named": true
           }
@@ -594,6 +602,14 @@
       "types": [
         {
           "type": "ere_branch",
+          "named": true
+        },
+        {
+          "type": "ere_inner_recovery",
+          "named": true
+        },
+        {
+          "type": "extended_reg_exp",
           "named": true
         }
       ]
@@ -1242,6 +1258,10 @@
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "expression_recovery",
+            "named": true
+          },
           {
             "type": "simple_get",
             "named": true
@@ -1987,6 +2007,10 @@
         "required": false,
         "types": [
           {
+            "type": "expression_recovery",
+            "named": true
+          },
+          {
             "type": "name",
             "named": true
           }
@@ -2623,6 +2647,10 @@
       "required": false,
       "types": [
         {
+          "type": "closer_recovery",
+          "named": true
+        },
+        {
           "type": "line_continuation",
           "named": true
         },
@@ -2645,6 +2673,10 @@
         "multiple": false,
         "required": true,
         "types": [
+          {
+            "type": "expression_recovery",
+            "named": true
+          },
           {
             "type": "simple_get",
             "named": true
@@ -2812,6 +2844,10 @@
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "closer_recovery",
+          "named": true
+        },
         {
           "type": "line_continuation",
           "named": true

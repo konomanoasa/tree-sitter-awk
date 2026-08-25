@@ -8,46 +8,46 @@ BEGIN { print /1 #犬-/ }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
-                                  left: (ere_branch
-                                    left: (ere_branch
-                                      left: (ere_branch
+                                (ere_branch
+                                  (ere_branch
+                                    (ere_branch
+                                      (ere_branch
                                         (ere_expression
                                           (one_char_or_coll_elem_ere
                                             (ordinary_character))))
-                                      right: (ere_expression
+                                      (ere_expression
                                         (one_char_or_coll_elem_ere
                                           (ordinary_character))))
-                                    right: (ere_expression
+                                    (ere_expression
                                       (one_char_or_coll_elem_ere
                                         (ordinary_character))))
-                                  right: (ere_expression
+                                  (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (ordinary_character))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (ordinary_character)))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -60,177 +60,177 @@ BEGIN { print /\/\\\.\[\(\*\+\?\{\|\^\$\a\b\f\n\r\t\v\1\12\1234\0000\400\052\057
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
-                                  left: (ere_branch
-                                    left: (ere_branch
-                                      left: (ere_branch
-                                        left: (ere_branch
-                                          left: (ere_branch
-                                            left: (ere_branch
-                                              left: (ere_branch
-                                                left: (ere_branch
-                                                  left: (ere_branch
-                                                    left: (ere_branch
-                                                      left: (ere_branch
-                                                        left: (ere_branch
-                                                          left: (ere_branch
-                                                            left: (ere_branch
-                                                              left: (ere_branch
-                                                                left: (ere_branch
-                                                                  left: (ere_branch
-                                                                    left: (ere_branch
-                                                                      left: (ere_branch
-                                                                        left: (ere_branch
-                                                                          left: (ere_branch
-                                                                            left: (ere_branch
-                                                                              left: (ere_branch
-                                                                                left: (ere_branch
-                                                                                  left: (ere_branch
-                                                                                    left: (ere_branch
-                                                                                      left: (ere_branch
-                                                                                        left: (ere_branch
-                                                                                          left: (ere_branch
-                                                                                            left: (ere_branch
-                                                                                              left: (ere_branch
+                                (ere_branch
+                                  (ere_branch
+                                    (ere_branch
+                                      (ere_branch
+                                        (ere_branch
+                                          (ere_branch
+                                            (ere_branch
+                                              (ere_branch
+                                                (ere_branch
+                                                  (ere_branch
+                                                    (ere_branch
+                                                      (ere_branch
+                                                        (ere_branch
+                                                          (ere_branch
+                                                            (ere_branch
+                                                              (ere_branch
+                                                                (ere_branch
+                                                                  (ere_branch
+                                                                    (ere_branch
+                                                                      (ere_branch
+                                                                        (ere_branch
+                                                                          (ere_branch
+                                                                            (ere_branch
+                                                                              (ere_branch
+                                                                                (ere_branch
+                                                                                  (ere_branch
+                                                                                    (ere_branch
+                                                                                      (ere_branch
+                                                                                        (ere_branch
+                                                                                          (ere_branch
+                                                                                            (ere_branch
+                                                                                              (ere_branch
                                                                                                 (ere_expression
                                                                                                   (one_char_or_coll_elem_ere
                                                                                                     (ordinary_character
                                                                                                       (escaped_delimiter)))))
-                                                                                              right: (ere_expression
+                                                                                              (ere_expression
                                                                                                 (one_char_or_coll_elem_ere
                                                                                                   (quoted_character
                                                                                                     (escape_sequence)))))
-                                                                                            right: (ere_expression
+                                                                                            (ere_expression
                                                                                               (one_char_or_coll_elem_ere
                                                                                                 (quoted_character
                                                                                                   (escape_sequence)))))
-                                                                                          right: (ere_expression
+                                                                                          (ere_expression
                                                                                             (one_char_or_coll_elem_ere
                                                                                               (quoted_character
                                                                                                 (escape_sequence)))))
-                                                                                        right: (ere_expression
+                                                                                        (ere_expression
                                                                                           (one_char_or_coll_elem_ere
                                                                                             (quoted_character
                                                                                               (escape_sequence)))))
-                                                                                      right: (ere_expression
+                                                                                      (ere_expression
                                                                                         (one_char_or_coll_elem_ere
                                                                                           (quoted_character
                                                                                             (escape_sequence)))))
-                                                                                    right: (ere_expression
+                                                                                    (ere_expression
                                                                                       (one_char_or_coll_elem_ere
                                                                                         (quoted_character
                                                                                           (escape_sequence)))))
-                                                                                  right: (ere_expression
+                                                                                  (ere_expression
                                                                                     (one_char_or_coll_elem_ere
                                                                                       (quoted_character
                                                                                         (escape_sequence)))))
-                                                                                right: (ere_expression
+                                                                                (ere_expression
                                                                                   (one_char_or_coll_elem_ere
                                                                                     (quoted_character
                                                                                       (escape_sequence)))))
-                                                                              right: (ere_expression
+                                                                              (ere_expression
                                                                                 (one_char_or_coll_elem_ere
                                                                                   (quoted_character
                                                                                     (escape_sequence)))))
-                                                                            right: (ere_expression
+                                                                            (ere_expression
                                                                               (one_char_or_coll_elem_ere
                                                                                 (quoted_character
                                                                                   (escape_sequence)))))
-                                                                          right: (ere_expression
+                                                                          (ere_expression
                                                                             (one_char_or_coll_elem_ere
                                                                               (quoted_character
                                                                                 (escape_sequence)))))
-                                                                        right: (ere_expression
+                                                                        (ere_expression
                                                                           (one_char_or_coll_elem_ere
                                                                             (ordinary_character
                                                                               (escape_sequence)))))
-                                                                      right: (ere_expression
+                                                                      (ere_expression
                                                                         (one_char_or_coll_elem_ere
                                                                           (ordinary_character
                                                                             (escape_sequence)))))
-                                                                    right: (ere_expression
+                                                                    (ere_expression
                                                                       (one_char_or_coll_elem_ere
                                                                         (ordinary_character
                                                                           (escape_sequence)))))
-                                                                  right: (ere_expression
+                                                                  (ere_expression
                                                                     (one_char_or_coll_elem_ere
                                                                       (ordinary_character
                                                                         (escape_sequence)))))
-                                                                right: (ere_expression
+                                                                (ere_expression
                                                                   (one_char_or_coll_elem_ere
                                                                     (ordinary_character
                                                                       (escape_sequence)))))
-                                                              right: (ere_expression
+                                                              (ere_expression
                                                                 (one_char_or_coll_elem_ere
                                                                   (ordinary_character
                                                                     (escape_sequence)))))
-                                                            right: (ere_expression
+                                                            (ere_expression
                                                               (one_char_or_coll_elem_ere
                                                                 (ordinary_character
                                                                   (escape_sequence)))))
-                                                          right: (ere_expression
+                                                          (ere_expression
                                                             (one_char_or_coll_elem_ere
                                                               (escape_sequence))))
-                                                        right: (ere_expression
+                                                        (ere_expression
                                                           (one_char_or_coll_elem_ere
                                                             (escape_sequence))))
-                                                      right: (ere_expression
+                                                      (ere_expression
                                                         (one_char_or_coll_elem_ere
                                                           (escape_sequence))))
-                                                    right: (ere_expression
+                                                    (ere_expression
                                                       (one_char_or_coll_elem_ere
                                                         (ordinary_character))))
-                                                  right: (ere_expression
+                                                  (ere_expression
                                                     (one_char_or_coll_elem_ere
                                                       (escape_sequence))))
-                                                right: (ere_expression
+                                                (ere_expression
                                                   (one_char_or_coll_elem_ere
                                                     (ordinary_character))))
-                                              right: (ere_expression
+                                              (ere_expression
                                                 (one_char_or_coll_elem_ere
                                                   (escape_sequence))))
-                                            right: (ere_expression
+                                            (ere_expression
                                               (one_char_or_coll_elem_ere
                                                 (escape_sequence))))
-                                          right: (ere_expression
+                                          (ere_expression
                                             (one_char_or_coll_elem_ere
                                               (escape_sequence))))
-                                        right: (ere_expression
+                                        (ere_expression
                                           (one_char_or_coll_elem_ere
                                             (escape_sequence))))
-                                      right: (ere_expression
+                                      (ere_expression
                                         (one_char_or_coll_elem_ere
                                           (wildcard))))
-                                    right: (ere_expression
+                                    (ere_expression
                                       (one_char_or_coll_elem_ere
                                         (escape_sequence))))
-                                  right: (ere_expression
+                                  (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (escape_sequence))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (escape_sequence)))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -242,39 +242,39 @@ BEGIN { print /abc
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline)))
-  item: (item
-    pattern: (pattern
+  (item
+    (pattern
       (special_pattern
         (begin_keyword)))
-    action: (action
-      body: (unterminated_statement_list
+    (action
+      (unterminated_statement_list
         (unterminated_statement
-          statement: (terminatable_statement
+          (terminatable_statement
             (simple_statement
               (print_statement
-                statement: (simple_print_statement
+                (simple_print_statement
                   (print_keyword)
-                  arguments: (print_expr_list
+                  (print_expr_list
                     (print_expr
                       (non_unary_print_expr
                         (ere
-                          expression: (extended_reg_exp
+                          (extended_reg_exp
                             (ere_branch
-                              left: (ere_branch
-                                left: (ere_branch
+                              (ere_branch
+                                (ere_branch
                                   (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (ordinary_character))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (ordinary_character))))
-                              right: (ere_expression
+                              (ere_expression
                                 (one_char_or_coll_elem_ere
                                   (ordinary_character)))))
                           (ere_end_recovery)))))))))))
-      closing: (closer_recovery))))
+      (closer_recovery))))
 
 ==================
 raw newline recovery preserves the following statement
@@ -287,59 +287,59 @@ print /ok/ }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
-                                  left: (ere_branch
+                                (ere_branch
+                                  (ere_branch
                                     (ere_expression
                                       (one_char_or_coll_elem_ere
                                         (ordinary_character))))
-                                  right: (ere_expression
-                                    (one_char_or_coll_elem_ere
-                                      (ordinary_character))))
-                                right: (ere_expression
-                                  (one_char_or_coll_elem_ere
-                                    (ordinary_character)))))
-                            (ere_end_recovery)))))))))
-            terminator: (newline))
-          (unterminated_statement
-            statement: (terminatable_statement
-              (simple_statement
-                (print_statement
-                  statement: (simple_print_statement
-                    (print_keyword)
-                    arguments: (print_expr_list
-                      (print_expr
-                        (non_unary_print_expr
-                          (ere
-                            expression: (extended_reg_exp
-                              (ere_branch
-                                left: (ere_branch
                                   (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (ordinary_character))))
-                                right: (ere_expression
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))
+                            (ere_end_recovery)))))))))
+            (newline))
+          (unterminated_statement
+            (terminatable_statement
+              (simple_statement
+                (print_statement
+                  (simple_print_statement
+                    (print_keyword)
+                    (print_expr_list
+                      (print_expr
+                        (non_unary_print_expr
+                          (ere
+                            (extended_reg_exp
+                              (ere_branch
+                                (ere_branch
+                                  (ere_expression
+                                    (one_char_or_coll_elem_ere
+                                      (ordinary_character))))
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (ordinary_character)))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -358,47 +358,47 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
                                 (ere_expression
-                                  expression: (extended_reg_exp
+                                  (extended_reg_exp
                                     (ere_branch
                                       (ere_expression
                                         (one_char_or_coll_elem_ere
                                           (ordinary_character)))))
                                   (ere_inner_recovery))))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
                                 (ere_expression
                                   (one_char_or_coll_elem_ere
@@ -411,38 +411,38 @@ BEGIN {
                                                 (end_range
                                                   (collating_element)))))))
                                       (ere_inner_recovery))))))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
                                 (ere_expression
-                                  operand: (ere_expression
+                                  (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (ordinary_character)))
-                                  operator: (ere_dupl_symbol
+                                  (ere_dupl_symbol
                                     (dup_count)
                                     (ere_inner_recovery)))))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
                                 (ere_expression
                                   (one_char_or_coll_elem_ere
@@ -456,23 +456,23 @@ BEGIN {
                                                   (collating_symbol
                                                     (ere_inner_recovery))))))))
                                       (ere_inner_recovery))))))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
                                 (ere_expression
-                                  expression: (expression_recovery))))))))))))
-            terminator: (newline)))))
-    terminator: (terminator
+                                  (expression_recovery))))))))))))
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -492,68 +492,68 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
                                 (ere_expression
-                                  expression: (extended_reg_exp
+                                  (extended_reg_exp
                                     (ere_branch
                                       (ere_expression
                                         (one_char_or_coll_elem_ere
                                           (ordinary_character)))))
                                   (ere_inner_recovery))))
                             (ere_end_recovery)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
+                                (ere_branch
                                   (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (ordinary_character))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (ordinary_character)))))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
                                 (ere_expression
                                   (one_char_or_coll_elem_ere
@@ -569,38 +569,38 @@ BEGIN {
                                                     (ere_inner_recovery))))))))
                                       (ere_inner_recovery))))))
                             (ere_end_recovery)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
+                                (ere_branch
                                   (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (ordinary_character))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (ordinary_character)))))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
                                 (ere_expression
                                   (one_char_or_coll_elem_ere
@@ -615,28 +615,28 @@ BEGIN {
                                                   (ere_inner_recovery)))))))
                                       (ere_inner_recovery))))))
                             (ere_end_recovery)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
+                                (ere_branch
                                   (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (ordinary_character))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (ordinary_character)))))))))))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -650,29 +650,29 @@ BEGIN { print /[]-a][]--]/ }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
+                                (ere_branch
                                   (ere_expression
-                                    operand: (ere_expression
+                                    (ere_expression
                                       (one_char_or_coll_elem_ere
                                         (bracket_expression
                                           (matching_list
@@ -682,8 +682,8 @@ BEGIN { print /[]-a][]--]/ }
                                                   (single_expression
                                                     (end_range
                                                       (collating_element))))))))))
-                                    operator: (ere_dupl_symbol)))
-                                right: (ere_expression
+                                    (ere_dupl_symbol)))
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (bracket_expression
                                       (matching_list
@@ -693,27 +693,27 @@ BEGIN { print /[]-a][]--]/ }
                                               (single_expression
                                                 (end_range
                                                   (collating_element))))))))))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
+                                (ere_branch
                                   (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (bracket_expression
@@ -727,7 +727,7 @@ BEGIN { print /[]-a][]--]/ }
                                                       (collating_element)))
                                                   (end_range
                                                     (collating_element)))))))))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (bracket_expression
                                       (matching_list
@@ -738,7 +738,7 @@ BEGIN { print /[]-a][]--]/ }
                                                 (start_range
                                                   (end_range
                                                     (collating_element)))))))))))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -751,27 +751,27 @@ BEGIN { print /[]a-][^]b-]/ }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
+                                (ere_branch
                                   (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (bracket_expression
@@ -787,7 +787,7 @@ BEGIN { print /[]a-][^]b-]/ }
                                                 (single_expression
                                                   (end_range
                                                     (collating_element)))))))))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (bracket_expression
                                       (nonmatching_list
@@ -802,7 +802,7 @@ BEGIN { print /[]a-][^]b-]/ }
                                               (single_expression
                                                 (end_range
                                                   (collating_element))))))))))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -815,34 +815,34 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
-                                  left: (ere_branch
-                                    left: (ere_branch
-                                      left: (ere_branch
-                                        left: (ere_branch
-                                          left: (ere_branch
-                                            left: (ere_branch
-                                              left: (ere_branch
+                                (ere_branch
+                                  (ere_branch
+                                    (ere_branch
+                                      (ere_branch
+                                        (ere_branch
+                                          (ere_branch
+                                            (ere_branch
+                                              (ere_branch
                                                 (ere_expression
                                                   (one_char_or_coll_elem_ere
                                                     (bracket_expression
@@ -856,7 +856,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                                     (collating_element)))
                                                                 (end_range
                                                                   (collating_element)))))))))))
-                                              right: (ere_expression
+                                              (ere_expression
                                                 (one_char_or_coll_elem_ere
                                                   (bracket_expression
                                                     (matching_list
@@ -866,7 +866,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                             (single_expression
                                                               (end_range
                                                                 (collating_element)))))))))))
-                                            right: (ere_expression
+                                            (ere_expression
                                               (one_char_or_coll_elem_ere
                                                 (bracket_expression
                                                   (matching_list
@@ -877,7 +877,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                             (end_range
                                                               (collating_symbol
                                                                 (collating_element))))))))))))
-                                          right: (ere_expression
+                                          (ere_expression
                                             (one_char_or_coll_elem_ere
                                               (bracket_expression
                                                 (matching_list
@@ -888,7 +888,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                           (end_range
                                                             (collating_symbol
                                                               (collating_element))))))))))))
-                                        right: (ere_expression
+                                        (ere_expression
                                           (one_char_or_coll_elem_ere
                                             (bracket_expression
                                               (matching_list
@@ -899,7 +899,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                         (end_range
                                                           (collating_symbol
                                                             (meta_character))))))))))))
-                                      right: (ere_expression
+                                      (ere_expression
                                         (one_char_or_coll_elem_ere
                                           (bracket_expression
                                             (matching_list
@@ -909,7 +909,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                     (single_expression
                                                       (equivalence_class
                                                         (collating_element)))))))))))
-                                    right: (ere_expression
+                                    (ere_expression
                                       (one_char_or_coll_elem_ere
                                         (bracket_expression
                                           (matching_list
@@ -919,7 +919,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                   (single_expression
                                                     (equivalence_class
                                                       (collating_element)))))))))))
-                                  right: (ere_expression
+                                  (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (bracket_expression
                                         (matching_list
@@ -929,7 +929,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                 (single_expression
                                                   (character_class
                                                     (class_name)))))))))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (bracket_expression
                                       (matching_list
@@ -946,7 +946,7 @@ BEGIN { print /[a-c][[][[.ch.]][[.a.b.]][[.-.]][[=a=]][[=a=b=]][[:alpha:]][\q\/]
                                                 (end_range
                                                   (collating_element
                                                     (escaped_delimiter)))))))))))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -959,94 +959,94 @@ BEGIN { print /^a.(b|c)*?d+?e??f{2}?g{3,}?h{4,5}?$/ }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
-                                  left: (ere_branch
-                                    left: (ere_branch
-                                      left: (ere_branch
-                                        left: (ere_branch
-                                          left: (ere_branch
-                                            left: (ere_branch
-                                              left: (ere_branch
-                                                left: (ere_branch
+                                (ere_branch
+                                  (ere_branch
+                                    (ere_branch
+                                      (ere_branch
+                                        (ere_branch
+                                          (ere_branch
+                                            (ere_branch
+                                              (ere_branch
+                                                (ere_branch
                                                   (ere_expression
                                                     (left_anchor)))
-                                                right: (ere_expression
+                                                (ere_expression
                                                   (one_char_or_coll_elem_ere
                                                     (ordinary_character))))
-                                              right: (ere_expression
+                                              (ere_expression
                                                 (one_char_or_coll_elem_ere
                                                   (wildcard))))
-                                            right: (ere_expression
-                                              operand: (ere_expression
-                                                expression: (extended_reg_exp
-                                                  left: (extended_reg_exp
+                                            (ere_expression
+                                              (ere_expression
+                                                (extended_reg_exp
+                                                  (extended_reg_exp
                                                     (ere_branch
                                                       (ere_expression
                                                         (one_char_or_coll_elem_ere
                                                           (ordinary_character)))))
-                                                  right: (ere_branch
+                                                  (ere_branch
                                                     (ere_expression
                                                       (one_char_or_coll_elem_ere
                                                         (ordinary_character))))))
-                                              operator: (ere_dupl_symbol
-                                                modifier: (repetition_modifier))))
-                                          right: (ere_expression
-                                            operand: (ere_expression
+                                              (ere_dupl_symbol
+                                                (repetition_modifier))))
+                                          (ere_expression
+                                            (ere_expression
                                               (one_char_or_coll_elem_ere
                                                 (ordinary_character)))
-                                            operator: (ere_dupl_symbol
-                                              modifier: (repetition_modifier))))
-                                        right: (ere_expression
-                                          operand: (ere_expression
+                                            (ere_dupl_symbol
+                                              (repetition_modifier))))
+                                        (ere_expression
+                                          (ere_expression
                                             (one_char_or_coll_elem_ere
                                               (ordinary_character)))
-                                          operator: (ere_dupl_symbol
-                                            modifier: (repetition_modifier))))
-                                      right: (ere_expression
-                                        operand: (ere_expression
+                                          (ere_dupl_symbol
+                                            (repetition_modifier))))
+                                      (ere_expression
+                                        (ere_expression
                                           (one_char_or_coll_elem_ere
                                             (ordinary_character)))
-                                        operator: (ere_dupl_symbol
+                                        (ere_dupl_symbol
                                           (dup_count)
-                                          modifier: (repetition_modifier))))
-                                    right: (ere_expression
-                                      operand: (ere_expression
+                                          (repetition_modifier))))
+                                    (ere_expression
+                                      (ere_expression
                                         (one_char_or_coll_elem_ere
                                           (ordinary_character)))
-                                      operator: (ere_dupl_symbol
+                                      (ere_dupl_symbol
                                         (dup_count)
-                                        modifier: (repetition_modifier))))
-                                  right: (ere_expression
-                                    operand: (ere_expression
+                                        (repetition_modifier))))
+                                  (ere_expression
+                                    (ere_expression
                                       (one_char_or_coll_elem_ere
                                         (ordinary_character)))
-                                    operator: (ere_dupl_symbol
+                                    (ere_dupl_symbol
                                       (dup_count)
                                       (dup_count)
-                                      modifier: (repetition_modifier))))
-                                right: (ere_expression
+                                      (repetition_modifier))))
+                                (ere_expression
                                   (right_anchor))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -1059,39 +1059,309 @@ BEGIN { print /\)\}\]/ }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (ere
-                            expression: (extended_reg_exp
+                            (extended_reg_exp
                               (ere_branch
-                                left: (ere_branch
-                                  left: (ere_branch
+                                (ere_branch
+                                  (ere_branch
                                     (ere_expression
                                       (one_char_or_coll_elem_ere
                                         (quoted_character
                                           (escape_sequence)))))
-                                  right: (ere_expression
+                                  (ere_expression
                                     (one_char_or_coll_elem_ere
                                       (quoted_character
                                         (escape_sequence)))))
-                                right: (ere_expression
+                                (ere_expression
                                   (one_char_or_coll_elem_ere
                                     (quoted_character
                                       (escape_sequence))))))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
+
+==================
+an empty trailing branch keeps its real group closer
+==================
+x ~ /(a|)b/;
+---
+
+(program
+  (item_list
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (non_unary_expr
+              (lvalue
+                (name)))
+            (expr
+              (non_unary_expr
+                (ere
+                  (extended_reg_exp
+                    (ere_branch
+                      (ere_branch
+                        (ere_expression
+                          (extended_reg_exp
+                            (extended_reg_exp
+                              (ere_branch
+                                (ere_expression
+                                  (one_char_or_coll_elem_ere
+                                    (ordinary_character)))))
+                            (ere_inner_recovery))))
+                      (ere_expression
+                        (one_char_or_coll_elem_ere
+                          (ordinary_character))))))))))))
+    (terminator)))
+
+==================
+a dangling group alternation synchronizes at the ERE closer
+==================
+x ~ /(a|/;
+---
+
+(program
+  (item_list
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (non_unary_expr
+              (lvalue
+                (name)))
+            (expr
+              (non_unary_expr
+                (ere
+                  (extended_reg_exp
+                    (ere_branch
+                      (ere_expression
+                        (extended_reg_exp
+                          (extended_reg_exp
+                            (ere_branch
+                              (ere_expression
+                                (one_char_or_coll_elem_ere
+                                  (ordinary_character)))))
+                          (ere_inner_recovery))
+                        (ere_inner_recovery)))))))))))
+    (terminator)))
+
+==================
+single meta and empty compound bodies keep their real closers
+==================
+x ~ /[[=-=]][[==]][[..]][[::]]/;
+---
+
+(program
+  (item_list
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (non_unary_expr
+              (lvalue
+                (name)))
+            (expr
+              (non_unary_expr
+                (ere
+                  (extended_reg_exp
+                    (ere_branch
+                      (ere_branch
+                        (ere_branch
+                          (ere_branch
+                            (ere_expression
+                              (one_char_or_coll_elem_ere
+                                (bracket_expression
+                                  (matching_list
+                                    (bracket_list
+                                      (follow_list
+                                        (expression_term
+                                          (single_expression
+                                            (equivalence_class
+                                              (collating_element)))))))))))
+                          (ere_expression
+                            (one_char_or_coll_elem_ere
+                              (bracket_expression
+                                (matching_list
+                                  (bracket_list
+                                    (follow_list
+                                      (expression_term
+                                        (single_expression
+                                          (equivalence_class
+                                            (ere_inner_recovery)))))))))))
+                        (ere_expression
+                          (one_char_or_coll_elem_ere
+                            (bracket_expression
+                              (matching_list
+                                (bracket_list
+                                  (follow_list
+                                    (expression_term
+                                      (single_expression
+                                        (end_range
+                                          (collating_symbol
+                                            (ere_inner_recovery))))))))))))
+                      (ere_expression
+                        (one_char_or_coll_elem_ere
+                          (bracket_expression
+                            (matching_list
+                              (bracket_list
+                                (follow_list
+                                  (expression_term
+                                    (single_expression
+                                      (character_class
+                                        (ere_inner_recovery)))))))))))))))))))
+    (terminator)))
+
+==================
+an empty ERE keeps its real closer
+==================
+x ~ //;
+---
+
+(program
+  (item_list
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (non_unary_expr
+              (lvalue
+                (name)))
+            (expr
+              (non_unary_expr
+                (ere
+                  (expression_recovery))))))))
+    (terminator)))
+
+==================
+a leading missing branch synchronizes at the alternation operator
+==================
+x ~ /|a/;
+---
+
+(program
+  (item_list
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (non_unary_expr
+              (lvalue
+                (name)))
+            (expr
+              (non_unary_expr
+                (ere
+                  (extended_reg_exp
+                    (ere_inner_recovery)
+                    (ere_branch
+                      (ere_expression
+                        (one_char_or_coll_elem_ere
+                          (ordinary_character))))))))))))
+    (terminator)))
+
+==================
+a middle missing branch keeps both real branches
+==================
+x ~ /a||b/;
+---
+
+(program
+  (item_list
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (non_unary_expr
+              (lvalue
+                (name)))
+            (expr
+              (non_unary_expr
+                (ere
+                  (extended_reg_exp
+                    (extended_reg_exp
+                      (extended_reg_exp
+                        (ere_branch
+                          (ere_expression
+                            (one_char_or_coll_elem_ere
+                              (ordinary_character)))))
+                      (ere_inner_recovery))
+                    (ere_branch
+                      (ere_expression
+                        (one_char_or_coll_elem_ere
+                          (ordinary_character))))))))))))
+    (terminator)))
+
+==================
+a trailing missing branch synchronizes at the ERE closer
+==================
+x ~ /a|/;
+---
+
+(program
+  (item_list
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (non_unary_expr
+              (lvalue
+                (name)))
+            (expr
+              (non_unary_expr
+                (ere
+                  (extended_reg_exp
+                    (extended_reg_exp
+                      (ere_branch
+                        (ere_expression
+                          (one_char_or_coll_elem_ere
+                            (ordinary_character)))))
+                    (ere_inner_recovery)))))))))
+    (terminator)))
+
+==================
+a leading missing branch keeps its real group closer
+==================
+x ~ /(|a)b/;
+---
+
+(program
+  (item_list
+    (item
+      (normal_pattern
+        (expr
+          (non_unary_expr
+            (non_unary_expr
+              (lvalue
+                (name)))
+            (expr
+              (non_unary_expr
+                (ere
+                  (extended_reg_exp
+                    (ere_branch
+                      (ere_branch
+                        (ere_expression
+                          (extended_reg_exp
+                            (ere_inner_recovery)
+                            (ere_branch
+                              (ere_expression
+                                (one_char_or_coll_elem_ere
+                                  (ordinary_character)))))))
+                      (ere_expression
+                        (one_char_or_coll_elem_ere
+                          (ordinary_character))))))))))))
+    (terminator)))

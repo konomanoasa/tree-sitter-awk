@@ -262,48 +262,48 @@ function separated(first,
 
 (program
   (item_list
-    item: (item
+    (item
       (function_keyword)
-      name: (func_name)
-      parameters: (param_list
+      (func_name)
+      (param_list
         (name)
         (parameter_recovery))
-      body: (action))
-    terminator: (terminator
+      (action))
+    (terminator
       (newline))
-    item: (item
+    (item
       (function_keyword)
-      name: (func_name)
-      parameters: (param_list
+      (func_name)
+      (param_list
         (name)
         (parameter_recovery))
       (closer_recovery)
-      body: (action))
-    terminator: (terminator
+      (action))
+    (terminator
       (newline))
-    item: (item
+    (item
       (function_keyword)
-      name: (func_name)
-      parameters: (param_list
+      (func_name)
+      (param_list
         (name)
         (line_continuation)
         (parameter_recovery))
       (closer_recovery)
-      body: (action))
-    terminator: (terminator
+      (action))
+    (terminator
       (newline))
-    item: (item
+    (item
       (function_keyword)
-      name: (func_name)
-      parameters: (param_list
+      (func_name)
+      (param_list
         (name)
         (parameter_recovery))
       (closer_recovery)
-      body: (function_body_recovery))
-    terminator: (terminator
+      (function_body_recovery))
+    (terminator
       (newline)))
-  item: (item
-    action: (action)))
+  (item
+    (action)))
 
 ==================
 function recovery preserves preceding and following items
@@ -970,31 +970,31 @@ function eof() \
 
 (program
   (item_list
-    item: (item
+    (item
       (function_keyword)
-      name: (func_name)
+      (func_name)
       (line_continuation)
-      body: (action))
-    terminator: (terminator
+      (action))
+    (terminator
       (newline))
-    item: (item
+    (item
       (function_keyword)
-      name: (func_name)
+      (func_name)
       (line_continuation)
-      body: (function_body_recovery))
-    terminator: (terminator_recovery)
-    item: (item
-      pattern: (pattern
+      (function_body_recovery))
+    (terminator_recovery)
+    (item
+      (pattern
         (special_pattern
           (end_keyword)))
-      action: (action))
-    terminator: (terminator
+      (action))
+    (terminator
       (newline)))
-  item: (item
+  (item
     (function_keyword)
-    name: (func_name)
+    (func_name)
     (line_continuation)
-    body: (function_body_recovery)))
+    (function_body_recovery)))
 
 ==================
 same-line unexpected source does not synthesize function recovery nodes
@@ -1091,28 +1091,28 @@ function repeated(first,,,last) {}
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
+    (item
       (function_keyword)
-      name: (func_name)
-      parameters: (param_list
+      (func_name)
+      (param_list
         (name)
         (parameter_recovery)
         (name))
-      body: (action))
-    terminator: (terminator
+      (action))
+    (terminator
       (newline))
-    item: (item
+    (item
       (function_keyword)
-      name: (func_name)
-      parameters: (param_list
+      (func_name)
+      (param_list
         (name)
         (parameter_recovery)
         (parameter_recovery)
         (name))
-      body: (action))
-    terminator: (terminator
+      (action))
+    (terminator
       (newline))))
 
 ==================
@@ -1130,51 +1130,51 @@ END { done }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
+    (item
       (function_keyword)
       (header_recovery)
-      body: (function_body_recovery))
-    terminator: (terminator
+      (function_body_recovery))
+    (terminator
       (newline))
-    item: (item
+    (item
       (function_keyword)
-      name: (name)
+      (name)
       (header_recovery)
-      body: (function_body_recovery))
-    terminator: (terminator
+      (function_body_recovery))
+    (terminator
       (newline))
-    item: (item
+    (item
       (function_keyword)
-      name: (name)
+      (name)
       (header_recovery)
-      body: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (expr
                   (non_unary_expr
                     (lvalue
                       (name))))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (end_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (expr
                   (non_unary_expr
                     (lvalue
                       (name))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))

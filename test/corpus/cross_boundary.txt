@@ -105,56 +105,56 @@ function in_follow() { print in_target }
 
 (program
   (item_list
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (newline_opt
               (newline))
-            consequence: (statement_recovery)))
-        closing: (action_item_boundary_recovery)))
-    terminator: (terminator_recovery)
-    item: (item
-      pattern: (pattern
+            (statement_recovery)))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
         (special_pattern
           (end_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            consequence: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
@@ -163,128 +163,128 @@ function in_follow() { print in_target }
             (else_keyword)
             (newline_opt
               (newline))
-            alternative: (statement_recovery)))
-        closing: (action_item_boundary_recovery)))
-    terminator: (terminator_recovery)
-    item: (item
-      pattern: (pattern
+            (statement_recovery)))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
         (special_pattern
           (end_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            consequence: (unterminated_statement
+            (unterminated_statement
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name))))
               (line_continuation)
-              body: (statement_recovery))))
-        closing: (action_item_boundary_recovery)))
-    terminator: (terminator_recovery)
-    item: (item
-      pattern: (pattern
+              (statement_recovery))))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
             (newline_opt
               (newline))
-            body: (statement_recovery)))
-        closing: (action_item_boundary_recovery)))
-    terminator: (terminator_recovery)
-    item: (item
+            (statement_recovery)))
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
       (function_keyword)
-      name: (func_name)
-      body: (action
-        body: (unterminated_statement_list
+      (func_name)
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
-            variable: (name)
+            (name)
             (in_keyword)
-            array: (name)
+            (name)
             (newline_opt
               (newline))
-            body: (statement_recovery)))
-        closing: (action_item_boundary_recovery)))
-    terminator: (terminator_recovery))
-  item: (item
+            (statement_recovery)))
+        (action_item_boundary_recovery)))
+    (terminator_recovery))
+  (item
     (function_keyword)
-    name: (func_name)
-    body: (action
-      body: (unterminated_statement_list
+    (func_name)
+    (action
+      (unterminated_statement_list
         (unterminated_statement
-          statement: (terminatable_statement
+          (terminatable_statement
             (simple_statement
               (print_statement
-                statement: (simple_print_statement
+                (simple_print_statement
                   (print_keyword)
-                  arguments: (print_expr_list
+                  (print_expr_list
                     (print_expr
                       (non_unary_print_expr
                         (lvalue
@@ -301,76 +301,76 @@ function follow() { print function_target }
 
 (program
   (item_list
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
               (newline_opt
                 (newline))
-              body: (statement_recovery)
+              (statement_recovery)
               (do_tail_recovery))))
-        closing: (action_item_boundary_recovery)))
-    terminator: (terminator_recovery)
-    item: (item
-      pattern: (pattern
+        (action_item_boundary_recovery)))
+    (terminator_recovery)
+    (item
+      (pattern
         (special_pattern
           (end_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (print_statement
-                      statement: (simple_print_statement
+                      (simple_print_statement
                         (print_keyword)
-                        arguments: (print_expr_list
+                        (print_expr_list
                           (print_expr
                             (non_unary_print_expr
                               (lvalue
                                 (name))))))))))
               (line_continuation)
               (do_tail_recovery))))
-        closing: (action_item_boundary_recovery)))
-    terminator: (terminator_recovery))
-  item: (item
+        (action_item_boundary_recovery)))
+    (terminator_recovery))
+  (item
     (function_keyword)
-    name: (func_name)
-    body: (action
-      body: (unterminated_statement_list
+    (func_name)
+    (action
+      (unterminated_statement_list
         (unterminated_statement
-          statement: (terminatable_statement
+          (terminatable_statement
             (simple_statement
               (print_statement
-                statement: (simple_print_statement
+                (simple_print_statement
                   (print_keyword)
-                  arguments: (print_expr_list
+                  (print_expr_list
                     (print_expr
                       (non_unary_print_expr
                         (lvalue

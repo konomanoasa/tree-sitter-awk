@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define ARRAY_LENGTH(array) (sizeof(array) / sizeof((array)[0]))
+
 enum TokenType {
   BEGIN_WORD,
   END_WORD,
@@ -72,6 +74,7 @@ enum TokenType {
   LC_BEFORE_EXPRESSION,
   LC_BEFORE_COMMA,
   LC_BEFORE_OPEN_BRACKET,
+  LC_BEFORE_CALL_PARENTHESIS,
   LC_BEFORE_CLOSE_PARENTHESIS,
   LC_BEFORE_CLOSE_BRACKET,
   LC_BEFORE_ACTION_EOF,
@@ -82,6 +85,8 @@ enum TokenType {
   PARAMETER_RECOVERY,
   FUNCTION_BODY_RECOVERY,
   DO_BODY_RECOVERY_GUARD,
+  DO_BODY_TERMINATOR_RECOVERY,
+  EOF_REQUIRED_MEMBER_RECOVERY,
   STATEMENT_RECOVERY,
   HEADER_RECOVERY,
   FUNCTION_HEADER_RECOVERY,
@@ -99,6 +104,9 @@ enum TokenType {
   ERE_EQUAL_CLOSE_GUARD,
   ERE_COLON_CLOSE_GUARD,
   ERE_GROUP_EXPRESSION_RECOVERY,
+  ERE_EMPTY_EXPRESSION_RECOVERY,
+  ERE_MISSING_BRANCH_RECOVERY,
+  ERE_LEADING_BRANCH_RECOVERY,
   ERE_ESCAPE_START,
   ERE_ESCAPED_DELIMITER_START,
   ERE_ESCAPED_DELIMITER_END,
@@ -115,8 +123,8 @@ enum TokenType {
   PRINT_EXPRESSION_TARGET_GUARD,
   ACTION_TARGET_GUARD,
   PARAMETER_TARGET_GUARD,
-  ERROR_SENTINEL,
   DO_TAIL_RECOVERY,
+  ERROR_SENTINEL,
   TOKEN_TYPE_COUNT,
 };
 
@@ -394,7 +402,7 @@ static WordKind classify_word(const char *word, size_t length) {
     return WORD_KIND_NAME;
   }
 
-  for (size_t i = 0; i < sizeof(WORDS) / sizeof(WORDS[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(WORDS); i++) {
     if (strcmp(WORDS[i].spelling, word) == 0) {
       return WORDS[i].kind;
     }
@@ -441,7 +449,7 @@ static WordKind scan_word_kind(TSLexer *lexer) {
 
 static bool
 emit_word_kind(TSLexer *lexer, const bool *valid_symbols, WordKind kind) {
-  for (size_t i = 0; i < sizeof(WORD_TOKENS) / sizeof(WORD_TOKENS[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(WORD_TOKENS); i++) {
     if (WORD_TOKENS[i].kind == kind && valid_symbols[WORD_TOKENS[i].token]) {
       lexer->result_symbol = WORD_TOKENS[i].token;
       return true;
@@ -455,7 +463,7 @@ static bool word_token_is_valid(const bool *valid_symbols, WordKind kind) {
   if (kind == WORD_KIND_NAME && valid_symbols[FUNC_NAME_WORD]) {
     return true;
   }
-  for (size_t i = 0; i < sizeof(WORD_TOKENS) / sizeof(WORD_TOKENS[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(WORD_TOKENS); i++) {
     if (WORD_TOKENS[i].kind == kind && valid_symbols[WORD_TOKENS[i].token]) {
       return true;
     }
@@ -483,7 +491,7 @@ static bool scan_word_token(
 }
 
 static bool has_word_marker(const bool *valid_symbols) {
-  for (size_t i = 0; i < sizeof(WORD_TOKENS) / sizeof(WORD_TOKENS[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(WORD_TOKENS); i++) {
     if (valid_symbols[WORD_TOKENS[i].token]) {
       return true;
     }
@@ -491,13 +499,17 @@ static bool has_word_marker(const bool *valid_symbols) {
   return false;
 }
 
-static bool word_has_role(WordKind kind, WordRole role) {
-  for (size_t i = 0; i < sizeof(WORD_TOKENS) / sizeof(WORD_TOKENS[0]); i++) {
-    if (WORD_TOKENS[i].kind == kind && (WORD_TOKENS[i].roles & role) != 0) {
-      return true;
+static unsigned word_roles(WordKind kind) {
+  for (size_t i = 0; i < ARRAY_LENGTH(WORD_TOKENS); i++) {
+    if (WORD_TOKENS[i].kind == kind) {
+      return WORD_TOKENS[i].roles;
     }
   }
-  return false;
+  return 0;
+}
+
+static bool word_has_role(WordKind kind, unsigned roles) {
+  return (word_roles(kind) & roles) != 0;
 }
 
 static bool word_starts_expression(WordKind kind) {
@@ -509,20 +521,28 @@ static bool word_starts_print_expression(WordKind kind) {
 }
 
 static bool word_is_statement_recovery_boundary(WordKind kind) {
-  return word_has_role(kind, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY) ||
-    word_has_role(kind, WORD_ROLE_RESERVED_ITEM_START);
+  return word_has_role(
+    kind,
+    WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY | WORD_ROLE_RESERVED_ITEM_START
+  );
 }
 
 static bool word_is_do_tail_recovery_boundary(WordKind kind) {
   return kind !=
     WORD_KIND_WHILE &&
-    (word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
-      word_is_statement_recovery_boundary(kind));
+    word_has_role(
+      kind,
+      WORD_ROLE_STATEMENT_START |
+        WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY |
+        WORD_ROLE_RESERVED_ITEM_START
+    );
 }
 
 static bool word_is_terminator_recovery_boundary(WordKind kind) {
-  return word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
-    word_has_role(kind, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY);
+  return word_has_role(
+    kind,
+    WORD_ROLE_STATEMENT_START | WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY
+  );
 }
 
 static enum TokenType number_kind_token(NumberKind kind) {
@@ -639,11 +659,7 @@ emit_number_kind(TSLexer *lexer, const bool *valid_symbols, NumberKind kind) {
 
 static bool
 has_valid_composite_operator_start(int32_t first, const bool *valid_symbols) {
-  for (
-    size_t i = 0;
-    i < sizeof(COMPOSITE_OPERATORS) / sizeof(COMPOSITE_OPERATORS[0]);
-    i++
-  ) {
+  for (size_t i = 0; i < ARRAY_LENGTH(COMPOSITE_OPERATORS); i++) {
     if (
       COMPOSITE_OPERATORS[i].first ==
       first &&
@@ -657,11 +673,7 @@ has_valid_composite_operator_start(int32_t first, const bool *valid_symbols) {
 
 static const CompositeOperator *
 find_composite_operator(int32_t first, int32_t second) {
-  for (
-    size_t i = 0;
-    i < sizeof(COMPOSITE_OPERATORS) / sizeof(COMPOSITE_OPERATORS[0]);
-    i++
-  ) {
+  for (size_t i = 0; i < ARRAY_LENGTH(COMPOSITE_OPERATORS); i++) {
     if (
       COMPOSITE_OPERATORS[i].first ==
       first &&
@@ -674,11 +686,7 @@ find_composite_operator(int32_t first, int32_t second) {
 }
 
 static bool is_composite_operator_start(int32_t first) {
-  for (
-    size_t i = 0;
-    i < sizeof(COMPOSITE_OPERATORS) / sizeof(COMPOSITE_OPERATORS[0]);
-    i++
-  ) {
+  for (size_t i = 0; i < ARRAY_LENGTH(COMPOSITE_OPERATORS); i++) {
     if (COMPOSITE_OPERATORS[i].first == first) {
       return true;
     }
@@ -689,10 +697,6 @@ static bool is_composite_operator_start(int32_t first) {
 static bool
 scan_composite_operator_start(TSLexer *lexer, const bool *valid_symbols) {
   const int32_t first = lexer->lookahead;
-  if (!has_valid_composite_operator_start(first, valid_symbols)) {
-    return false;
-  }
-
   lexer->advance(lexer, false);
   const CompositeOperator *composite =
     find_composite_operator(first, lexer->lookahead);
@@ -758,17 +762,20 @@ static bool scan_slash_start(
   const bool *valid_symbols,
   bool allow_ere
 ) {
-  if (lexer->lookahead != '/') {
-    return false;
-  }
-
   lexer->advance(lexer, false);
   lexer->mark_end(lexer);
-  if (lexer->lookahead == '=' && valid_symbols[DIV_ASSIGN_OPERATOR]) {
-    lexer->advance(lexer, false);
-    lexer->mark_end(lexer);
-    lexer->result_symbol = DIV_ASSIGN_OPERATOR;
-    return true;
+  if (lexer->lookahead == '=') {
+    if (valid_symbols[DIV_ASSIGN_OPERATOR]) {
+      lexer->advance(lexer, false);
+      lexer->mark_end(lexer);
+      lexer->result_symbol = DIV_ASSIGN_OPERATOR;
+      return true;
+    }
+    // Where division is valid, "/=" is the longest match: never split it
+    // into a division slash followed by '='.
+    if (valid_symbols[DIVISION_SLASH]) {
+      return false;
+    }
   }
   if (valid_symbols[DIVISION_SLASH]) {
     lexer->result_symbol = DIVISION_SLASH;
@@ -834,16 +841,22 @@ static bool emit_range_right_expression_recovery(
 
 static bool word_is_unambiguous_statement_boundary(WordKind kind) {
   return !word_has_role(kind, WORD_ROLE_EXPRESSION_START) &&
-    (word_has_role(kind, WORD_ROLE_STATEMENT_START) ||
-      word_is_statement_recovery_boundary(kind));
+    word_has_role(
+      kind,
+      WORD_ROLE_STATEMENT_START |
+        WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY |
+        WORD_ROLE_RESERVED_ITEM_START
+    );
 }
 
 static bool character_is_do_tail_recovery_boundary(int32_t character) {
-  return character ==
-    ';' ||
-    character ==
-    '}' ||
-    character_starts_statement(character);
+  switch (character) {
+  case ';':
+  case '}':
+    return true;
+  default:
+    return character_starts_statement(character);
+  }
 }
 
 static bool is_closer_recovery_punctuation(int32_t character) {
@@ -974,6 +987,13 @@ static bool emit_word_required_recovery(
     return false;
   }
   if (
+    valid_symbols[EXPRESSION_RECOVERY] &&
+    word_is_unambiguous_statement_boundary(kind)
+  ) {
+    lexer->result_symbol = EXPRESSION_RECOVERY;
+    return true;
+  }
+  if (
     valid_symbols[STATEMENT_RECOVERY] &&
     word_is_statement_recovery_boundary(kind)
   ) {
@@ -1090,7 +1110,7 @@ static bool scan_action_item_terminator_boundary(
 
 static bool
 emit_required_target_recovery(TSLexer *lexer, const bool *valid_symbols) {
-  if (valid_symbols[PARAMETER_RECOVERY] && !valid_symbols[ERROR_SENTINEL]) {
+  if (valid_symbols[PARAMETER_RECOVERY]) {
     lexer->result_symbol = PARAMETER_RECOVERY;
     return true;
   }
@@ -1291,22 +1311,33 @@ static bool scan_ere_backslash_context(
   return false;
 }
 
-static bool scan_ere_compound_guard(TSLexer *lexer, enum TokenType guard) {
-  const int32_t opening = guard == ERE_COMPOUND_OPEN_GUARD ? '['
-    : guard == ERE_DOT_CLOSE_GUARD                         ? '.'
-    : guard == ERE_EQUAL_CLOSE_GUARD                       ? '='
-                                                           : ':';
-  if (lexer->lookahead != opening) {
+static bool is_ere_compound_punctuation(int32_t character) {
+  switch (character) {
+  case '.':
+  case '=':
+  case ':':
+    return true;
+  default:
     return false;
   }
+}
 
+typedef struct {
+  enum TokenType guard;
+  int32_t opening;
+} EreCompoundGuard;
+
+static const EreCompoundGuard ERE_COMPOUND_GUARDS[] = {
+  {ERE_COMPOUND_OPEN_GUARD, '['},
+  {ERE_DOT_CLOSE_GUARD, '.'},
+  {ERE_EQUAL_CLOSE_GUARD, '='},
+  {ERE_COLON_CLOSE_GUARD, ':'},
+};
+
+static bool scan_ere_compound_guard(TSLexer *lexer, enum TokenType guard) {
   lexer->advance(lexer, false);
   const bool matches = guard == ERE_COMPOUND_OPEN_GUARD
-    ? lexer->lookahead ==
-      '.' ||
-      lexer->lookahead ==
-      '=' ||
-      lexer->lookahead == ':'
+    ? is_ere_compound_punctuation(lexer->lookahead)
     : lexer->lookahead == ']';
   if (!matches) {
     return false;
@@ -1331,12 +1362,14 @@ static bool advance_boundary_gap_remainder(TSLexer *lexer) {
 }
 
 static bool word_starts_simple_statement(WordKind kind) {
-  return word_starts_expression(kind) ||
-    kind ==
-    WORD_KIND_PRINT ||
-    kind ==
-    WORD_KIND_PRINTF ||
-    kind == WORD_KIND_DELETE;
+  switch (kind) {
+  case WORD_KIND_PRINT:
+  case WORD_KIND_PRINTF:
+  case WORD_KIND_DELETE:
+    return true;
+  default:
+    return word_starts_expression(kind);
+  }
 }
 
 static bool is_line_continued_closer_recovery_boundary(TSLexer *lexer) {
@@ -1394,6 +1427,9 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
     break;
   case '[':
     delimiter = LC_BEFORE_OPEN_BRACKET;
+    break;
+  case '(':
+    delimiter = LC_BEFORE_CALL_PARENTHESIS;
     break;
   case ')':
     delimiter = LC_BEFORE_CLOSE_PARENTHESIS;
@@ -1466,20 +1502,18 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
   }
 
   if (is_ascii_digit(lexer->lookahead) || lexer->lookahead == '.') {
-    const NumberKind kind = scan_number_kind(lexer);
-    if (kind != NUMBER_KIND_NONE && valid_symbols[LC_BEFORE_DO_TAIL]) {
+    if (scan_number_kind(lexer) == NUMBER_KIND_NONE) {
+      return false;
+    }
+    if (valid_symbols[LC_BEFORE_DO_TAIL]) {
       lexer->result_symbol = LC_BEFORE_DO_TAIL;
       return true;
     }
-    if (kind != NUMBER_KIND_NONE && valid_symbols[LC_BEFORE_FOR_UPDATE]) {
+    if (valid_symbols[LC_BEFORE_FOR_UPDATE]) {
       lexer->result_symbol = LC_BEFORE_FOR_UPDATE;
       return true;
     }
-    if (
-      kind !=
-      NUMBER_KIND_NONE &&
-      (expression_valid || valid_symbols[LC_BEFORE_TERMINATOR_RECOVERY])
-    ) {
+    if (expression_valid || valid_symbols[LC_BEFORE_TERMINATOR_RECOVERY]) {
       lexer->result_symbol =
         expression_valid ? LC_BEFORE_EXPRESSION : LC_BEFORE_TERMINATOR_RECOVERY;
       return true;
@@ -1664,6 +1698,30 @@ void tree_sitter_posix_awk_external_scanner_deserialize(
   }
 }
 
+typedef struct {
+  enum TokenType token;
+  const char *triggers;
+  bool at_ere_end;
+} EreExpressionRecovery;
+
+// Emission order matters where trigger sets overlap: at an empty group both
+// the group-expression and missing-branch recoveries are valid on ')'.
+static const EreExpressionRecovery ERE_EXPRESSION_RECOVERIES[] = {
+  {ERE_GROUP_EXPRESSION_RECOVERY, ")/", true},
+  {ERE_EMPTY_EXPRESSION_RECOVERY, "/", false},
+  {ERE_MISSING_BRANCH_RECOVERY, ")/|", true},
+  {ERE_LEADING_BRANCH_RECOVERY, "|", false},
+};
+
+static bool character_is_in(const char *characters, int32_t character) {
+  for (; *characters != '\0'; characters++) {
+    if (character == (int32_t)*characters) {
+      return true;
+    }
+  }
+  return false;
+}
+
 static bool scan_ere_context(
   ScannerState *state,
   TSLexer *lexer,
@@ -1684,29 +1742,43 @@ static bool scan_ere_context(
 
   const bool at_ere_end = lexer->lookahead == '\n' || lexer->eof(lexer);
   if (!valid_symbols[ERROR_SENTINEL]) {
-    if (
-      valid_symbols[ERE_GROUP_EXPRESSION_RECOVERY] &&
-      (lexer->lookahead == ')' || lexer->lookahead == '/' || at_ere_end)
-    ) {
-      lexer->result_symbol = ERE_GROUP_EXPRESSION_RECOVERY;
-      return true;
+    for (size_t i = 0; i < ARRAY_LENGTH(ERE_EXPRESSION_RECOVERIES); i++) {
+      const EreExpressionRecovery *recovery = &ERE_EXPRESSION_RECOVERIES[i];
+      if (
+        valid_symbols[recovery->token] &&
+        (character_is_in(recovery->triggers, lexer->lookahead) ||
+          (recovery->at_ere_end && at_ere_end))
+      ) {
+        lexer->result_symbol = recovery->token;
+        return true;
+      }
     }
-    if (valid_symbols[ERE_COMPOUND_OPEN_GUARD] && lexer->lookahead == '[') {
-      return scan_ere_compound_guard(lexer, ERE_COMPOUND_OPEN_GUARD);
-    }
-    if (valid_symbols[ERE_DOT_CLOSE_GUARD] && lexer->lookahead == '.') {
-      return scan_ere_compound_guard(lexer, ERE_DOT_CLOSE_GUARD);
-    }
-    if (valid_symbols[ERE_EQUAL_CLOSE_GUARD] && lexer->lookahead == '=') {
-      return scan_ere_compound_guard(lexer, ERE_EQUAL_CLOSE_GUARD);
-    }
-    if (valid_symbols[ERE_COLON_CLOSE_GUARD] && lexer->lookahead == ':') {
-      return scan_ere_compound_guard(lexer, ERE_COLON_CLOSE_GUARD);
+    for (size_t i = 0; i < ARRAY_LENGTH(ERE_COMPOUND_GUARDS); i++) {
+      if (
+        valid_symbols[ERE_COMPOUND_GUARDS[i].guard] &&
+        lexer->lookahead == ERE_COMPOUND_GUARDS[i].opening
+      ) {
+        return scan_ere_compound_guard(lexer, ERE_COMPOUND_GUARDS[i].guard);
+      }
     }
     if (
       valid_symbols[ERE_COMPOUND_BOUNDARY] &&
       (lexer->lookahead == '/' || at_ere_end)
     ) {
+      lexer->result_symbol = ERE_COMPOUND_BOUNDARY;
+      return true;
+    }
+    // An immediately following compound closer pair means the compound body
+    // is empty or exhausted: synchronize on the pair instead of letting the
+    // multi-atom chain consume the real closers.
+    if (
+      valid_symbols[ERE_COMPOUND_BOUNDARY] &&
+      is_ere_compound_punctuation(lexer->lookahead)
+    ) {
+      lexer->advance(lexer, false);
+      if (lexer->lookahead != ']') {
+        return false;
+      }
       lexer->result_symbol = ERE_COMPOUND_BOUNDARY;
       return true;
     }
@@ -1898,11 +1970,24 @@ bool tree_sitter_posix_awk_external_scanner_scan(
   }
 
   if (
-    valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY] &&
-    character_starts_statement(lexer->lookahead) &&
-    !is_word_start(lexer->lookahead)
+    valid_symbols[DO_BODY_TERMINATOR_RECOVERY] &&
+    (lexer->lookahead == '}' || lexer->eof(lexer))
   ) {
-    return emit_closed_item_terminator_recovery(lexer, valid_symbols);
+    lexer->result_symbol = DO_BODY_TERMINATOR_RECOVERY;
+    return true;
+  }
+
+  if (valid_symbols[EOF_REQUIRED_MEMBER_RECOVERY] && lexer->eof(lexer)) {
+    lexer->result_symbol = EOF_REQUIRED_MEMBER_RECOVERY;
+    return true;
+  }
+
+  if (
+    valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY] &&
+    character_starts_statement(lexer->lookahead)
+  ) {
+    lexer->result_symbol = CLOSED_ITEM_TERMINATOR_RECOVERY;
+    return true;
   }
 
   if (lexer->lookahead == '\\' && has_line_continuation_marker(valid_symbols)) {

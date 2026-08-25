@@ -12,21 +12,21 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (unterminated_statement_list
+        (unterminated_statement_list
           (terminated_statement
             (newline_opt
               (newline)))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (expr
                   (non_unary_expr
@@ -35,31 +35,31 @@ BEGIN {
             (newline_opt
               (newline)))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (expr
                   (non_unary_expr
                     (lvalue
                       (name))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
             (action
-              body: (unterminated_statement_list
+              (unterminated_statement_list
                 (unterminated_statement
-                  statement: (terminatable_statement
+                  (terminatable_statement
                     (simple_statement
                       (expr
                         (non_unary_expr
                           (lvalue
                             (name))))))))))
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (expr
                   (non_unary_expr
                     (lvalue
                       (name))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -83,28 +83,28 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (delete_keyword)
-                array: (name)))
-            terminator: (newline))
+                (name)))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (delete_keyword)
-                array: (name)
-                subscripts: (expr_list
+                (name)
+                (expr_list
                   (multiple_expr_list
                     (expr
                       (non_unary_expr
@@ -114,52 +114,52 @@ BEGIN {
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (break_keyword))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (continue_keyword))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (next_keyword))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (nextfile_keyword))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (exit_keyword))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (exit_keyword)
               (expr
                 (non_unary_expr
-                  left: (non_unary_expr
+                  (non_unary_expr
                     (lvalue
                       (name)))
-                  right: (expr
+                  (expr
                     (non_unary_expr
                       (number))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (return_keyword))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (return_keyword)
               (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -180,56 +180,56 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (expr
                             (non_unary_expr
                               (lvalue
                                 (name)))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (multiple_expr_list
+                    (multiple_expr_list
                       (expr
                         (non_unary_expr
                           (lvalue
@@ -238,40 +238,40 @@ BEGIN {
                         (non_unary_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (printf_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (printf_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (expr
                             (non_unary_expr
                               (lvalue
                                 (name)))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (printf_keyword)
-                    arguments: (multiple_expr_list
+                    (multiple_expr_list
                       (expr
                         (non_unary_expr
                           (lvalue
@@ -280,8 +280,8 @@ BEGIN {
                         (non_unary_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -304,180 +304,180 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (append)
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (printf_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (expr
                             (non_unary_expr
-                              left: (non_unary_expr
+                              (non_unary_expr
                                 (lvalue
                                   (name)))
-                              right: (expr
+                              (expr
                                 (non_unary_expr
                                   (lvalue
                                     (name)))))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
-                          left: (non_unary_print_expr
+                          (non_unary_print_expr
                             (lvalue
                               (name)))
-                          operator: (or)
-                          right: (print_expr
+                          (or)
+                          (print_expr
                             (non_unary_print_expr
                               (lvalue
                                 (name)))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (expr
                             (non_unary_expr
                               (non_unary_input_function
-                                source: (non_unary_expr
+                                (non_unary_expr
                                   (lvalue
                                     (name)))
-                                get: (simple_get
+                                (simple_get
                                   (getline_keyword)
-                                  target: (lvalue
+                                  (lvalue
                                     (name)))))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
                         (non_unary_input_function
-                          get: (simple_get
+                          (simple_get
                             (getline_keyword)
-                            target: (lvalue
+                            (lvalue
                               (name))))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
-                        left: (non_unary_expr
+                        (non_unary_expr
                           (lvalue
                             (name)))
-                        right: (expr
+                        (expr
                           (non_unary_expr
                             (lvalue
                               (name))))))))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -494,68 +494,68 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
-                            operand: (expr
+                            (expr
                               (non_unary_expr
                                 (number))))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
-                            operand: (expr
+                            (expr
                               (non_unary_expr
                                 (number))))))
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
-                            operand: (expr
+                            (expr
                               (non_unary_expr
                                 (number))))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (append)
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (printf_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (string
@@ -563,17 +563,17 @@ BEGIN {
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
-                            operand: (expr
+                            (expr
                               (non_unary_expr
                                 (lvalue
                                   (name)))))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -602,54 +602,54 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            consequence: (terminated_statement
+            (terminated_statement
               (newline_opt
                 (newline)))
             (else_keyword)
             (newline_opt
               (newline))
-            alternative: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (newline_opt
               (newline))
-            consequence: (terminated_statement
+            (terminated_statement
               (if_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name))))
               (newline_opt
                 (newline))
-              consequence: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (expr
                       (non_unary_expr
@@ -660,32 +660,32 @@ BEGIN {
               (else_keyword)
               (newline_opt
                 (newline))
-              alternative: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))
-                terminator: (newline))))
+                (newline))))
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (newline_opt
               (newline))
-            consequence: (terminated_statement
+            (terminated_statement
               (if_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name))))
               (newline_opt
                 (newline))
-              consequence: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (expr
                       (non_unary_expr
@@ -696,8 +696,8 @@ BEGIN {
               (else_keyword)
               (newline_opt
                 (newline))
-              alternative: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (expr
                       (non_unary_expr
@@ -708,15 +708,15 @@ BEGIN {
             (else_keyword)
             (newline_opt
               (newline))
-            alternative: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline))))))
-    terminator: (terminator
+              (newline))))))
+    (terminator
       (newline))))
 
 ==================
@@ -753,39 +753,39 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
             (while_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (newline_opt
               (newline))
-            body: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
               (newline_opt
                 (newline))
-              body: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (expr
                       (non_unary_expr
@@ -794,21 +794,21 @@ BEGIN {
                 (newline_opt
                   (newline)))
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
               (newline_opt
                 (newline))
-              body: (terminated_statement
+              (terminated_statement
                 (action
-                  body: (unterminated_statement_list
+                  (unterminated_statement_list
                     (unterminated_statement
-                      statement: (terminatable_statement
+                      (terminatable_statement
                         (simple_statement
                           (expr
                             (non_unary_expr
@@ -817,40 +817,40 @@ BEGIN {
                 (newline_opt
                   (newline)))
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
               (newline_opt
                 (newline))
-              body: (terminated_statement
+              (terminated_statement
                 (newline_opt
                   (newline)))
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
               (newline_opt
                 (newline))
-              body: (terminated_statement
+              (terminated_statement
                 (while_keyword)
-                condition: (expr
+                (expr
                   (non_unary_expr
                     (lvalue
                       (name))))
                 (newline_opt
                   (newline))
-                body: (terminated_statement
-                  statement: (terminatable_statement
+                (terminated_statement
+                  (terminatable_statement
                     (simple_statement
                       (expr
                         (non_unary_expr
@@ -859,102 +859,102 @@ BEGIN {
                   (newline_opt
                     (newline))))
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
             (for_keyword)
             (newline_opt
               (newline))
-            body: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
-                  left: (lvalue
+                  (lvalue
                     (name))
-                  right: (expr
+                  (expr
                     (non_unary_expr
                       (number))))))
-            condition: (expr
+            (expr
               (non_unary_expr
-                left: (non_unary_expr
+                (non_unary_expr
                   (lvalue
                     (name)))
-                right: (expr
+                (expr
                   (non_unary_expr
                     (lvalue
                       (name))))))
-            update: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
-                  operand: (lvalue
+                  (lvalue
                     (name))
-                  operator: (incr))))
+                  (incr))))
             (newline_opt
               (newline))
-            body: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (print_statement
-                statement: (simple_print_statement
+                (simple_print_statement
                   (print_keyword)
-                  arguments: (print_expr_list
+                  (print_expr_list
                     (print_expr
                       (non_unary_print_expr
                         (lvalue
                           (name))))))))
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            update: (simple_statement
+            (simple_statement
               (delete_keyword)
-              array: (name))
+              (name))
             (newline_opt
               (newline))
-            body: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
             (for_keyword)
-            variable: (name)
+            (name)
             (in_keyword)
-            array: (name)
+            (name)
             (newline_opt
               (newline))
-            body: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline))))))
-    terminator: (terminator
+              (newline))))))
+    (terminator
       (newline))))
 
 ==================
@@ -979,77 +979,77 @@ destination
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name))))))
                   (line_continuation)
-                  redirection: (output_redirection
+                  (output_redirection
                     (append)
                     (line_continuation)
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (newline_opt
               (newline))
-            consequence: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (line_continuation)
-            consequence: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (newline_opt
               (newline))
-            consequence: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
@@ -1059,15 +1059,15 @@ destination
                 (newline)))
             (else_keyword)
             (line_continuation)
-            alternative: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline))))))
-    terminator: (terminator
+              (newline))))))
+    (terminator
       (newline))))
 
 ==================
@@ -1088,101 +1088,101 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (delete_keyword)
-              array: (name))
-            condition: (expr
+              (name))
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            update: (simple_statement
+            (simple_statement
               (print_statement
-                statement: (simple_print_statement
+                (simple_print_statement
                   (print_keyword)
-                  arguments: (print_expr_list
+                  (print_expr_list
                     (print_expr
                       (non_unary_print_expr
                         (lvalue
                           (name))))))))
-            body: (terminated_statement
+            (terminated_statement
               (newline_opt
                 (newline))))
           (terminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (line_continuation)
-            update: (simple_statement
+            (simple_statement
               (delete_keyword)
-              array: (name))
-            body: (terminated_statement
+              (name))
+            (terminated_statement
               (newline_opt
                 (newline))))
           (terminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (line_continuation)
-            update: (simple_statement
+            (simple_statement
               (print_statement
-                statement: (simple_print_statement
+                (simple_print_statement
                   (print_keyword)
-                  arguments: (print_expr_list
+                  (print_expr_list
                     (print_expr
                       (non_unary_print_expr
                         (lvalue
                           (name))))))))
-            body: (terminated_statement
+            (terminated_statement
               (newline_opt
                 (newline))))
           (terminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (line_continuation)
-            update: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
-                  operand: (lvalue
+                  (lvalue
                     (name))
-                  operator: (incr))))
-            body: (terminated_statement
+                  (incr))))
+            (terminated_statement
               (newline_opt
                 (newline)))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -1205,125 +1205,125 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
             (if_keyword)
-            condition: (expression_recovery)
-            consequence: (terminated_statement
-              statement: (terminatable_statement
+            (expression_recovery)
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
             (while_keyword)
-            condition: (expression_recovery)
-            body: (terminated_statement
-              statement: (terminatable_statement
+            (expression_recovery)
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name)))))))
               (while_keyword)
-              condition: (expression_recovery))
-            terminator: (newline))
+              (expression_recovery))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (printf_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (expression_recovery))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (printf_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (expression_recovery)))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name))))
                       (expression_recovery)))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name))))))
-                  redirection: (output_redirection
+                  (output_redirection
                     (expression_recovery)))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (delete_keyword)
-                array: (name)
-                subscripts: (expr_list
+                (name)
+                (expr_list
                   (expression_recovery))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
             (for_keyword)
-            body: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline))))))
-    terminator: (terminator
+              (newline))))))
+    (terminator
       (newline))))
 
 ==================
@@ -1342,101 +1342,101 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            consequence: (statement_recovery)
+            (statement_recovery)
             (else_keyword)
-            alternative: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            consequence: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (terminator_recovery))
+              (terminator_recovery))
             (else_keyword)
-            alternative: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name))))))
-              terminator: (newline)))
+              (newline)))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (statement_recovery)
+              (statement_recovery)
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
             (newline_opt
               (newline)))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (expr
                       (non_unary_expr
                         (lvalue
                           (name))))))
-                terminator: (terminator_recovery))
+                (terminator_recovery))
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
             (newline_opt
               (newline)))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (break_keyword))
-            terminator: (terminator_recovery))
+            (terminator_recovery))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -1452,49 +1452,49 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            consequence: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name)))))))
             (else_keyword)
-            alternative: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (unterminated_statement_list
+        (unterminated_statement_list
           (unterminated_statement
             (while_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (newline_opt
               (newline))
-            body: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))))
 
 ==================
@@ -1515,55 +1515,55 @@ BEGIN { do { print eof }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (print_statement
-                      statement: (simple_print_statement
+                      (simple_print_statement
                         (print_keyword)
-                        arguments: (print_expr_list
+                        (print_expr_list
                           (print_expr
                             (non_unary_print_expr
                               (lvalue
                                 (name)))))))))
-                terminator: (newline))
+                (newline))
               (do_tail_recovery))
-            terminator: (terminator_recovery))
+            (terminator_recovery))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (print_statement
-                      statement: (simple_print_statement
+                      (simple_print_statement
                         (print_keyword)
-                        arguments: (print_expr_list
+                        (print_expr_list
                           (print_expr
                             (non_unary_print_expr
                               (lvalue
@@ -1573,87 +1573,87 @@ BEGIN { do { print eof }
               (newline)))
           (terminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
-            consequence: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (do_keyword)
-                body: (terminated_statement
-                  statement: (terminatable_statement
+                (terminated_statement
+                  (terminatable_statement
                     (simple_statement
                       (print_statement
-                        statement: (simple_print_statement
+                        (simple_print_statement
                           (print_keyword)
-                          arguments: (print_expr_list
+                          (print_expr_list
                             (print_expr
                               (non_unary_print_expr
                                 (lvalue
                                   (name)))))))))
-                  terminator: (newline))
+                  (newline))
                 (do_tail_recovery))
-              terminator: (terminator_recovery))
+              (terminator_recovery))
             (else_keyword)
-            alternative: (terminated_statement
-              statement: (terminatable_statement
+            (terminated_statement
+              (terminatable_statement
                 (simple_statement
                   (print_statement
-                    statement: (simple_print_statement
+                    (simple_print_statement
                       (print_keyword)
-                      arguments: (print_expr_list
+                      (print_expr_list
                         (print_expr
                           (non_unary_print_expr
                             (lvalue
                               (name)))))))))
-              terminator: (newline))))))
-    terminator: (terminator
+              (newline))))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (terminated_statement
+              (terminated_statement
                 (action
-                  body: (unterminated_statement_list
+                  (unterminated_statement_list
                     (unterminated_statement
-                      statement: (terminatable_statement
+                      (terminatable_statement
                         (simple_statement
                           (print_statement
-                            statement: (simple_print_statement
+                            (simple_print_statement
                               (print_keyword)
-                              arguments: (print_expr_list
+                              (print_expr_list
                                 (print_expr
                                   (non_unary_print_expr
                                     (lvalue
                                       (name)))))))))))))
               (do_tail_recovery))))))
-    terminator: (terminator
+    (terminator
       (newline)))
-  item: (item
-    pattern: (pattern
+  (item
+    (pattern
       (special_pattern
         (begin_keyword)))
-    action: (action
-      body: (unterminated_statement_list
+    (action
+      (unterminated_statement_list
         (unterminated_statement
-          statement: (terminatable_statement
+          (terminatable_statement
             (do_keyword)
-            body: (terminated_statement
+            (terminated_statement
               (action
-                body: (unterminated_statement_list
+                (unterminated_statement_list
                   (unterminated_statement
-                    statement: (terminatable_statement
+                    (terminatable_statement
                       (simple_statement
                         (print_statement
-                          statement: (simple_print_statement
+                          (simple_print_statement
                             (print_keyword)
-                            arguments: (print_expr_list
+                            (print_expr_list
                               (print_expr
                                 (non_unary_print_expr
                                   (lvalue
@@ -1661,7 +1661,7 @@ BEGIN { do { print eof }
               (newline_opt
                 (newline)))
             (do_tail_recovery))))
-      closing: (closer_recovery))))
+      (closer_recovery))))
 
 ==================
 do bodies keep an if else before the tail
@@ -1678,73 +1678,73 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (terminated_statement
+              (terminated_statement
                 (if_keyword)
-                condition: (expr
+                (expr
                   (non_unary_expr
                     (lvalue
                       (name))))
-                consequence: (terminated_statement
-                  statement: (terminatable_statement
+                (terminated_statement
+                  (terminatable_statement
                     (simple_statement
                       (expr
                         (non_unary_expr
                           (lvalue
                             (name)))))))
                 (else_keyword)
-                alternative: (terminated_statement
-                  statement: (terminatable_statement
+                (terminated_statement
+                  (terminatable_statement
                     (simple_statement
                       (expr
                         (non_unary_expr
                           (lvalue
                             (name))))))))
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
               (newline_opt
                 (newline))
-              body: (terminated_statement
+              (terminated_statement
                 (if_keyword)
-                condition: (expr
+                (expr
                   (non_unary_expr
                     (lvalue
                       (name))))
-                consequence: (terminated_statement
+                (terminated_statement
                   (action
-                    body: (unterminated_statement_list
+                    (unterminated_statement_list
                       (unterminated_statement
-                        statement: (terminatable_statement
+                        (terminatable_statement
                           (simple_statement
                             (expr
                               (non_unary_expr
                                 (lvalue
                                   (name))))))))))
                 (else_keyword)
-                alternative: (terminated_statement
+                (terminated_statement
                   (action
-                    body: (unterminated_statement_list
+                    (unterminated_statement_list
                       (unterminated_statement
-                        statement: (terminatable_statement
+                        (terminatable_statement
                           (simple_statement
                             (expr
                               (non_unary_expr
@@ -1753,12 +1753,12 @@ BEGIN {
                   (newline_opt
                     (newline))))
               (while_keyword)
-              condition: (expr
+              (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -1778,34 +1778,34 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (if_keyword)
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (closer_recovery)
-            consequence: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (expr
                   (non_unary_expr
@@ -1821,19 +1821,19 @@ BEGIN {
                                   (number))))
                             (closer_recovery))))))))))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (expr
                   (non_unary_expr
@@ -1847,24 +1847,24 @@ BEGIN {
                                 (number)))
                             (closer_recovery))))))))))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (expr
@@ -1874,21 +1874,21 @@ BEGIN {
                           (line_continuation)
                           (comment)
                           (closer_recovery))))))))
-            terminator: (newline))
+            (newline))
           (terminated_statement)
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
 
 ==================
@@ -1998,25 +1998,25 @@ BEGIN { print() }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (print_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (expression_recovery))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -2029,25 +2029,25 @@ BEGIN { printf() }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (print_statement
-                  statement: (simple_print_statement
+                  (simple_print_statement
                     (printf_keyword)
-                    arguments: (print_expr_list
+                    (print_expr_list
                       (print_expr
                         (non_unary_print_expr
                           (expression_recovery))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -2060,20 +2060,20 @@ BEGIN { for (values[offset] in arrays) body }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
-                  left: (non_unary_expr
+                  (non_unary_expr
                     (lvalue
                       (name)
                       (expr_list
@@ -2081,17 +2081,17 @@ BEGIN { for (values[offset] in arrays) body }
                           (non_unary_expr
                             (lvalue
                               (name)))))))
-                  operator: (in_keyword)
-                  right: (name))))
+                  (in_keyword)
+                  (name))))
             (header_recovery)
-            body: (unterminated_statement
-              statement: (terminatable_statement
+            (unterminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name)))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -2107,64 +2107,64 @@ BEGIN { if { consequence } }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (if_keyword)
             (header_recovery)
-            consequence: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (while_keyword)
             (header_recovery)
-            body: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
             (header_recovery)
-            body: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (terminated_statement_list
+      (action
+        (terminated_statement_list
           (terminated_statement
             (if_keyword)
             (header_recovery)
-            consequence: (terminated_statement
+            (terminated_statement
               (action
-                body: (unterminated_statement_list
+                (unterminated_statement_list
                   (unterminated_statement
-                    statement: (terminatable_statement
+                    (terminatable_statement
                       (simple_statement
                         (expr
                           (non_unary_expr
                             (lvalue
                               (name))))))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -2184,103 +2184,103 @@ END { done }
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
             (header_recovery)
             (closer_recovery)
-            body: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
             (header_recovery)
-            body: (unterminated_statement
-              statement: (terminatable_statement
+            (unterminated_statement
+              (terminatable_statement
                 (simple_statement
                   (expr
                     (non_unary_expr
                       (lvalue
                         (name)))))))))))
-    terminator: (terminator
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
             (header_recovery)
             (closer_recovery)
-            body: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
                   (lvalue
                     (name)))))
-            condition: (expr
+            (expr
               (non_unary_expr
                 (lvalue
                   (name))))
             (header_recovery)
             (closer_recovery)
-            body: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
-            variable: (name)
+            (name)
             (in_keyword)
             (header_recovery)
             (closer_recovery)
-            body: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
             (for_keyword)
-            initializer: (simple_statement
+            (simple_statement
               (expr
                 (non_unary_expr
                   (lvalue
@@ -2288,23 +2288,23 @@ END { done }
             (line_continuation)
             (header_recovery)
             (closer_recovery)
-            body: (statement_recovery)))))
-    terminator: (terminator
+            (statement_recovery)))))
+    (terminator
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (end_keyword)))
-      action: (action
-        body: (unterminated_statement_list
+      (action
+        (unterminated_statement_list
           (unterminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (simple_statement
                 (expr
                   (non_unary_expr
                     (lvalue
                       (name))))))))))
-    terminator: (terminator
+    (terminator
       (newline))))
 
 ==================
@@ -2320,21 +2320,21 @@ BEGIN {
 
 (program
   (item_list
-    leading: (newline_opt
+    (newline_opt
       (newline))
-    item: (item
-      pattern: (pattern
+    (item
+      (pattern
         (special_pattern
           (begin_keyword)))
-      action: (action
+      (action
         (newline_opt
           (newline))
-        body: (terminated_statement_list
+        (terminated_statement_list
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (do_keyword)
-              body: (terminated_statement
-                statement: (terminatable_statement
+              (terminated_statement
+                (terminatable_statement
                   (simple_statement
                     (expr
                       (non_unary_expr
@@ -2342,10 +2342,214 @@ BEGIN {
                           (name)))))))
               (while_keyword)
               (header_recovery))
-            terminator: (newline))
+            (newline))
           (terminated_statement
-            statement: (terminatable_statement
+            (terminatable_statement
               (next_keyword))
-            terminator: (newline)))))
-    terminator: (terminator
+            (newline)))))
+    (terminator
       (newline))))
+
+==================
+do bodies recover a missing terminator before the action closer
+==================
+BEGIN { do print 1 }
+---
+
+(program
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action
+      (unterminated_statement_list
+        (unterminated_statement
+          (terminatable_statement
+            (do_keyword)
+            (terminated_statement
+              (terminatable_statement
+                (simple_statement
+                  (print_statement
+                    (simple_print_statement
+                      (print_keyword)
+                      (print_expr_list
+                        (print_expr
+                          (non_unary_print_expr
+                            (number))))))))
+              (terminator_recovery))
+            (do_tail_recovery)))))))
+
+==================
+do statements recover their body terminator and tail at EOF
+==================
+BEGIN { do print 1
+---
+
+(program
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action
+      (unterminated_statement_list
+        (unterminated_statement
+          (terminatable_statement
+            (do_keyword)
+            (terminated_statement
+              (terminatable_statement
+                (simple_statement
+                  (print_statement
+                    (simple_print_statement
+                      (print_keyword)
+                      (print_expr_list
+                        (print_expr
+                          (non_unary_print_expr
+                            (number))))))))
+              (terminator_recovery))
+            (do_tail_recovery))))
+      (closer_recovery))))
+
+==================
+control statements with recovered bodies stay unterminated at EOF
+==================
+BEGIN { if (1)
+---
+
+(program
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action
+      (unterminated_statement_list
+        (unterminated_statement
+          (if_keyword)
+          (expr
+            (non_unary_expr
+              (number)))
+          (statement_recovery)))
+      (closer_recovery))))
+
+==================
+conditional expressions recover a missing colon and alternative at EOF
+==================
+BEGIN { x = a ? b
+---
+
+(program
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action
+      (unterminated_statement_list
+        (unterminated_statement
+          (terminatable_statement
+            (simple_statement
+              (expr
+                (non_unary_expr
+                  (lvalue
+                    (name))
+                  (expr
+                    (non_unary_expr
+                      (non_unary_expr
+                        (lvalue
+                          (name)))
+                      (expr
+                        (non_unary_expr
+                          (lvalue
+                            (name))))
+                      (closer_recovery)
+                      (expression_recovery)))))))))
+      (closer_recovery))))
+
+==================
+delete recovers its missing array name at EOF
+==================
+BEGIN { delete
+---
+
+(program
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action
+      (unterminated_statement_list
+        (unterminated_statement
+          (terminatable_statement
+            (simple_statement
+              (delete_keyword)
+              (expression_recovery)))))
+      (closer_recovery))))
+
+==================
+required members recover before terminators and reserved statement words
+==================
+BEGIN { delete ; "cmd" | ; delete print value }
+---
+
+(program
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action
+      (unterminated_statement_list
+        (terminated_statement
+          (terminatable_statement
+            (simple_statement
+              (delete_keyword)
+              (expression_recovery))))
+        (terminated_statement
+          (terminatable_statement
+            (simple_statement
+              (expr
+                (non_unary_expr
+                  (non_unary_input_function
+                    (non_unary_expr
+                      (string
+                        (string_content)))
+                    (expression_recovery)))))))
+        (terminated_statement
+          (terminatable_statement
+            (simple_statement
+              (delete_keyword)
+              (expression_recovery)))
+          (terminator_recovery))
+        (unterminated_statement
+          (terminatable_statement
+            (simple_statement
+              (print_statement
+                (simple_print_statement
+                  (print_keyword)
+                  (print_expr_list
+                    (print_expr
+                      (non_unary_print_expr
+                        (lvalue
+                          (name))))))))))))))
+
+==================
+input pipes recover a missing getline at EOF
+==================
+BEGIN { "cmd" |
+---
+
+(program
+  (item
+    (pattern
+      (special_pattern
+        (begin_keyword)))
+    (action
+      (unterminated_statement_list
+        (unterminated_statement
+          (terminatable_statement
+            (simple_statement
+              (expr
+                (non_unary_expr
+                  (non_unary_input_function
+                    (non_unary_expr
+                      (string
+                        (string_content)))
+                    (expression_recovery))))))))
+      (closer_recovery))))

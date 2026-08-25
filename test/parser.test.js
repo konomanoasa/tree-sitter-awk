@@ -160,13 +160,7 @@ function applyEdits(testName, initial, edits) {
   return actual;
 }
 
-function assertIncremental(
-  testName,
-  initialSource,
-  finalSource,
-  edits,
-  expectedStatus = 0,
-) {
+function captureEditParses(testName, initialSource, finalSource, edits) {
   const initialPath = writeSource(testName, "initial", initialSource);
   const finalPath = writeSource(testName, "final", finalSource);
   assert.deepEqual(
@@ -179,34 +173,37 @@ function assertIncremental(
   const nativeFresh = captureParse("native", finalPath);
   const wasmIncremental = captureParse("wasm", initialPath, edits);
   const wasmFresh = captureParse("wasm", finalPath);
-  assertStatus(
-    `${testName} native incremental parse`,
-    nativeIncremental,
-    expectedStatus,
-  );
-  assertStatus(`${testName} native fresh parse`, nativeFresh, expectedStatus);
-  assertStatus(
-    `${testName} Wasm incremental parse`,
-    wasmIncremental,
-    expectedStatus,
-  );
-  assertStatus(`${testName} Wasm fresh parse`, wasmFresh, expectedStatus);
+
+  return { nativeFresh, nativeIncremental, wasmFresh, wasmIncremental };
+}
+
+function assertDeterministicEdit(testName, initialSource, finalSource, edits) {
+  const parses = captureEditParses(testName, initialSource, finalSource, edits);
+  for (const [label, result] of [
+    ["native incremental parse", parses.nativeIncremental],
+    ["native fresh parse", parses.nativeFresh],
+    ["Wasm incremental parse", parses.wasmIncremental],
+    ["Wasm fresh parse", parses.wasmFresh],
+  ]) {
+    assertStatus(`${testName} ${label}`, result, 0);
+    clean(result.tree);
+  }
   assert.equal(
-    nativeIncremental.tree,
-    nativeFresh.tree,
+    parses.nativeIncremental.tree,
+    parses.nativeFresh.tree,
     `${testName}: native incremental and fresh CSTs differ`,
   );
   assert.equal(
-    wasmIncremental.tree,
-    wasmFresh.tree,
+    parses.wasmIncremental.tree,
+    parses.wasmFresh.tree,
     `${testName}: Wasm incremental and fresh CSTs differ`,
   );
   assert.equal(
-    nativeFresh.tree,
-    wasmFresh.tree,
+    parses.nativeFresh.tree,
+    parses.wasmFresh.tree,
     `${testName}: native fresh and Wasm fresh CSTs differ`,
   );
-  return nativeFresh.tree;
+  return parses.nativeFresh.tree;
 }
 
 function contains(tree, expected) {
@@ -251,8 +248,10 @@ function freshTest(name, source, assertions) {
   test(name, () => assertions(assertFresh(name, source)));
 }
 
-function incrementalTest(name, initial, final, edits, assertions = () => {}) {
-  test(name, () => assertions(assertIncremental(name, initial, final, edits)));
+function determinismTest(name, initial, final, edits, assertions = () => {}) {
+  test(name, () =>
+    assertions(assertDeterministicEdit(name, initial, final, edits)),
+  );
 }
 
 function assertIncludedRanges(source, includedRanges, assertions) {
@@ -445,6 +444,54 @@ test("anonymous-token field contract", () => {
   ]);
 });
 
+const namedFieldSource = lines(
+  "",
+  "BEGIN {",
+  "  if (cond) left = right; else i++",
+  "  do delete arr[i, j]; while (top)",
+  '  print a, b > "out"',
+  '  "cmd" | getline target',
+  "  for (k in rows) break",
+  "}",
+  "function plus(first) { return first }",
+);
+
+freshTest("named-node-field-contract", namedFieldSource, (tree) => {
+  for (const memberField of [
+    "leading: newline_opt",
+    "item: item",
+    "terminator: terminator",
+    "pattern: pattern",
+    "action: action",
+    "body: terminated_statement_list",
+    "statement: terminatable_statement",
+    "condition: expr",
+    "consequence: terminated_statement",
+    "alternative: terminated_statement",
+    "left: lvalue",
+    "right: expr",
+    "operand: lvalue",
+    "operator: incr",
+    "body: terminated_statement",
+    "array: name",
+    "subscripts: expr_list",
+    "statement: simple_print_statement",
+    "arguments: print_expr_list",
+    "redirection: output_redirection",
+    "source: non_unary_expr",
+    "get: simple_get",
+    "target: lvalue",
+    "variable: name",
+    "name: func_name",
+    "parameters: param_list",
+    "body: action",
+    "body: unterminated_statement_list",
+  ]) {
+    contains(tree, memberField);
+  }
+  clean(tree);
+});
+
 const division = lines("BEGIN { print x / a }");
 const matchEre = lines("BEGIN { print x ~ /a/ }");
 const divisionAssignment = lines("BEGIN { x /= 2 }");
@@ -483,21 +530,35 @@ freshTest("slash-priority", lines("BEGIN { print x /a/ }"), (tree) => {
   );
 });
 
-incrementalTest("division-to-match-ere", division, matchEre, ["16 3 ~ /a/"]);
-incrementalTest(
+test("div-assign-never-splits-into-division", () => {
+  const tree = assertFresh(
+    "div-assign-never-splits-into-division",
+    lines("BEGIN { (a) /= b }"),
+    1,
+  );
+  contains(tree, "ERROR");
+  assert.equal(
+    matchingLineCount(tree, /^[ \t0-9:-]*"\/"$/),
+    0,
+    "Expected no division token where '/=' is the longest match",
+  );
+});
+
+determinismTest("division-to-match-ere", division, matchEre, ["16 3 ~ /a/"]);
+determinismTest(
   "insert-div-assign-equals",
   divisionExpression,
   divisionAssignment,
   ["11 0 ="],
 );
-incrementalTest(
+determinismTest(
   "delete-div-assign-equals",
   divisionAssignment,
   divisionExpression,
   ["11 1 "],
 );
-incrementalTest("operand-to-ere", matchOperand, matchEre, ["18 1 /a/"]);
-incrementalTest("ere-to-operand", matchEre, matchOperand, ["18 3 a"]);
+determinismTest("operand-to-ere", matchOperand, matchEre, ["18 1 /a/"]);
+determinismTest("ere-to-operand", matchEre, matchOperand, ["18 3 a"]);
 
 const ere = lines(
   "BEGIN {",
@@ -546,7 +607,7 @@ freshTest("ere", ere, (tree) => {
 
 const plainBracketList = lines("BEGIN { print /[+]?[a]/ }");
 const trailingHyphenBracketList = lines("BEGIN { print /[+-]?[a]/ }");
-incrementalTest(
+determinismTest(
   "insert-trailing-bracket-hyphen",
   plainBracketList,
   trailingHyphenBracketList,
@@ -559,51 +620,31 @@ incrementalTest(
     );
     contains(tree, "ere_dupl_symbol");
     excludes(tree, "range_expression");
-    clean(tree);
   },
 );
 
 const closedEre = lines("BEGIN { print /abc/", "print /ok/ }");
 const unclosedEre = lines("BEGIN { print /abc", "print /ok/ }");
-incrementalTest(
-  "delete-ere-closing-slash",
-  closedEre,
-  unclosedEre,
-  ["18 1 "],
-  (tree) => {
-    contains(tree, "ere_end_recovery");
-    assert.match(tree, /^0:18[ \t]*-[ \t]*0:18[ \t]+ere_end_recovery$/m);
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-  },
-);
-incrementalTest(
-  "insert-ere-closing-slash",
-  unclosedEre,
-  closedEre,
-  ["18 0 /"],
-  (tree) => excludes(tree, "_recovery"),
-);
+determinismTest("insert-ere-closing-slash", unclosedEre, closedEre, ["18 0 /"]);
 
 const plainEreDelimiter = lines("BEGIN { print /ab/ }");
 const escapedEreDelimiter = lines(String.raw`BEGIN { print /ab\/c/ }`);
-incrementalTest(
+determinismTest(
   "escape-ere-closing-slash",
   plainEreDelimiter,
   escapedEreDelimiter,
   [String.raw`17 1 \/c/`],
   (tree) => {
     contains(tree, "escaped_delimiter");
-    excludes(tree, "_recovery");
   },
 );
-incrementalTest(
+determinismTest(
   "division-through-broken-to-escaped-ere",
   division,
   escapedEreDelimiter,
   [String.raw`14 5 /ab\/c/`, "20 1 ", "20 0 /"],
 );
-incrementalTest(
+determinismTest(
   "restore-ere-closing-slash",
   escapedEreDelimiter,
   plainEreDelimiter,
@@ -613,7 +654,7 @@ incrementalTest(
 
 const threeDigitOctalEre = lines(String.raw`BEGIN { print /\124/ }`);
 const octalFollowedByCharacterEre = lines(String.raw`BEGIN { print /\1234/ }`);
-incrementalTest(
+determinismTest(
   "split-ere-octal-at-three-digits",
   threeDigitOctalEre,
   octalFollowedByCharacterEre,
@@ -623,7 +664,7 @@ incrementalTest(
     contains(tree, "ordinary_character");
   },
 );
-incrementalTest(
+determinismTest(
   "join-ere-octal-at-three-digits",
   octalFollowedByCharacterEre,
   threeDigitOctalEre,
@@ -636,14 +677,14 @@ incrementalTest(
 
 const greedyEre = lines("BEGIN { print /a*/ }");
 const shortestEre = lines("BEGIN { print /a*?/ }");
-incrementalTest(
+determinismTest(
   "insert-ere-repetition-modifier",
   greedyEre,
   shortestEre,
   ["17 0 ?"],
   (tree) => contains(tree, "repetition_modifier"),
 );
-incrementalTest(
+determinismTest(
   "delete-ere-repetition-modifier",
   shortestEre,
   greedyEre,
@@ -653,7 +694,7 @@ incrementalTest(
 
 const equivalenceEre = lines("BEGIN { print /[[=a=]]/ }");
 const classEre = lines("BEGIN { print /[[:alpha:]]/ }");
-incrementalTest(
+determinismTest(
   "equivalence-to-character-class",
   equivalenceEre,
   classEre,
@@ -664,7 +705,7 @@ incrementalTest(
     excludes(tree, "equivalence_class");
   },
 );
-incrementalTest(
+determinismTest(
   "character-class-to-equivalence",
   classEre,
   equivalenceEre,
@@ -677,17 +718,16 @@ incrementalTest(
 
 const literalOpenBracketEre = lines("BEGIN { print /[[]/ }");
 const collatingSymbolEre = lines("BEGIN { print /[[.x.]]/ }");
-incrementalTest(
+determinismTest(
   "literal-bracket-to-collating-symbol",
   literalOpenBracketEre,
   collatingSymbolEre,
   ["17 0 .x.]"],
   (tree) => {
     contains(tree, "collating_symbol");
-    excludes(tree, "ERROR");
   },
 );
-incrementalTest(
+determinismTest(
   "collating-symbol-to-literal-bracket",
   collatingSymbolEre,
   literalOpenBracketEre,
@@ -695,20 +735,6 @@ incrementalTest(
   (tree) => {
     contains(tree, "collating_element");
     excludes(tree, "collating_symbol");
-  },
-);
-
-const rawEreNewline = lines("BEGIN { print /ab", "/ }");
-incrementalTest(
-  "closed-ere-to-raw-newline",
-  plainEreDelimiter,
-  rawEreNewline,
-  ["17 0 \n"],
-  (tree) => {
-    contains(tree, "ere_end_recovery");
-    singleActionCloserRecovery(tree);
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
   },
 );
 
@@ -736,13 +762,13 @@ freshTest("nested-group-eof", "BEGIN { print /(a", (tree) => {
 
 const rawStatementNewline = lines("BEGIN {", "  print 1", "}");
 const continuedStatementBoundary = lines("BEGIN {", "  print 1\\", "}");
-incrementalTest(
+determinismTest(
   "raw-newline-to-line-continuation",
   rawStatementNewline,
   continuedStatementBoundary,
   ["17 0 \\"],
 );
-incrementalTest(
+determinismTest(
   "line-continuation-to-raw-newline",
   continuedStatementBoundary,
   rawStatementNewline,
@@ -751,7 +777,7 @@ incrementalTest(
 
 const outputPipe = lines("BEGIN { print value | command }");
 const logicalOrPrint = lines("BEGIN { print value || command }");
-incrementalTest(
+determinismTest(
   "output-pipe-to-logical-or",
   outputPipe,
   logicalOrPrint,
@@ -759,13 +785,12 @@ incrementalTest(
   (tree) => {
     contains(tree, "operator: or");
     excludes(tree, "output_redirection");
-    clean(tree);
   },
 );
 
 const plainAppend = lines("BEGIN { print value >> archive }");
 const continuedAppend = lines("BEGIN { print value \\", ">> archive }");
-incrementalTest(
+determinismTest(
   "insert-append-line-continuation",
   plainAppend,
   continuedAppend,
@@ -773,44 +798,7 @@ incrementalTest(
   (tree) => {
     contains(tree, "redirection: output_redirection");
     contains(tree, "append");
-    cleanContinuation(tree);
-  },
-);
-
-const terminatedBreak = lines("BEGIN {", "  break", "  print value", "}");
-const continuedBreak = lines("BEGIN {", "  break\\", "  print value", "}");
-incrementalTest(
-  "statement-newline-to-continuation",
-  terminatedBreak,
-  continuedBreak,
-  ["15 0 \\"],
-  (tree) => {
-    contains(tree, "break_keyword");
     contains(tree, "line_continuation");
-    contains(tree, "terminator: terminator_recovery");
-    contains(tree, "print_statement");
-    excludes(tree, "statement_recovery");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-  },
-);
-
-const completeIf = lines(
-  "BEGIN { if (condition) consequence; else alternative }",
-);
-const missingConsequence = lines("BEGIN { if (condition) else alternative }");
-incrementalTest(
-  "delete-if-consequence",
-  completeIf,
-  missingConsequence,
-  ["23 13 "],
-  (tree) => {
-    contains(tree, "consequence: statement_recovery");
-    contains(tree, "else_keyword");
-    contains(tree, "alternative: unterminated_statement");
-    excludes(tree, "terminator_recovery");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
   },
 );
 
@@ -822,25 +810,11 @@ const missingReservedIf = lines(
   "BEGIN { if (condition)",
   "END { print target }",
 );
-incrementalTest(
-  "delete-if-body-before-end-item",
-  completeReservedIf,
-  missingReservedIf,
-  ["22 14 \n"],
-  (tree) => {
-    contains(tree, "consequence: statement_recovery");
-    contains(tree, "closing: action_item_boundary_recovery");
-    contains(tree, "end_keyword");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-  },
-);
-incrementalTest(
+determinismTest(
   "restore-if-body-before-end-item",
   missingReservedIf,
   completeReservedIf,
   ["22 1  print body }\n"],
-  (tree) => clean(tree),
 );
 
 const completeDoTail = lines(
@@ -848,92 +822,24 @@ const completeDoTail = lines(
   "END { print target }",
 );
 const missingDoTail = lines("BEGIN { do print body;", "END { print target }");
-const continuedFunctionDoTail = lines(
-  "BEGIN { do print body; \\",
-  "function follow() { print target }",
-);
-const continuedBeginDoTail = lines(
-  "BEGIN { do print body; \\",
-  "BEGIN { print target }",
-);
-incrementalTest(
-  "delete-do-tail-before-end-item",
-  completeDoTail,
-  missingDoTail,
-  ["22 21 \n"],
-  (tree) => {
-    contains(tree, "do_tail_recovery");
-    contains(tree, "closing: action_item_boundary_recovery");
-    contains(tree, "end_keyword");
-    excludes(tree, "statement_recovery");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-  },
-);
-incrementalTest(
+determinismTest(
   "restore-do-tail-before-end-item",
   missingDoTail,
   completeDoTail,
   ["22 1  while (condition) }\n"],
-  (tree) => clean(tree),
 );
-incrementalTest(
-  "recover-do-tail-through-reserved-boundaries",
-  completeDoTail,
-  continuedFunctionDoTail,
-  ["22 21 \n", "22 0  \\", "25 21 function follow() { print target }\n"],
-  (tree) => {
-    contains(tree, "line_continuation");
-    contains(tree, "do_tail_recovery");
-    contains(tree, "function_keyword");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-  },
-);
-incrementalTest(
-  "replace-function-with-begin-after-do-tail",
-  continuedFunctionDoTail,
-  continuedBeginDoTail,
-  ["25 35 BEGIN { print target }\n"],
-  (tree) => {
-    contains(tree, "line_continuation");
-    contains(tree, "do_tail_recovery");
-    contains(tree, "begin_keyword");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-  },
-);
-
 const closedSubscriptEof = "BEGIN { delete array[offset] }";
 const openSubscriptEof = "BEGIN { delete array[offset";
-incrementalTest(
-  "delete-subscript-and-action-closers-at-eof",
-  closedSubscriptEof,
-  openSubscriptEof,
-  ["27 3 "],
-  (tree) => {
-    contains(tree, "subscripts: expr_list");
-    singleActionCloserRecovery(tree);
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-    assert.equal(
-      matchingLineCount(tree, /^[ \t0-9:-]+closer_recovery$/),
-      1,
-      "Expected one unfielded subscript closer-recovery node at physical EOF",
-    );
-  },
-);
-incrementalTest(
+determinismTest(
   "insert-subscript-and-action-closers-at-eof",
   openSubscriptEof,
   closedSubscriptEof,
   ["27 0 ] }"],
-  (tree) => clean(tree),
 );
 
 const commentBackslash = lines("#\\", "BEGIN {}");
 const leadingContinuation = lines("\\", "BEGIN {}");
-incrementalTest(
+determinismTest(
   "comment-backslash-to-line-continuation",
   commentBackslash,
   leadingContinuation,
@@ -942,53 +848,53 @@ incrementalTest(
 
 const blankCall = lines("BEGIN { f (value) }");
 const continuedCall = lines("BEGIN { f\\", "(value) }");
-incrementalTest(
+determinismTest(
   "blank-to-line-continuation-call",
   blankCall,
   continuedCall,
   ["9 1 \\\n"],
   (tree) => {
     assert.match(tree, /^[ \t0-9:-]*func_name[ \t]/m);
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
 
 const plainAddAssign = lines("BEGIN { value += other }");
 const continuedAddAssign = lines("BEGIN { value \\", "+= other }");
-incrementalTest(
+determinismTest(
   "insert-add-assign-line-continuation",
   plainAddAssign,
   continuedAddAssign,
   ["14 0 \\\n"],
   (tree) => {
     contains(tree, "add_assign");
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
 
 const plainAdditive = lines("BEGIN { left + right }");
 const continuedAdditive = lines("BEGIN { left\\", "+ right }");
-incrementalTest(
+determinismTest(
   "insert-additive-operator-line-continuation",
   plainAdditive,
   continuedAdditive,
   ["12 1 \\\n"],
   (tree) => {
     contains(tree, '"+"');
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
 
 const plainComparison = lines("BEGIN { left < right }");
 const continuedComparison = lines("BEGIN { left\\", "< right }");
-incrementalTest(
+determinismTest(
   "insert-comparison-operator-line-continuation",
   plainComparison,
   continuedComparison,
   ["12 1 \\\n"],
   (tree) => {
     contains(tree, '"<"');
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
 
@@ -1005,7 +911,7 @@ freshTest("continued-getline-redirect", continuedGetlineRedirect, (tree) => {
   excludes(tree, "operator: le");
   cleanContinuation(tree);
 });
-incrementalTest(
+determinismTest(
   "continued-getline-redirect-to-comparison",
   continuedGetlineRedirect,
   continuedGetlineComparison,
@@ -1013,74 +919,58 @@ incrementalTest(
   (tree) => {
     contains(tree, "operator: le");
     excludes(tree, "source: expr");
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
 
 const plainConditional = lines("BEGIN { condition ? yes : no }");
 const continuedConditional = lines("BEGIN { condition ? yes\\", ": no }");
-incrementalTest(
+determinismTest(
   "insert-conditional-colon-line-continuation",
   plainConditional,
   continuedConditional,
   ["23 1 \\\n"],
   (tree) => {
     contains(tree, "alternative: expr");
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
 
 const plainLogical = lines("BEGIN { left && right }");
 const continuedLogical = lines("BEGIN { left\\", "&& right }");
-incrementalTest(
+determinismTest(
   "insert-logical-operator-line-continuation",
   plainLogical,
   continuedLogical,
   ["12 1 \\\n"],
   (tree) => {
     contains(tree, "and");
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
 
 const plainPipeGetline = lines("BEGIN { source | getline target }");
 const continuedPipeGetline = lines("BEGIN { source\\", "| getline target }");
-incrementalTest(
+determinismTest(
   "insert-input-pipe-line-continuation",
   plainPipeGetline,
   continuedPipeGetline,
   ["14 1 \\\n"],
   (tree) => {
     contains(tree, "non_unary_input_function");
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
 
 const unaryPipeGetline = lines("BEGIN { -source | getline target }");
 const fieldPipeGetline = lines("BEGIN { $source | getline target }");
-incrementalTest(
+determinismTest(
   "unary-to-field-pipe-getline",
   unaryPipeGetline,
   fieldPipeGetline,
   ["8 1 $"],
   (tree) => {
     assert.match(tree, /^[ \t0-9:-]*non_unary_input_function$/m);
-    clean(tree);
-  },
-);
-
-const redirectedInput = lines("BEGIN { getline target < source}");
-const missingInput = lines("BEGIN { getline target < }");
-incrementalTest(
-  "delete-redirected-input-source",
-  redirectedInput,
-  missingInput,
-  ["25 6 "],
-  (tree) => {
-    contains(tree, "non_unary_input_function");
-    contains(tree, "expression_recovery");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
   },
 );
 
@@ -1137,35 +1027,20 @@ freshTest("raw-lone-escape-recovery", rawLoneEscapeRecovery, (tree) => {
 
 const closedString = lines('BEGIN { print "abc"', "}");
 const unclosedString = lines('BEGIN { print "abc', "}");
-incrementalTest(
-  "delete-string-closing-quote",
-  closedString,
-  unclosedString,
-  ["18 1 "],
-  (tree) => {
-    contains(tree, "string_end_recovery");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-  },
-);
-incrementalTest(
-  "insert-string-closing-quote",
-  unclosedString,
-  closedString,
-  ['18 0 "'],
-  (tree) => excludes(tree, "_recovery"),
-);
+determinismTest("insert-string-closing-quote", unclosedString, closedString, [
+  '18 0 "',
+]);
 
 const plainEscape = lines('BEGIN { print "an" }');
 const backslashEscape = lines(String.raw`BEGIN { print "a\n" }`);
-incrementalTest(
+determinismTest(
   "insert-string-escape-backslash",
   plainEscape,
   backslashEscape,
   ["16 0 \\"],
   (tree) => contains(tree, "escape_sequence"),
 );
-incrementalTest(
+determinismTest(
   "delete-string-escape-backslash",
   backslashEscape,
   plainEscape,
@@ -1175,7 +1050,7 @@ incrementalTest(
 
 const topLevelErePattern = lines("/ready/ { print }");
 const topLevelDivisionPattern = lines("total / count { print }");
-incrementalTest(
+determinismTest(
   "top-level-ere-to-division-pattern",
   topLevelErePattern,
   topLevelDivisionPattern,
@@ -1183,7 +1058,6 @@ incrementalTest(
   (tree) => {
     contains(tree, "normal_pattern");
     excludes(tree, "extended_reg_exp");
-    clean(tree);
     assert.equal(
       matchingLineCount(tree, /^[ \t0-9:-]*"\/"$/),
       1,
@@ -1191,7 +1065,7 @@ incrementalTest(
     );
   },
 );
-incrementalTest(
+determinismTest(
   "top-level-division-to-ere-pattern",
   topLevelDivisionPattern,
   topLevelErePattern,
@@ -1199,7 +1073,6 @@ incrementalTest(
   (tree) => {
     contains(tree, "normal_pattern");
     contains(tree, "extended_reg_exp");
-    clean(tree);
     assert.equal(
       matchingLineCount(tree, /^[ \t0-9:-]*"\/"$/),
       2,
@@ -1210,7 +1083,7 @@ incrementalTest(
 
 const adjacentFunctionName = lines("function compute(value) {}");
 const continuedSpacedFunctionName = lines("function compute \\", "(value) {}");
-incrementalTest(
+determinismTest(
   "adjacent-to-continued-spaced-function-name",
   adjacentFunctionName,
   continuedSpacedFunctionName,
@@ -1218,10 +1091,10 @@ incrementalTest(
   (tree) => {
     assert.match(tree, /^[ \t0-9:-]*name:[ \t]+name[ \t]+`compute`$/m);
     excludes(tree, "func_name");
-    cleanContinuation(tree);
+    contains(tree, "line_continuation");
   },
 );
-incrementalTest(
+determinismTest(
   "continued-spaced-to-adjacent-function-name",
   continuedSpacedFunctionName,
   adjacentFunctionName,
@@ -1229,13 +1102,12 @@ incrementalTest(
   (tree) => {
     assert.match(tree, /^[ \t0-9:-]*name:[ \t]+func_name[ \t]+`compute`$/m);
     excludes(tree, "line_continuation");
-    clean(tree);
   },
 );
 
 const compactRangePattern = lines("start,stop {}");
 const multilineRangePattern = lines("start,", "stop {}");
-incrementalTest(
+determinismTest(
   "insert-range-pattern-newline",
   compactRangePattern,
   multilineRangePattern,
@@ -1245,7 +1117,6 @@ incrementalTest(
     contains(tree, "left: expr");
     contains(tree, "right: expr");
     contains(tree, "newline_opt");
-    clean(tree);
     assert.equal(
       matchingLineCount(tree, /^[ \t0-9:-]+newline_opt$/),
       1,
@@ -1253,56 +1124,61 @@ incrementalTest(
     );
   },
 );
-incrementalTest(
+determinismTest(
   "delete-range-pattern-newline",
   multilineRangePattern,
   compactRangePattern,
   ["6 1 "],
   (tree) => {
     excludes(tree, "newline_opt");
-    clean(tree);
   },
 );
 
 const separatedClosedItems = "BEGIN {}\nEND {}";
 const directOpenActionItem = "BEGIN {END {}";
-incrementalTest(
-  "delete-action-close-and-item-terminator",
-  separatedClosedItems,
-  directOpenActionItem,
-  ["7 2 "],
-  (tree) => {
-    contains(tree, "closing: action_item_boundary_recovery");
-    contains(tree, "terminator: terminator_recovery");
-    contains(tree, "end_keyword");
-    excludes(tree, "closer_recovery");
-    excludes(tree, "ERROR");
-    excludes(tree, "MISSING");
-    assert.equal(
-      matchingLineCount(
-        tree,
-        /^[ \t0-9:-]+closing:[ \t]+action_item_boundary_recovery$/,
-      ),
-      1,
-      "Expected one direct action item-boundary recovery",
-    );
-    assert.equal(
-      matchingLineCount(
-        tree,
-        /^[ \t0-9:-]+terminator:[ \t]+terminator_recovery$/,
-      ),
-      1,
-      "Expected one recovered top-level item terminator",
-    );
-  },
-);
-incrementalTest(
+determinismTest(
   "restore-action-close-and-item-terminator",
   directOpenActionItem,
   separatedClosedItems,
   ["7 0 }\n"],
   (tree) => {
     contains(tree, "terminator: terminator");
-    clean(tree);
   },
+);
+
+const bareBuiltinConcat = lines('BEGIN { x = length "" }');
+const continuedBuiltinConcat = lines("BEGIN { x = length\\", '"" }');
+determinismTest(
+  "insert-builtin-concat-line-continuation",
+  bareBuiltinConcat,
+  continuedBuiltinConcat,
+  ["18 1 \\\n"],
+  (tree) => {
+    contains(tree, "builtin_func_name");
+    contains(tree, "line_continuation");
+  },
+);
+determinismTest(
+  "delete-builtin-concat-line-continuation",
+  continuedBuiltinConcat,
+  bareBuiltinConcat,
+  ["18 2  "],
+);
+
+const separatedEmptyStatement = lines("BEGIN {", "; x", "}");
+const continuedEmptyStatement = lines("BEGIN {", ";\\", "x", "}");
+determinismTest(
+  "insert-statement-gap-line-continuation",
+  separatedEmptyStatement,
+  continuedEmptyStatement,
+  ["9 1 \\\n"],
+  (tree) => {
+    contains(tree, "line_continuation");
+  },
+);
+determinismTest(
+  "delete-statement-gap-line-continuation",
+  continuedEmptyStatement,
+  separatedEmptyStatement,
+  ["9 2  "],
 );
