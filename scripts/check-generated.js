@@ -16,12 +16,13 @@ const expectedGeneratedFiles = [
 ];
 
 const budgets = {
-  STATE_COUNT: 35000,
-  LARGE_STATE_COUNT: 5800,
-  SYMBOL_COUNT: 460,
+  STATE_COUNT: 26000,
+  LARGE_STATE_COUNT: 4200,
+  SYMBOL_COUNT: 465,
   EXTERNAL_TOKEN_COUNT: 118,
-  parser_bytes: 53000000,
-  maximum_ACTIONS_index: 46000,
+  parser_bytes: 40000000,
+  maximum_ACTIONS_index: 30500,
+  parse_table_storage_bytes: 6200000,
 };
 
 function listFiles(directory, prefix = "") {
@@ -55,6 +56,49 @@ function maximumActionIndex(parser) {
     throw new Error("src/parser.c contains no ACTIONS index");
   }
   return maximum;
+}
+
+function smallParseTableWordCount(parser) {
+  const declaration = "static const uint16_t ts_small_parse_table[] = {\n";
+  const start = parser.indexOf(declaration);
+  if (start === -1) {
+    throw new Error("src/parser.c contains no small parse table");
+  }
+  const initializerStart = start + declaration.length;
+  const initializerEnd = parser.indexOf("\n};", initializerStart);
+  if (initializerEnd === -1) {
+    throw new Error("src/parser.c contains an unterminated small parse table");
+  }
+  const initializer = parser.slice(initializerStart, initializerEnd);
+
+  let finalIndex;
+  let finalOffset;
+  for (const match of initializer.matchAll(/^ {2}\[([0-9]+)\] =/gm)) {
+    finalIndex = Number(match[1]);
+    finalOffset = match.index;
+  }
+  if (finalIndex === undefined || finalOffset === undefined) {
+    throw new Error("src/parser.c small parse table has no indexed row");
+  }
+
+  const finalRow = initializer.slice(finalOffset);
+  const finalRowWordCount = finalRow.match(/,/g)?.length ?? 0;
+  if (finalRowWordCount === 0) {
+    throw new Error("src/parser.c small parse table has an empty final row");
+  }
+  return finalIndex + finalRowWordCount;
+}
+
+function parseTableStorageBytes(parser, actual) {
+  const smallStateCount = actual.STATE_COUNT - actual.LARGE_STATE_COUNT;
+  if (smallStateCount < 0) {
+    throw new Error("src/parser.c has more large states than total states");
+  }
+  return (
+    actual.LARGE_STATE_COUNT * actual.SYMBOL_COUNT * 2 +
+    smallParseTableWordCount(parser) * 2 +
+    smallStateCount * 4
+  );
 }
 
 function checkGenerated() {
@@ -114,6 +158,7 @@ function checkParserBudget() {
     parser_bytes: fs.statSync(parserPath).size,
     maximum_ACTIONS_index: maximumActionIndex(parser),
   };
+  actual.parse_table_storage_bytes = parseTableStorageBytes(parser, actual);
 
   console.log("Metric                     Actual      Maximum");
   let failed = false;

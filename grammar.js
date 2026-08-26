@@ -415,9 +415,6 @@ const aliasedAnyTier = ($, context, tier) =>
 const expressionTargetGuard = ($, context) =>
   context.input ? $._expression_target_guard : $._print_expression_target_guard;
 
-const continuedTierExpression = ($, context, name, tier) =>
-  continuedRequiredExpression($, name, aliasedAnyTier($, context, tier));
-
 const continuedPresentTierExpression = ($, context, name, tier) =>
   continuedExpression($, name, aliasedAnyTier($, context, tier));
 
@@ -445,7 +442,38 @@ const tieredExpressionRules = (context) => {
   const any = (tier) => anyTierName(context, tier);
   const not = `_${context.prefix}_not_expr`;
   const prefixUpdate = `_${context.prefix}_prefix_update_expr`;
+  const assignmentRight = `_${context.prefix}_assignment_right_expr`;
+  const conditionalConsequence = `_${context.prefix}_conditional_consequence_expr`;
+  const conditionalAlternative = `_${context.prefix}_conditional_alternative_expr`;
   const expression = ($) => $[context.expression];
+  const requiredTierName = (name, tier) =>
+    `_${context.prefix}_required_${name}_${tier}_expr`;
+  const requiredTier = ($, name, tier) => $[requiredTierName(name, tier)];
+
+  const rightTiers = [
+    "logical_and",
+    "membership",
+    ...(context.comparison ? ["comparison"] : []),
+    "concatenation",
+    "multiplicative",
+    "unary",
+  ];
+  for (const tier of rightTiers) {
+    rules[requiredTierName("right", tier)] = ($) =>
+      continuedRequiredExpression($, "right", aliasedAnyTier($, context, tier));
+  }
+  rules[requiredTierName("operand", "unary")] = ($) =>
+    continuedRequiredExpression(
+      $,
+      "operand",
+      aliasedAnyTier($, context, "unary"),
+    );
+  rules[assignmentRight] = ($) =>
+    continuedRequiredExpression($, "right", expression($));
+  rules[conditionalConsequence] = ($) =>
+    continuedRequiredExpression($, "consequence", expression($));
+  rules[conditionalAlternative] = ($) =>
+    continuedRequiredExpression($, "alternative", expression($));
 
   const addAnyTier = (tier) => {
     rules[any(tier)] = ($) =>
@@ -468,7 +496,7 @@ const tieredExpressionRules = (context) => {
             seq(
               field("left", aliasedClassTier($, context, classification, tier)),
               operator($),
-              continuedTierExpression($, context, "right", nextTier),
+              requiredTier($, "right", nextTier),
             ),
           ),
         );
@@ -489,7 +517,7 @@ const tieredExpressionRules = (context) => {
                 aliasedClassTier($, context, classification, nextTier),
               ),
               operator($),
-              continuedTierExpression($, context, "right", nextTier),
+              requiredTier($, "right", nextTier),
             ),
           ),
         );
@@ -517,7 +545,7 @@ const tieredExpressionRules = (context) => {
               "=",
             ),
           ),
-          continuedRequiredExpression($, "right", expression($)),
+          $[assignmentRight],
         ),
       ),
     );
@@ -534,9 +562,9 @@ const tieredExpressionRules = (context) => {
               aliasedClassTier($, context, classification, "logical_or"),
             ),
             $._continued_conditional_question,
-            continuedRequiredExpression($, "consequence", expression($)),
+            $[conditionalConsequence],
             $._continued_conditional_colon,
-            continuedRequiredExpression($, "alternative", expression($)),
+            $[conditionalAlternative],
           ),
         ),
       );
@@ -557,7 +585,7 @@ const tieredExpressionRules = (context) => {
                 $,
                 expressionTargetGuard($, context),
                 continuedPresentTierExpression($, context, "right", nextTier),
-                continuedTierExpression($, context, "right", nextTier),
+                requiredTier($, "right", nextTier),
               ),
             ),
           ),
@@ -680,10 +708,7 @@ const tieredExpressionRules = (context) => {
       ...["+", "-"].map((operator) =>
         prec.right(
           PRECEDENCE.unary,
-          seq(
-            field("operator", operator),
-            continuedTierExpression($, context, "operand", "unary"),
-          ),
+          seq(field("operator", operator), requiredTier($, "operand", "unary")),
         ),
       ),
     );
@@ -693,10 +718,7 @@ const tieredExpressionRules = (context) => {
   rules[not] = ($) =>
     prec.right(
       PRECEDENCE.unary,
-      seq(
-        field("operator", "!"),
-        continuedTierExpression($, context, "operand", "unary"),
-      ),
+      seq(field("operator", "!"), requiredTier($, "operand", "unary")),
     );
   rules[nonUnary("unary")] = ($) =>
     choice(classTier($, context, "non_unary", "exponentiation"), $[not]);
@@ -716,7 +738,7 @@ const tieredExpressionRules = (context) => {
               aliasedClassTier($, context, classification, "update"),
             ),
             $._continued_exponentiation_operator,
-            continuedTierExpression($, context, "right", "unary"),
+            requiredTier($, "right", "unary"),
           ),
         ),
       );
