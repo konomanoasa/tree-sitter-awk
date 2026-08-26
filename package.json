@@ -1,11 +1,11 @@
 {
-  "name": "tree-sitter-posix-awk",
+  "name": "tree-sitter-awk",
   "version": "0.1.0",
   "private": true,
   "description": "Tree-sitter grammar for POSIX awk.",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/konomanoasa/tree-sitter-posix-awk.git"
+    "url": "git+https://github.com/konomanoasa/tree-sitter-awk.git"
   },
   "type": "commonjs",
   "scripts": {

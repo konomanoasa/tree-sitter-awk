@@ -14,7 +14,7 @@ const {
   runChecked,
 } = require("../scripts/tree-sitter.js");
 
-const runtime = createEnvironment("tree-sitter-posix-awk-runtime.");
+const runtime = createEnvironment("tree-sitter-awk-runtime.");
 const nativeLibrary = path.join(runtime.directory, "parser");
 const wasmLibrary = path.join(runtime.libraryDirectory, `${grammar.name}.wasm`);
 let includedRangeLanguage;

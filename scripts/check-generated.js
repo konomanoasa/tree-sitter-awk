@@ -59,7 +59,7 @@ function maximumActionIndex(parser) {
 
 function checkGenerated() {
   const generationDirectory = fs.mkdtempSync(
-    path.join(os.tmpdir(), "tree-sitter-posix-awk-generated."),
+    path.join(os.tmpdir(), "tree-sitter-awk-generated."),
   );
   let failed = false;
   try {

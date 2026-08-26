@@ -57,7 +57,7 @@ if (process.argv.length === 3 && process.argv[2] === "--write") {
   }
 
   const testDirectory = fs.mkdtempSync(
-    path.join(os.tmpdir(), "tree-sitter-posix-awk-scanner."),
+    path.join(os.tmpdir(), "tree-sitter-awk-scanner."),
   );
   try {
     const testBinary = path.join(testDirectory, "scanner");

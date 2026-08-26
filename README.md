@@ -1,4 +1,4 @@
-# tree-sitter-posix-awk
+# tree-sitter-awk
 
 [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) grammar for
 POSIX.1-2024 `awk`.

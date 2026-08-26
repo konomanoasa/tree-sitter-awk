@@ -797,7 +797,7 @@ const continuedPrintListElement = ($, element) =>
   );
 
 module.exports = grammar({
-  name: "posix_awk",
+  name: "awk",
 
   externals: ($) => [
     $._begin_word,
