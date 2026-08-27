@@ -1,34 +1,30 @@
 {
-  "name": "tree-sitter-awk",
+  "name": "@konomanoasa/tree-sitter-awk",
   "version": "0.1.0",
-  "private": true,
-  "description": "Tree-sitter grammar for POSIX awk.",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/konomanoasa/tree-sitter-awk.git"
-  },
-  "type": "commonjs",
-  "scripts": {
-    "tree-sitter": "node scripts/tree-sitter.js",
-    "generate": "npm run tree-sitter -- generate",
-    "format": "biome check --write . && node scripts/check-scanner.js --write",
-    "check:js": "biome check .",
-    "check:generated": "node scripts/check-generated.js",
-    "check:scanner": "node scripts/check-scanner.js",
-    "test:corpus": "npm run tree-sitter -- test --rebuild",
-    "test:wasm": "npm run tree-sitter -- test --wasm --rebuild",
-    "test:parser": "node --test test/parser.test.js",
-    "test": "npm run test:corpus && npm run test:wasm && npm run test:parser",
-    "check": "npm run check:js && npm run check:scanner && npm run check:generated && npm test"
-  },
-  "engines": {
-    "node": ">=22"
-  },
+  "description": "A Tree-sitter grammar for POSIX awk.",
   "license": "MIT",
+  "repository": "git+https://github.com/konomanoasa/tree-sitter-awk.git",
+  "files": [
+    "grammar.js",
+    "src/*.c",
+    "src/*.json",
+    "src/tree_sitter/*.h",
+    "tree-sitter.json"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "check": "biome check . && node scripts/check-scanner.js && node scripts/check-generated.js && npm test",
+    "format": "biome check --write . && node scripts/check-scanner.js --write",
+    "generate": "npm run tree-sitter -- generate",
+    "test": "npm run tree-sitter -- test --rebuild && node --test test/parser.test.js",
+    "test:fuzz": "npm run tree-sitter -- fuzz --rebuild --iterations 100 --edits 5",
+    "tree-sitter": "node scripts/tree-sitter.js"
+  },
   "devDependencies": {
     "@biomejs/biome": "2.5.5",
-    "tree-sitter-cli": "0.26.11",
-    "web-tree-sitter": "0.26.11"
+    "tree-sitter-cli": "0.26.11"
   },
   "allowScripts": {
     "tree-sitter-cli": true

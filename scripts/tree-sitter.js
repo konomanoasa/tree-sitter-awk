@@ -1,5 +1,3 @@
-"use strict";
-
 const childProcess = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -15,6 +13,7 @@ if (!Array.isArray(manifest.grammars) || manifest.grammars.length !== 1) {
 }
 
 const grammar = manifest.grammars[0];
+const grammarPath = grammar?.path ?? ".";
 if (
   grammar === null ||
   typeof grammar !== "object" ||
@@ -22,13 +21,13 @@ if (
   grammar.name.length === 0 ||
   typeof grammar.scope !== "string" ||
   grammar.scope.length === 0 ||
-  typeof grammar.path !== "string" ||
-  grammar.path.length === 0
+  typeof grammarPath !== "string" ||
+  grammarPath.length === 0
 ) {
   throw new Error("tree-sitter.json grammar metadata is incomplete");
 }
 
-const grammarDirectory = path.resolve(repositoryDirectory, grammar.path);
+const grammarDirectory = path.resolve(repositoryDirectory, grammarPath);
 const treeSitterCli = require.resolve("tree-sitter-cli/cli.js");
 
 function createEnvironment(prefix = "tree-sitter-awk.") {

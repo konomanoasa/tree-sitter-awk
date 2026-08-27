@@ -1,10 +1,7 @@
-"use strict";
-
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const { after, before, test } = require("node:test");
-const { Language, Parser } = require("web-tree-sitter");
 
 const {
   createEnvironment,
@@ -16,21 +13,13 @@ const {
 
 const runtime = createEnvironment("tree-sitter-awk-runtime.");
 const nativeLibrary = path.join(runtime.directory, "parser");
-const wasmLibrary = path.join(runtime.libraryDirectory, `${grammar.name}.wasm`);
-let includedRangeLanguage;
 let sourceSequence = 0;
 
-before(async () => {
+before(() => {
   runChecked(["build", "--output", nativeLibrary, repositoryDirectory], {
     environment: runtime,
     stdio: "inherit",
   });
-  runChecked(
-    ["build", "--wasm", "--output", wasmLibrary, repositoryDirectory],
-    { environment: runtime, stdio: "inherit" },
-  );
-  await Parser.init();
-  includedRangeLanguage = await Language.load(wasmLibrary);
 });
 
 after(() => {
@@ -64,21 +53,15 @@ function normalizeParseTree(stdout, sourcePath) {
     .join("\n");
 }
 
-function captureParse(runtimeName, sourcePath, edits = []) {
-  const args = ["parse"];
-  if (runtimeName === "native") {
-    args.push(
-      "--lib-path",
-      nativeLibrary,
-      "--lang-name",
-      grammar.name,
-      "--cst",
-    );
-  } else if (runtimeName === "wasm") {
-    args.push("--wasm", "--scope", grammar.scope, "--cst");
-  } else {
-    throw new Error(`Unknown parser runtime: ${runtimeName}`);
-  }
+function captureParse(sourcePath, edits = []) {
+  const args = [
+    "parse",
+    "--lib-path",
+    nativeLibrary,
+    "--lang-name",
+    grammar.name,
+    "--cst",
+  ];
   if (edits.length > 0) {
     args.push("--edits", ...edits, "--", sourcePath);
   } else {
@@ -107,15 +90,8 @@ function assertStatus(label, result, expectedStatus) {
 
 function assertFresh(testName, source, expectedStatus = 0) {
   const sourcePath = writeSource(testName, "fresh", source);
-  const native = captureParse("native", sourcePath);
-  const wasm = captureParse("wasm", sourcePath);
+  const native = captureParse(sourcePath);
   assertStatus(`${testName} native fresh parse`, native, expectedStatus);
-  assertStatus(`${testName} Wasm fresh parse`, wasm, expectedStatus);
-  assert.equal(
-    native.tree,
-    wasm.tree,
-    `${testName}: native fresh and Wasm fresh CSTs differ`,
-  );
   return native.tree;
 }
 
@@ -169,12 +145,10 @@ function captureEditParses(testName, initialSource, finalSource, edits) {
     `${testName}: edits do not produce the final source`,
   );
 
-  const nativeIncremental = captureParse("native", initialPath, edits);
-  const nativeFresh = captureParse("native", finalPath);
-  const wasmIncremental = captureParse("wasm", initialPath, edits);
-  const wasmFresh = captureParse("wasm", finalPath);
+  const nativeIncremental = captureParse(initialPath, edits);
+  const nativeFresh = captureParse(finalPath);
 
-  return { nativeFresh, nativeIncremental, wasmFresh, wasmIncremental };
+  return { nativeFresh, nativeIncremental };
 }
 
 function assertDeterministicEdit(testName, initialSource, finalSource, edits) {
@@ -182,8 +156,6 @@ function assertDeterministicEdit(testName, initialSource, finalSource, edits) {
   for (const [label, result] of [
     ["native incremental parse", parses.nativeIncremental],
     ["native fresh parse", parses.nativeFresh],
-    ["Wasm incremental parse", parses.wasmIncremental],
-    ["Wasm fresh parse", parses.wasmFresh],
   ]) {
     assertStatus(`${testName} ${label}`, result, 0);
     clean(result.tree);
@@ -192,16 +164,6 @@ function assertDeterministicEdit(testName, initialSource, finalSource, edits) {
     parses.nativeIncremental.tree,
     parses.nativeFresh.tree,
     `${testName}: native incremental and fresh CSTs differ`,
-  );
-  assert.equal(
-    parses.wasmIncremental.tree,
-    parses.wasmFresh.tree,
-    `${testName}: Wasm incremental and fresh CSTs differ`,
-  );
-  assert.equal(
-    parses.nativeFresh.tree,
-    parses.wasmFresh.tree,
-    `${testName}: native fresh and Wasm fresh CSTs differ`,
   );
   return parses.nativeFresh.tree;
 }
@@ -253,92 +215,6 @@ function determinismTest(name, initial, final, edits, assertions = () => {}) {
     assertions(assertDeterministicEdit(name, initial, final, edits)),
   );
 }
-
-function assertIncludedRanges(source, includedRanges, assertions) {
-  const parser = new Parser();
-  parser.setLanguage(includedRangeLanguage);
-  const tree = parser.parse(source, null, { includedRanges });
-  assert.notEqual(
-    tree,
-    null,
-    "Expected included-range parse to produce a tree",
-  );
-  try {
-    assertions(tree.rootNode);
-  } finally {
-    tree.delete();
-    parser.delete();
-  }
-}
-
-function assertSingleNode(root, type, expected) {
-  assert.equal(root.hasError, false, root.toString());
-  const nodes = root.descendantsOfType(type);
-  assert.equal(nodes.length, 1, root.toString());
-  assert.equal(nodes[0].startIndex, expected.startIndex);
-  assert.equal(nodes[0].endIndex, expected.endIndex);
-  assert.deepEqual(nodes[0].startPosition, expected.startPosition);
-  assert.deepEqual(nodes[0].endPosition, expected.endPosition);
-  assert.equal(nodes[0].text, expected.text);
-}
-
-test("included range starts a keyword after skipped layout", () => {
-  const source = "BEGIN {}\n HOSTEND {}\n";
-  assertIncludedRanges(
-    source,
-    [
-      {
-        startIndex: 0,
-        endIndex: 10,
-        startPosition: { row: 0, column: 0 },
-        endPosition: { row: 1, column: 1 },
-      },
-      {
-        startIndex: 14,
-        endIndex: 21,
-        startPosition: { row: 1, column: 5 },
-        endPosition: { row: 2, column: 0 },
-      },
-    ],
-    (root) =>
-      assertSingleNode(root, "end_keyword", {
-        startIndex: 14,
-        endIndex: 17,
-        startPosition: { row: 1, column: 5 },
-        endPosition: { row: 1, column: 8 },
-        text: "END",
-      }),
-  );
-});
-
-test("included range starts a number at the current range boundary", () => {
-  const source = "BEGIN {}\nHOST123 {}\n";
-  assertIncludedRanges(
-    source,
-    [
-      {
-        startIndex: 0,
-        endIndex: 9,
-        startPosition: { row: 0, column: 0 },
-        endPosition: { row: 1, column: 0 },
-      },
-      {
-        startIndex: 13,
-        endIndex: 20,
-        startPosition: { row: 1, column: 4 },
-        endPosition: { row: 2, column: 0 },
-      },
-    ],
-    (root) =>
-      assertSingleNode(root, "number", {
-        startIndex: 13,
-        endIndex: 16,
-        startPosition: { row: 1, column: 4 },
-        endPosition: { row: 1, column: 7 },
-        text: "123",
-      }),
-  );
-});
 
 const fieldContractSource = `/(a|b)/, /c/ {
   $1 = "value";

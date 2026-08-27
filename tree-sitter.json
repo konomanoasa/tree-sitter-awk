@@ -3,10 +3,8 @@
   "grammars": [
     {
       "name": "awk",
-      "camelcase": "Awk",
       "title": "POSIX awk",
       "scope": "source.awk",
-      "path": ".",
       "file-types": ["awk"],
       "injection-regex": "^awk$"
     }
@@ -14,7 +12,7 @@
   "metadata": {
     "version": "0.1.0",
     "license": "MIT",
-    "description": "Tree-sitter grammar for POSIX awk.",
+    "description": "A Tree-sitter grammar for POSIX awk.",
     "authors": [
       {
         "name": "konomanoasa"
@@ -27,11 +25,9 @@
   "bindings": {
     "c": false,
     "go": false,
-    "java": false,
     "node": false,
     "python": false,
     "rust": false,
-    "swift": false,
-    "zig": false
+    "swift": false
   }
 }
