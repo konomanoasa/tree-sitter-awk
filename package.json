@@ -1,11 +1,12 @@
 {
   "name": "@konomanoasa/tree-sitter-awk",
   "version": "0.1.0",
-  "description": "A Tree-sitter grammar for POSIX awk.",
+  "description": "Tree-sitter grammar for POSIX awk.",
   "license": "MIT",
   "repository": "git+https://github.com/konomanoasa/tree-sitter-awk.git",
   "files": [
     "grammar.js",
+    "queries/*.scm",
     "src/*.c",
     "src/*.json",
     "src/tree_sitter/*.h",
@@ -18,7 +19,7 @@
     "check": "biome check . && node scripts/check-scanner.js && node scripts/check-generated.js && npm test",
     "format": "biome check --write . && node scripts/check-scanner.js --write",
     "generate": "npm run tree-sitter -- generate",
-    "test": "npm run tree-sitter -- test --rebuild && node --test test/parser.test.js",
+    "test": "npm run tree-sitter -- test --rebuild && node --test",
     "test:fuzz": "npm run tree-sitter -- fuzz --rebuild --iterations 100 --edits 5",
     "tree-sitter": "node scripts/tree-sitter.js"
   },

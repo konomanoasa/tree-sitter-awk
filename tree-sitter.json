@@ -6,13 +6,14 @@
       "title": "POSIX awk",
       "scope": "source.awk",
       "file-types": ["awk"],
-      "injection-regex": "^awk$"
+      "injection-regex": "^awk$",
+      "highlights": "queries/highlights.scm"
     }
   ],
   "metadata": {
     "version": "0.1.0",
     "license": "MIT",
-    "description": "A Tree-sitter grammar for POSIX awk.",
+    "description": "Tree-sitter grammar for POSIX awk.",
     "authors": [
       {
         "name": "konomanoasa"

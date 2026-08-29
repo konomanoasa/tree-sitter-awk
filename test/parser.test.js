@@ -12,7 +12,10 @@ const {
 } = require("../scripts/tree-sitter.js");
 
 const runtime = createEnvironment("tree-sitter-awk-runtime.");
-const nativeLibrary = path.join(runtime.directory, "parser");
+const nativeLibrary = path.join(
+  runtime.directory,
+  process.platform === "win32" ? "parser.dll" : "parser",
+);
 let sourceSequence = 0;
 
 before(() => {

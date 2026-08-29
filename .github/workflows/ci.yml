@@ -5,13 +5,37 @@ on: [push, pull_request]
 permissions: read-all
 
 jobs:
-  check:
-    runs-on: macos-15
+  parser:
+    name: Test parser
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
       - uses: actions/checkout@v6
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - run: brew install llvm
+      - uses: tree-sitter/setup-action/cli@v2
       - run: npm ci
-      - run: npm run check
+      - uses: tree-sitter/parser-test-action@v3
+        with:
+          generate: false
+          test-parser-cmd: npm test
+
+  query:
+    name: Validate queries
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: tree-sitter/setup-action/cli@v2
+      - run: tree-sitter build
+      - name: Set up ts_query_ls
+        run: >-
+          curl -fL
+          https://github.com/ribru17/ts_query_ls/releases/latest/download/ts_query_ls-x86_64-unknown-linux-gnu.tar.gz
+          | tar -xz
+      - run: >-
+          ./ts_query_ls check -f queries/
+          --config '{"parser_install_directories":["."]}'
