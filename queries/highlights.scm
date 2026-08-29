@@ -149,6 +149,18 @@
   (escape_sequence)
 ] @string.escape
 
+(ordinary_character
+  [
+    ")"
+    "}"
+  ] @string.regexp)
+
+(escaped_delimiter
+  "/" @string.escape)
+
+(equivalence_class
+  "=" @character.special)
+
 (non_unary_expr
   "?" @keyword.conditional.ternary)
 
@@ -174,7 +186,10 @@
   ":" @keyword.conditional.ternary)
 
 (item
-  name: (func_name) @function)
+  name: [
+    (name)
+    (func_name)
+  ] @function)
 
 (param_list
   (name) @variable.parameter)

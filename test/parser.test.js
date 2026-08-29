@@ -185,10 +185,11 @@ function excludes(tree, unexpected) {
   );
 }
 
+// The --cst renderer prefixes every node on an error path with "•" and
+// prints a missing named leaf as a zero-width node without the word MISSING,
+// so the bullet is the only marker that covers both ERROR and missing nodes.
 function clean(tree) {
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
-  excludes(tree, "_recovery");
+  excludes(tree, "•");
 }
 
 function cleanContinuation(tree) {
@@ -197,32 +198,53 @@ function cleanContinuation(tree) {
 }
 
 function dirty(tree) {
-  assert.ok(
-    tree.includes("ERROR") || tree.includes("MISSING"),
-    `Expected CST to contain a standard recovery artifact\n${tree}`,
-  );
-  excludes(tree, "_recovery");
+  contains(tree, "•");
 }
 
 function matchingLineCount(tree, pattern) {
   return tree.split("\n").filter((line) => pattern.test(line)).length;
 }
 
+function pointAtMost(left, right) {
+  return (
+    left.row < right.row ||
+    (left.row === right.row && left.column <= right.column)
+  );
+}
+
+function containsRange(outer, inner) {
+  return (
+    pointAtMost(outer.start, inner.start) && pointAtMost(inner.end, outer.end)
+  );
+}
+
+// The renderer's description column is not a reliable depth signal (error
+// bullets and range-text widths shift it per line), so recover each node's
+// depth from range containment over the preorder line sequence instead.
 function parseCstLines(tree) {
+  const stack = [];
   return tree
     .split("\n")
     .filter((line) => line.length > 0)
     .map((line) => {
       const match = line.match(
-        /^([ \t]*)([0-9]+):([0-9]+)[ \t]+-[ \t]+([0-9]+):([0-9]+)[ \t]+(.+)$/,
+        /^([0-9]+):([0-9]+)[ \t]+-[ \t]+([0-9]+):([0-9]+)[ \t]+(.+)$/,
       );
       assert.notEqual(match, null, `Unrecognized CST line: ${line}`);
-      return {
-        description: match[6],
-        end: { column: Number(match[5]), row: Number(match[4]) },
-        indent: match[1].length,
-        start: { column: Number(match[3]), row: Number(match[2]) },
+      const record = {
+        description: match[5],
+        end: { column: Number(match[4]), row: Number(match[3]) },
+        start: { column: Number(match[2]), row: Number(match[1]) },
       };
+      while (
+        stack.length > 0 &&
+        !containsRange(stack[stack.length - 1], record)
+      ) {
+        stack.pop();
+      }
+      record.depth = stack.length;
+      stack.push(record);
+      return record;
     });
 }
 
@@ -250,7 +272,7 @@ function relativePoint(point, origin) {
 function normalizeItemSubtree(records, rootIndex) {
   const root = records[rootIndex];
   let endIndex = rootIndex + 1;
-  while (endIndex < records.length && records[endIndex].indent > root.indent) {
+  while (endIndex < records.length && records[endIndex].depth > root.depth) {
     endIndex += 1;
   }
 
@@ -259,7 +281,7 @@ function normalizeItemSubtree(records, rootIndex) {
     .map((record) => {
       const start = relativePoint(record.start, root.start);
       const end = relativePoint(record.end, root.start);
-      return `${" ".repeat(record.indent - root.indent)}${start.row}:${start.column} - ${end.row}:${end.column} ${record.description}`;
+      return `${"  ".repeat(record.depth - root.depth)}${start.row}:${start.column} - ${end.row}:${end.column} ${record.description}`;
     })
     .join("\n");
 }

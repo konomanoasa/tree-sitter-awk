@@ -139,3 +139,19 @@ BEGIN {
 #   ^ string.regexp
 #    ^ punctuation.bracket
 #     ^ punctuation.delimiter
+
+/a)b}c/ { print }
+# <- punctuation.delimiter
+#^ string.regexp
+# ^ string.regexp
+#  ^ string.regexp
+#   ^ string.regexp
+#    ^ string.regexp
+#     ^ punctuation.delimiter
+
+function spaced (first) { return first }
+# <- keyword
+#        ^^^^^^ function
+#               ^ punctuation.bracket
+#                ^^^^^ variable.parameter
+#                     ^ punctuation.bracket

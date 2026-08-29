@@ -54,7 +54,12 @@ const continuedExpressionMember = ($, member) =>
 const continuedExpression = ($, name, expression) =>
   continuedExpressionMember($, field(name, expression));
 
-const requiredAfterOptionalNewline = ($, targetGuard, present, required) =>
+const requiredAfterOptionalNewline = (
+  $,
+  targetGuard,
+  present,
+  required = present,
+) =>
   choice(
     seq(repeat($.line_continuation), targetGuard, $.newline_opt, present),
     required,
@@ -75,24 +80,15 @@ const newlineFunctionBody = ($) =>
 const functionBody = ($) =>
   choice(directFunctionBody($), newlineFunctionBody($));
 
-const requiredParameter = ($) => {
-  const parameter = continuedExpressionMember($, $.name);
-  return requiredAfterOptionalNewline(
+const requiredParameter = ($) =>
+  requiredAfterOptionalNewline(
     $,
     $._parameter_target_guard,
-    parameter,
-    parameter,
+    continuedExpressionMember($, $.name),
   );
-};
 
 const continuedParameter = ($) =>
   seq(continuedMember($, $._lc_before_comma, ","), requiredParameter($));
-
-const continuedRequiredMember = ($, member) =>
-  continuedExpressionMember($, member);
-
-const continuedRequiredExpression = ($, name, expression) =>
-  continuedExpression($, name, expression);
 
 const ereEscapeWithCharacter = ($, character) =>
   seq($._ere_escape_start, $._escape_introducer, character);
@@ -315,7 +311,7 @@ const prefixUpdateExpression = ($) =>
     PRECEDENCE.prefixUpdate,
     seq(
       field("operator", choice($.incr, $.decr)),
-      continuedRequiredExpression($, "operand", $.lvalue),
+      continuedExpression($, "operand", $.lvalue),
     ),
   );
 
@@ -344,20 +340,16 @@ const tieredExpressionRules = (context) => {
   ];
   for (const tier of rightTiers) {
     rules[requiredTierName("right", tier)] = ($) =>
-      continuedRequiredExpression($, "right", aliasedAnyTier($, context, tier));
+      continuedExpression($, "right", aliasedAnyTier($, context, tier));
   }
   rules[requiredTierName("operand", "unary")] = ($) =>
-    continuedRequiredExpression(
-      $,
-      "operand",
-      aliasedAnyTier($, context, "unary"),
-    );
+    continuedExpression($, "operand", aliasedAnyTier($, context, "unary"));
   rules[assignmentRight] = ($) =>
-    continuedRequiredExpression($, "right", expression($));
+    continuedExpression($, "right", expression($));
   rules[conditionalConsequence] = ($) =>
-    continuedRequiredExpression($, "consequence", expression($));
+    continuedExpression($, "consequence", expression($));
   rules[conditionalAlternative] = ($) =>
-    continuedRequiredExpression($, "alternative", expression($));
+    continuedExpression($, "alternative", expression($));
   rules[conditionalTail] = ($) =>
     seq(
       $._continued_conditional_question,
@@ -679,7 +671,6 @@ const continuedListElementWith = ($, targetGuard, element) =>
       $,
       targetGuard,
       continuedExpressionMember($, element),
-      continuedExpressionMember($, element),
     ),
   );
 
@@ -979,13 +970,15 @@ module.exports = grammar({
                 $,
                 $._expression_target_guard,
                 continuedExpression($, "right", $.expr),
-                continuedRequiredExpression($, "right", $.expr),
               ),
+              // Reachable only during recovery: when the right arm is
+              // missing, the action guard keeps an action on the next line
+              // inside this item.
               seq(
                 repeat($.line_continuation),
                 $._action_target_guard,
                 $.newline_opt,
-                continuedRequiredExpression($, "right", $.expr),
+                continuedExpression($, "right", $.expr),
               ),
             ),
           ),
@@ -1036,7 +1029,7 @@ module.exports = grammar({
     _parenthesized_condition: ($) =>
       seq(
         "(",
-        continuedRequiredExpression($, "condition", $.expr),
+        continuedExpression($, "condition", $.expr),
         $._continued_close_parenthesis,
       ),
 
@@ -1179,7 +1172,7 @@ module.exports = grammar({
     output_redirection: ($) =>
       seq(
         choice(seq($._output_greater_guard, choice(">", $.append)), "|"),
-        continuedRequiredMember($, $.expr),
+        continuedExpressionMember($, $.expr),
       ),
 
     print_keyword: ($) => prec(10, $._print_word),
@@ -1287,7 +1280,7 @@ module.exports = grammar({
           PRECEDENCE.field,
           seq(
             field("operator", "$"),
-            continuedRequiredExpression(
+            continuedExpression(
               $,
               "operand",
               alias($._normal_field_expr, $.expr),
@@ -1304,7 +1297,7 @@ module.exports = grammar({
           seq(
             field("get", $.simple_get),
             $._continued_input_redirect,
-            continuedRequiredExpression($, "source", $.expr),
+            continuedExpression($, "source", $.expr),
           ),
         ),
         prec.right(
