@@ -227,45 +227,6 @@ BEGIN {
       (newline))))
 
 ==================
-division wins before an adjacent ERE-shaped spelling
-==================
-
-BEGIN { print x /a/ }
-
----
-
-(program
-  (item_list
-    (newline_opt
-      (newline))
-    (item
-      (pattern
-        (special_pattern
-          (begin_keyword)))
-      (action
-        (unterminated_statement_list
-          (unterminated_statement
-            (terminatable_statement
-              (simple_statement
-                (print_statement
-                  (simple_print_statement
-                    (print_keyword)
-                    (print_expr_list
-                      (print_expr
-                        (non_unary_print_expr
-                          (non_unary_print_expr
-                            (non_unary_print_expr
-                              (lvalue
-                                (name)))
-                            (print_expr
-                              (non_unary_print_expr
-                                (lvalue
-                                  (name)))))
-                          (expression_recovery))))))))))))
-    (terminator
-      (newline))))
-
-==================
 continuation between names belongs to their concatenation
 ==================
 BEGIN { print x \
@@ -345,117 +306,6 @@ BEGIN {}
     (action)))
 
 ==================
-implemented jump and reserved builtin remain distinct after recovery
-==================
-BEGIN { break length }
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (terminated_statement
-          (terminatable_statement
-            (break_keyword))
-          (terminator_recovery))
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (expr
-                (non_unary_expr
-                  (builtin_func_name))))))))))
-
-==================
-END remains reserved in expression context
-==================
-BEGIN { value = (END) }
----
-
-(program
-  (item_list
-    (item
-      (pattern
-        (special_pattern
-          (begin_keyword)))
-      (action
-        (unterminated_statement_list
-          (unterminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (lvalue
-                      (name))
-                    (expr
-                      (non_unary_expr
-                        (expression_recovery)
-                        (closer_recovery)))))))))
-        (action_item_boundary_recovery)))
-    (terminator_recovery))
-  (ERROR
-    (pattern
-      (special_pattern
-        (end_keyword)))))
-
-==================
-print remains reserved in expression context
-==================
-
-BEGIN { x /= print }
-
----
-
-(program
-  (item_list
-    (newline_opt
-      (newline))
-    (item
-      (pattern
-        (special_pattern
-          (begin_keyword)))
-      (action
-        (unterminated_statement_list
-          (terminated_statement
-            (terminatable_statement
-              (simple_statement
-                (expr
-                  (non_unary_expr
-                    (lvalue
-                      (name))
-                    (div_assign)
-                    (expression_recovery)))))
-            (terminator_recovery))
-          (unterminated_statement
-            (terminatable_statement
-              (simple_statement
-                (print_statement
-                  (simple_print_statement
-                    (print_keyword)))))))))
-    (terminator
-      (newline))))
-
-==================
-function remains reserved outside a definition
-==================
-BEGIN { function }
----
-
-(program
-  (item_list
-    (item
-      (pattern
-        (special_pattern
-          (begin_keyword)))
-      (action
-        (action_item_boundary_recovery)))
-    (terminator_recovery))
-  (ERROR
-    (function_keyword)))
-
-==================
 hexadecimal spelling does not become one number
 ==================
 BEGIN { print 0x10 }
@@ -482,41 +332,6 @@ BEGIN { print 0x10 }
                         (non_unary_print_expr
                           (lvalue
                             (name)))))))))))))))
-
-==================
-backslash followed by ASCII space does not continue the raw newline
-==================
-BEGIN { print x\ 
-y }
----
-
-(program
-  (item
-    (pattern
-      (special_pattern
-        (begin_keyword)))
-    (action
-      (unterminated_statement_list
-        (terminated_statement
-          (terminatable_statement
-            (simple_statement
-              (print_statement
-                (simple_print_statement
-                  (print_keyword)
-                  (print_expr_list
-                    (print_expr
-                      (non_unary_print_expr
-                        (lvalue
-                          (name)))))))))
-          (ERROR)
-          (newline))
-        (unterminated_statement
-          (terminatable_statement
-            (simple_statement
-              (expr
-                (non_unary_expr
-                  (lvalue
-                    (name)))))))))))
 
 ==================
 continuation after a bare builtin name belongs to its concatenation

@@ -63,18 +63,22 @@ static int expect_scan_result_at(
   const char *test_name,
   const char *source,
   const bool *valid_symbols,
+  EreMode initial_mode,
   bool expected_scanned,
   enum TokenType expected_symbol,
   size_t expected_token_start,
-  size_t expected_token_end
+  size_t expected_token_end,
+  EreMode expected_mode
 ) {
   MockLexer mock = make_mock_lexer(source);
-  ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
+  ScannerState state = {.ere_mode = initial_mode};
   const bool scanned =
     tree_sitter_awk_external_scanner_scan(&state, &mock.lexer, valid_symbols);
   if (
     scanned ==
     expected_scanned &&
+    state.ere_mode ==
+    expected_mode &&
     (!scanned ||
       (mock.lexer.result_symbol ==
         expected_symbol &&
@@ -87,12 +91,13 @@ static int expect_scan_result_at(
 
   fprintf(
     stderr,
-    "%s: scanned=%u symbol=%u start=%zu end=%zu\n",
+    "%s: scanned=%u symbol=%u start=%zu end=%zu mode=%u\n",
     test_name,
     scanned,
     mock.lexer.result_symbol,
     mock.token_start,
-    mock.token_end
+    mock.token_end,
+    (unsigned)state.ere_mode
   );
   return 1;
 }
@@ -109,372 +114,121 @@ static int expect_scan_result(
     test_name,
     source,
     valid_symbols,
+    ERE_MODE_OUTSIDE,
     expected_scanned,
     expected_symbol,
     0,
-    expected_token_end
+    expected_token_end,
+    ERE_MODE_OUTSIDE
   );
 }
 
-static int check_line_continuation_run(
-  const char *test_name,
-  size_t continuation_count,
-  char target
-) {
-  char *source = malloc((continuation_count * 2U) + 2U);
-  if (source == NULL) {
-    fprintf(stderr, "%s: allocation failed\n", test_name);
-    return 1;
+static void set_all_symbols_valid(bool *valid_symbols) {
+  for (size_t i = 0; i < TOKEN_TYPE_COUNT; i++) {
+    valid_symbols[i] = true;
   }
-  for (size_t i = 0; i < continuation_count; i++) {
-    source[i * 2U] = '\\';
-    source[(i * 2U) + 1U] = '\n';
-  }
-  source[continuation_count * 2U] = target;
-  source[(continuation_count * 2U) + 1U] = '\0';
-
-  MockLexer mock = make_mock_lexer(source);
-  ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
-  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-  valid_symbols[LC_BEFORE_EXPRESSION] = true;
-
-  int failed = 0;
-  const bool scanned =
-    tree_sitter_awk_external_scanner_scan(&state, &mock.lexer, valid_symbols);
-  if (
-    !scanned ||
-    mock.lexer.result_symbol !=
-    LC_BEFORE_EXPRESSION ||
-    mock.token_end !=
-    0 ||
-    mock.advance_count >
-    continuation_count *
-    4U
-  ) {
-    fprintf(
-      stderr,
-      "%s: scanned=%u symbol=%u advances=%zu end=%zu\n",
-      test_name,
-      scanned,
-      mock.lexer.result_symbol,
-      mock.advance_count,
-      mock.token_end
-    );
-    failed = 1;
-  }
-
-  free(source);
-  return failed;
 }
 
-static int check_line_continuation_lookahead(void) {
-  return check_line_continuation_run("linear lookahead", 32768, 'a');
-}
-
-static int check_required_target_leading_dot_number(void) {
-  static const struct {
-    const char *name;
-    const char *source;
-    enum TokenType guard;
-    bool recovery_valid;
-    enum TokenType expected;
-  } cases[] = {
-    {"direct leading-dot number",
-      "\n.5",
-      EXPRESSION_TARGET_GUARD,
-      false,
-      EXPRESSION_TARGET_GUARD},
-    {"direct leading-dot print number",
-      "\n.5",
-      PRINT_EXPRESSION_TARGET_GUARD,
-      false,
-      PRINT_EXPRESSION_TARGET_GUARD},
-    {"dot without a digit",
-      "\n.",
-      EXPRESSION_TARGET_GUARD,
-      true,
-      EXPRESSION_RECOVERY},
-  };
-
-  int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[cases[i].guard] = true;
-    valid_symbols[EXPRESSION_RECOVERY] = cases[i].recovery_valid;
-    failed |= expect_scan_result(
-      cases[i].name,
-      cases[i].source,
-      valid_symbols,
-      true,
-      cases[i].expected,
-      0
-    );
-  }
-  return failed;
-}
-
-static int check_required_target_invalid_layout_recovery(void) {
-  static const struct {
-    const char *name;
-    enum TokenType guard;
-    bool parameter_recovery;
-    bool function_body_recovery;
-    bool expression_recovery;
-    enum TokenType expected;
-  } cases[] = {
-    {"invalid parameter layout",
-      PARAMETER_TARGET_GUARD,
-      true,
-      true,
-      true,
-      PARAMETER_RECOVERY},
-    {"invalid function-body layout",
-      ACTION_TARGET_GUARD,
-      false,
-      true,
-      true,
-      FUNCTION_BODY_RECOVERY},
-    {"invalid expression layout",
-      EXPRESSION_TARGET_GUARD,
-      false,
-      false,
-      true,
-      EXPRESSION_RECOVERY},
-  };
-
-  int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[cases[i].guard] = true;
-    valid_symbols[PARAMETER_RECOVERY] = cases[i].parameter_recovery;
-    valid_symbols[FUNCTION_BODY_RECOVERY] = cases[i].function_body_recovery;
-    valid_symbols[EXPRESSION_RECOVERY] = cases[i].expression_recovery;
-    failed |= expect_scan_result(
-      cases[i].name,
-      "\n\\q\nEND",
-      valid_symbols,
-      true,
-      cases[i].expected,
-      0
-    );
-  }
-  return failed;
-}
-
-static int check_parameter_recovery_boundaries(void) {
-  static const struct {
-    const char *name;
-    const char *source;
-    bool scanned;
-    enum TokenType expected;
-    size_t expected_token_end;
-  } cases[] = {
-    {"name parameter", "name", true, NAME_WORD, 4},
-    {"close parenthesis", ")", true, PARAMETER_RECOVERY, 0},
-    {"raw newline", "\n", true, PARAMETER_RECOVERY, 0},
-    {"physical EOF", "", true, PARAMETER_RECOVERY, 0},
-    {"action opener", "{", true, PARAMETER_RECOVERY, 0},
-    {"action closer", "}", true, PARAMETER_RECOVERY, 0},
-    {"semicolon", ";", true, PARAMETER_RECOVERY, 0},
-    {"BEGIN item boundary", "BEGIN", true, PARAMETER_RECOVERY, 0},
-    {"integer", "42", false, ERROR_SENTINEL, 0},
-    {"fraction", ".5", false, ERROR_SENTINEL, 0},
-    {"string opener", "\"", false, ERROR_SENTINEL, 0},
-    {"slash", "/", false, ERROR_SENTINEL, 0},
-    {"field operator", "$", false, ERROR_SENTINEL, 0},
-    {"plus operator", "+", false, ERROR_SENTINEL, 0},
-    {"negation operator", "!", false, ERROR_SENTINEL, 0},
-    {"print keyword", "print", false, ERROR_SENTINEL, 0},
-    {"in keyword", "in", false, ERROR_SENTINEL, 0},
-    {"else keyword", "else", false, ERROR_SENTINEL, 0},
-    {"builtin name", "length", false, ERROR_SENTINEL, 0},
-  };
-
-  int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[PARAMETER_RECOVERY] = true;
-    valid_symbols[NAME_WORD] = true;
-    failed |= expect_scan_result(
-      cases[i].name,
-      cases[i].source,
-      valid_symbols,
-      cases[i].scanned,
-      cases[i].expected,
-      cases[i].expected_token_end
-    );
-  }
-  return failed;
-}
-
-static int check_function_body_recovery_boundaries(void) {
-  static const struct {
-    const char *name;
-    const char *source;
-    bool recovered;
-  } cases[] = {
-    {"integer statement", "42", true},
-    {"fraction statement", ".5", true},
-    {"lone dot", ".", false},
-    {"close parenthesis", ")", false},
-    {"close bracket", "]", false},
-    {"comma", ",", false},
-    {"colon", ":", false},
-    {"semicolon", ";", true},
-    {"action closer", "}", true},
-  };
-
-  int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[FUNCTION_BODY_RECOVERY] = true;
-    failed |= expect_scan_result(
-      cases[i].name,
-      cases[i].source,
-      valid_symbols,
-      cases[i].recovered,
-      FUNCTION_BODY_RECOVERY,
-      0
-    );
-  }
-  return failed;
-}
-
-static int check_statement_recovery_boundaries(void) {
-  static const struct {
-    const char *name;
-    const char *source;
-    bool recovered;
-  } cases[] = {
-    {"END item boundary", "END", true},
-    {"else boundary", "else", true},
-    {"print statement", "print", false},
-    {"while statement", "while", false},
-    {"name statement", "name", false},
-    {"getline statement", "getline", false},
-    {"builtin statement", "length", false},
-    {"membership operator", "in", false},
-  };
-
-  int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[STATEMENT_RECOVERY] = true;
-    failed |= expect_scan_result(
-      cases[i].name,
-      cases[i].source,
-      valid_symbols,
-      cases[i].recovered,
-      STATEMENT_RECOVERY,
-      0
-    );
-  }
-  return failed;
-}
-
-static int check_header_recovery_boundaries(void) {
+static int check_source_token_ranges(void) {
   static const struct {
     const char *name;
     const char *source;
     enum TokenType token;
-    bool recovered;
+    size_t expected_token_end;
   } cases[] = {
-    {"control header at semicolon", ";", HEADER_RECOVERY, true},
-    {"control header at raw newline", "\n", HEADER_RECOVERY, true},
-    {"control header at action opener", "{", HEADER_RECOVERY, true},
-    {"control header at action closer", "}", HEADER_RECOVERY, true},
-    {"control header at physical EOF", "", HEADER_RECOVERY, true},
-    {"control header before parenthesis", "(", HEADER_RECOVERY, false},
-    {"control header before word", "while", HEADER_RECOVERY, false},
-    {"function header at semicolon", ";", FUNCTION_HEADER_RECOVERY, true},
-    {"function header at raw newline", "\n", FUNCTION_HEADER_RECOVERY, true},
-    {"function header at action opener", "{", FUNCTION_HEADER_RECOVERY, true},
-    {"function header at physical EOF", "", FUNCTION_HEADER_RECOVERY, true},
-    {"function header at action closer", "}", FUNCTION_HEADER_RECOVERY, false},
-    {"function header before parenthesis",
-      "(",
-      FUNCTION_HEADER_RECOVERY,
-      false},
-    {"for clause at close parenthesis", ")", FOR_CLAUSE_RECOVERY, true},
-    {"for clause at raw newline", "\n", FOR_CLAUSE_RECOVERY, true},
-    {"for clause at action opener", "{", FOR_CLAUSE_RECOVERY, true},
-    {"for clause at action closer", "}", FOR_CLAUSE_RECOVERY, true},
-    {"for clause at physical EOF", "", FOR_CLAUSE_RECOVERY, true},
-    {"for clause before real separator", ";", FOR_CLAUSE_RECOVERY, false},
-    {"for clause before word", "in", FOR_CLAUSE_RECOVERY, false},
+    {"keyword spelling", "END", END_WORD, 3},
+    {"name spelling", "value", NAME_WORD, 5},
+    {"built-in spelling", "length", BUILTIN_FUNC_NAME_WORD, 6},
+    {"function name excludes parenthesis", "follow(", FUNC_NAME_WORD, 6},
+    {"continued function name excludes continuation",
+      "follow\\\n(",
+      FUNC_NAME_WORD,
+      6},
+    {"integer spelling", "123", NUMBER_INTEGER, 3},
+    {"fraction spelling", ".5", NUMBER_FRACTION, 2},
+    {"exponent spelling", "1.5e+2", NUMBER_EXPONENT, 6},
+    {"incomplete exponent keeps integer", "1e+", NUMBER_INTEGER, 1},
+    {"integer prefix remains available", "1.2", NUMBER_INTEGER, 1},
+    {"addition assignment spelling", "+=", ADD_ASSIGN_OPERATOR, 2},
+    {"logical-or spelling", "||", OR_OPERATOR, 2},
   };
 
   int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[cases[i].token] = true;
     failed |= expect_scan_result(
       cases[i].name,
       cases[i].source,
       valid_symbols,
-      cases[i].recovered,
-      cases[i].token,
-      0
-    );
-  }
-  return failed;
-}
-
-static int check_do_tail_word_boundaries(void) {
-  static const struct {
-    const char *name;
-    const char *source;
-    enum TokenType expected;
-    size_t expected_token_end;
-  } cases[] = {
-    {"function after do body", "function", DO_TAIL_RECOVERY, 0},
-    {"else after do body", "else", DO_TAIL_RECOVERY, 0},
-    {"print after do body", "print", DO_TAIL_RECOVERY, 0},
-    {"name after do body", "name", DO_TAIL_RECOVERY, 0},
-    {"function call after do body", "follow(", DO_TAIL_RECOVERY, 0},
-    {"real do tail", "while", WHILE_WORD, 5},
-    {"membership operator", "in", IN_WORD, 2},
-  };
-
-  int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[WHILE_WORD] = true;
-    valid_symbols[IN_WORD] = true;
-    valid_symbols[DO_TAIL_RECOVERY] = true;
-    failed |= expect_scan_result(
-      cases[i].name,
-      cases[i].source,
-      valid_symbols,
       true,
-      cases[i].expected,
+      cases[i].token,
       cases[i].expected_token_end
     );
   }
+
+  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+  valid_symbols[NAME_WORD] = true;
+  valid_symbols[FUNC_NAME_WORD] = true;
+  failed |= expect_scan_result(
+    "function name wins over plain name",
+    "follow(",
+    valid_symbols,
+    true,
+    FUNC_NAME_WORD,
+    6
+  );
+
+  valid_symbols[NAME_WORD] = false;
+  failed |= expect_scan_result(
+    "plain name is not a function name",
+    "follow",
+    valid_symbols,
+    false,
+    FUNC_NAME_WORD,
+    0
+  );
+
+  valid_symbols[FUNC_NAME_WORD] = false;
+  valid_symbols[NAME_WORD] = true;
+  failed |= expect_scan_result(
+    "reserved word is not a name",
+    "END",
+    valid_symbols,
+    false,
+    NAME_WORD,
+    0
+  );
   return failed;
 }
 
-static int check_word_recovery_prefers_valid_word(void) {
+static int check_blank_skip_token_ranges(void) {
   static const struct {
     const char *name;
-    enum TokenType recovery;
+    const char *source;
+    enum TokenType token;
+    size_t expected_token_start;
+    size_t expected_token_end;
   } cases[] = {
-    {"else beats do-tail recovery", DO_TAIL_RECOVERY},
-    {"else beats statement recovery", STATEMENT_RECOVERY},
+    {"blanks precede a keyword", "  END", END_WORD, 2, 5},
+    {"a tab precedes a number", "\t1.5", NUMBER_FRACTION, 1, 4},
+    {"blanks precede an item boundary", "  name", CLOSED_ITEM_BOUNDARY, 2, 2},
   };
 
   int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[ELSE_WORD] = true;
-    valid_symbols[cases[i].recovery] = true;
-    failed |= expect_scan_result(
+    valid_symbols[cases[i].token] = true;
+    failed |= expect_scan_result_at(
       cases[i].name,
-      "else",
+      cases[i].source,
       valid_symbols,
+      ERE_MODE_OUTSIDE,
       true,
-      ELSE_WORD,
-      4
+      cases[i].token,
+      cases[i].expected_token_start,
+      cases[i].expected_token_end,
+      ERE_MODE_OUTSIDE
     );
   }
   return failed;
@@ -487,11 +241,11 @@ static int check_greater_dispatch(void) {
     bool guard_valid;
     bool ge_valid;
     bool append_valid;
-    bool scanned;
-    enum TokenType expected;
+    bool expected_scanned;
+    enum TokenType expected_symbol;
     size_t expected_token_end;
   } cases[] = {
-    {"plain redirection beside GE branch",
+    {"plain redirection beside GE",
       ">f",
       true,
       true,
@@ -499,7 +253,7 @@ static int check_greater_dispatch(void) {
       true,
       OUTPUT_GREATER_GUARD,
       0},
-    {"append redirection beside GE branch",
+    {"append-looking redirection without append token",
       ">>f",
       true,
       true,
@@ -515,7 +269,7 @@ static int check_greater_dispatch(void) {
       true,
       GE_OPERATOR,
       2},
-    {"GE without comparison context",
+    {"GE is not split into a redirection guard",
       ">=1",
       true,
       false,
@@ -523,15 +277,8 @@ static int check_greater_dispatch(void) {
       false,
       GE_OPERATOR,
       0},
-    {"append after the guard",
-      ">>f",
-      false,
-      false,
-      true,
-      true,
-      APPEND_OPERATOR,
-      2},
-    {"plain comparison stays internal",
+    {"append operator", ">>f", false, false, true, true, APPEND_OPERATOR, 2},
+    {"plain greater stays internal",
       ">x",
       false,
       true,
@@ -542,7 +289,7 @@ static int check_greater_dispatch(void) {
   };
 
   int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
     valid_symbols[OUTPUT_GREATER_GUARD] = cases[i].guard_valid;
     valid_symbols[GE_OPERATOR] = cases[i].ge_valid;
@@ -551,178 +298,547 @@ static int check_greater_dispatch(void) {
       cases[i].name,
       cases[i].source,
       valid_symbols,
-      cases[i].scanned,
-      cases[i].expected,
+      cases[i].expected_scanned,
+      cases[i].expected_symbol,
       cases[i].expected_token_end
     );
   }
   return failed;
 }
 
-static int check_do_tail_character_boundaries(void) {
-  static const struct {
-    const char *name;
-    const char *source;
-    bool recovered;
-  } cases[] = {
-    {"block statement", "{", true},
-    {"string expression", "\"", true},
-    {"group expression", "(", true},
-    {"field expression", "$", true},
-    {"positive expression", "+", true},
-    {"negative expression", "-", true},
-    {"ERE expression", "/", true},
-    {"negated expression", "!", true},
-    {"integer expression", "42", true},
-    {"fraction expression", ".5", true},
-    {"semicolon terminator", ";", true},
-    {"action closer", "}", true},
-    {"physical EOF", "", true},
-    {"raw newline", "\n", false},
-    {"lone dot", ".", false},
-    {"close parenthesis", ")", false},
-    {"close bracket", "]", false},
-    {"comma", ",", false},
-    {"colon", ":", false},
-    {"multiplication operator", "*", false},
-  };
-
+static int check_slash_dispatch(void) {
   int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[DO_TAIL_RECOVERY] = true;
-    failed |= expect_scan_result(
-      cases[i].name,
-      cases[i].source,
-      valid_symbols,
-      cases[i].recovered,
-      DO_TAIL_RECOVERY,
-      0
-    );
-  }
-  return failed;
-}
-
-static int check_required_recovery_priority(void) {
-  static const struct {
-    const char *name;
-    bool statement_recovery;
-    bool do_tail_recovery;
-    enum TokenType expected;
-  } cases[] = {
-    {"statement before do tail", true, true, STATEMENT_RECOVERY},
-    {"do tail before action boundary", false, true, DO_TAIL_RECOVERY},
-    {"action boundary fallback", false, false, ACTION_ITEM_BOUNDARY_RECOVERY},
-  };
-
-  int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
-    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[STATEMENT_RECOVERY] = cases[i].statement_recovery;
-    valid_symbols[DO_TAIL_RECOVERY] = cases[i].do_tail_recovery;
-    valid_symbols[ACTION_ITEM_BOUNDARY_RECOVERY] = true;
-    failed |= expect_scan_result(
-      cases[i].name,
-      "END",
-      valid_symbols,
-      true,
-      cases[i].expected,
-      0
-    );
-  }
-
   bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-  valid_symbols[LC_BEFORE_DO_TAIL] = true;
-  valid_symbols[DO_TAIL_RECOVERY] = true;
+  valid_symbols[DIVISION_SLASH] = true;
+  valid_symbols[ERE_OPENING_SLASH] = true;
+  failed |= expect_scan_result_at(
+    "division precedes ERE in normal parsing",
+    "/x",
+    valid_symbols,
+    ERE_MODE_OUTSIDE,
+    true,
+    DIVISION_SLASH,
+    0,
+    1,
+    ERE_MODE_OUTSIDE
+  );
+
+  valid_symbols[DIVISION_SLASH] = false;
+  failed |= expect_scan_result_at(
+    "ERE opens without a division context",
+    "/x",
+    valid_symbols,
+    ERE_MODE_OUTSIDE,
+    true,
+    ERE_OPENING_SLASH,
+    0,
+    1,
+    ERE_MODE_BODY
+  );
+
+  valid_symbols[DIVISION_SLASH] = true;
+  valid_symbols[DIV_ASSIGN_OPERATOR] = true;
   failed |= expect_scan_result(
-    "continued do tail boundary",
-    "\\\nEND",
+    "division assignment is the longest match",
+    "/=x",
     valid_symbols,
     true,
-    LC_BEFORE_DO_TAIL,
+    DIV_ASSIGN_OPERATOR,
+    2
+  );
+
+  valid_symbols[DIV_ASSIGN_OPERATOR] = false;
+  failed |= expect_scan_result(
+    "division slash does not split division assignment",
+    "/=x",
+    valid_symbols,
+    false,
+    DIVISION_SLASH,
     0
   );
   return failed;
 }
 
-static int check_source_token_ranges(void) {
+static int check_closed_item_boundary(void) {
   static const struct {
     const char *name;
     const char *source;
-    enum TokenType token;
-    size_t expected_token_end;
+    bool expected_scanned;
   } cases[] = {
-    {"keyword spelling", "END", END_WORD, 3},
-    {"name spelling", "value", NAME_WORD, 5},
-    {"function name excludes parenthesis", "follow(", FUNC_NAME_WORD, 6},
-    {"continued function name excludes continuation",
-      "follow\\\n(",
-      FUNC_NAME_WORD,
-      6},
-    {"integer spelling", "123", NUMBER_INTEGER, 3},
-    {"fraction spelling", ".5", NUMBER_FRACTION, 2},
-    {"exponent spelling", "1.5e+2", NUMBER_EXPONENT, 6},
-    {"incomplete exponent keeps integer", "1e+", NUMBER_INTEGER, 1},
-    {"integer prefix remains available", "1.2", NUMBER_INTEGER, 1},
+    {"BEGIN starts an item", "BEGIN", true},
+    {"END starts an item", "END", true},
+    {"function starts an item", "function", true},
+    {"name starts an item", "name", true},
+    {"getline starts an item", "getline", true},
+    {"built-in starts an item", "length", true},
+    {"function call starts an item", "follow(", true},
+    {"integer starts an item", "42", true},
+    {"fraction starts an item", ".5", true},
+    {"action starts an item", "{", true},
+    {"string starts an item", "\"", true},
+    {"group starts an item", "(", true},
+    {"field reference starts an item", "$", true},
+    {"unary plus starts an item", "+", true},
+    {"unary minus starts an item", "-", true},
+    {"ERE starts an item", "/", true},
+    {"negation starts an item", "!", true},
+    {"print cannot start a pattern", "print", false},
+    {"if cannot start a pattern", "if", false},
+    {"lone dot is not a number", ".", false},
+    {"close parenthesis does not start an item", ")", false},
+    {"multiplication does not start an item", "*", false},
+    {"newline does not start an item", "\n", false},
   };
 
   int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[cases[i].token] = true;
+    valid_symbols[CLOSED_ITEM_BOUNDARY] = true;
     failed |= expect_scan_result(
       cases[i].name,
       cases[i].source,
       valid_symbols,
-      true,
-      cases[i].token,
-      cases[i].expected_token_end
+      cases[i].expected_scanned,
+      CLOSED_ITEM_BOUNDARY,
+      0
     );
   }
   return failed;
 }
 
-static int check_blank_skip_token_ranges(void) {
+static int check_normal_pattern_item_boundary(void) {
   static const struct {
     const char *name;
     const char *source;
-    enum TokenType token;
-    size_t expected_token_start;
-    size_t expected_token_end;
+    bool expected_scanned;
   } cases[] = {
-    {"blanks precede a keyword token", "  END", END_WORD, 2, 5},
-    {"a tab precedes a number token", "\t1.5", NUMBER_FRACTION, 1, 4},
-    {"blanks precede a zero-width recovery", " )", PARAMETER_RECOVERY, 1, 1},
+    {"BEGIN is a reserved item start", "BEGIN", true},
+    {"END is a reserved item start", "END", true},
+    {"function is a reserved item start", "function", true},
+    {"name can continue a pattern", "name", false},
+    {"number can continue a pattern", "42", false},
+    {"action belongs to the pattern item", "{", false},
+    {"print is not a top-level start", "print", false},
+    {"BEGIN prefix is a name", "BEGINNING", false},
   };
 
   int failed = 0;
-  for (size_t i = 0; i < sizeof(cases) / sizeof(cases[0]); i++) {
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
     bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-    valid_symbols[cases[i].token] = true;
+    valid_symbols[NORMAL_PATTERN_ITEM_BOUNDARY] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].expected_scanned,
+      NORMAL_PATTERN_ITEM_BOUNDARY,
+      0
+    );
+  }
+
+  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+  valid_symbols[CLOSED_ITEM_BOUNDARY] = true;
+  valid_symbols[NORMAL_PATTERN_ITEM_BOUNDARY] = true;
+  failed |= expect_scan_result(
+    "closed-item boundary wins when both boundaries are valid",
+    "BEGIN",
+    valid_symbols,
+    true,
+    CLOSED_ITEM_BOUNDARY,
+    0
+  );
+  return failed;
+}
+
+static int check_required_target_guards(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    enum TokenType guard;
+    bool expected_scanned;
+  } cases[] = {
+    {"expression follows layout",
+      "\n  # comment\n\\\n .5",
+      EXPRESSION_TARGET_GUARD,
+      true},
+    {"print expression follows newline",
+      "\nname",
+      PRINT_EXPRESSION_TARGET_GUARD,
+      true},
+    {"action follows newline", "\n{", ACTION_TARGET_GUARD, true},
+    {"parameter follows newline", "\nparameter", PARAMETER_TARGET_GUARD, true},
+    {"getline is not a print expression",
+      "\ngetline",
+      PRINT_EXPRESSION_TARGET_GUARD,
+      false},
+    {"reserved word is not a parameter",
+      "\nEND",
+      PARAMETER_TARGET_GUARD,
+      false},
+    {"lone dot is not an expression", "\n.", EXPRESSION_TARGET_GUARD, false},
+    {"invalid continuation has no fallback",
+      "\n\\q\nname",
+      EXPRESSION_TARGET_GUARD,
+      false},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[cases[i].guard] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].expected_scanned,
+      cases[i].guard,
+      0
+    );
+  }
+  return failed;
+}
+
+static int check_line_continuation_markers(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    enum TokenType marker;
+    bool expected_scanned;
+  } cases[] = {
+    {"continued generic operator", "\\\n+=", LC_BEFORE_OPERATOR, true},
+    {"continued additive operator", "\\\n+", LC_BEFORE_ADDITIVE_OPERATOR, true},
+    {"continued expression word", "\\\nname", LC_BEFORE_EXPRESSION, true},
+    {"continued expression number", "\\\n.5", LC_BEFORE_EXPRESSION, true},
+    {"continued else", "\\\nelse", LC_BEFORE_ELSE, true},
+    {"continued do tail", "\\\nwhile", LC_BEFORE_DO_TAIL, true},
+    {"non-while word is not a do tail", "\\\nEND", LC_BEFORE_DO_TAIL, false},
+    {"continued membership operator",
+      "\\\nin",
+      LC_BEFORE_MEMBERSHIP_OPERATOR,
+      true},
+    {"continued for update", "\\\nprint", LC_BEFORE_FOR_UPDATE, true},
+    {"continued for semicolon", "\\\n;", LC_BEFORE_FOR_SEMICOLON, true},
+    {"continued comma", "\\\n,", LC_BEFORE_COMMA, true},
+    {"continued close parenthesis", "\\\n)", LC_BEFORE_CLOSE_PARENTHESIS, true},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[cases[i].marker] = true;
+    failed |= expect_scan_result(
+      cases[i].name,
+      cases[i].source,
+      valid_symbols,
+      cases[i].expected_scanned,
+      cases[i].marker,
+      0
+    );
+  }
+  return failed;
+}
+
+static int check_linear_line_continuation_lookahead(void) {
+  const size_t continuation_count = 32768;
+  char *source = malloc((continuation_count * 2U) + 2U);
+  if (source == NULL) {
+    fprintf(stderr, "linear line-continuation lookahead: allocation failed\n");
+    return 1;
+  }
+  for (size_t i = 0; i < continuation_count; i++) {
+    source[i * 2U] = '\\';
+    source[(i * 2U) + 1U] = '\n';
+  }
+  source[continuation_count * 2U] = 'a';
+  source[(continuation_count * 2U) + 1U] = '\0';
+
+  MockLexer mock = make_mock_lexer(source);
+  ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
+  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+  valid_symbols[LC_BEFORE_EXPRESSION] = true;
+  const bool scanned =
+    tree_sitter_awk_external_scanner_scan(&state, &mock.lexer, valid_symbols);
+  const bool valid_result = scanned &&
+    mock.lexer.result_symbol ==
+    LC_BEFORE_EXPRESSION &&
+    mock.token_end ==
+    0 &&
+    mock.advance_count <=
+    continuation_count *
+    4U;
+  if (!valid_result) {
+    fprintf(
+      stderr,
+      "linear line-continuation lookahead: scanned=%u symbol=%u advances=%zu "
+      "end=%zu\n",
+      scanned,
+      mock.lexer.result_symbol,
+      mock.advance_count,
+      mock.token_end
+    );
+  }
+
+  free(source);
+  return valid_result ? 0 : 1;
+}
+
+static int check_ere_state_transitions(void) {
+  int failed = 0;
+  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+  valid_symbols[ERE_OPENING_SLASH] = true;
+  failed |= expect_scan_result_at(
+    "ERE opening enters body mode",
+    "/a",
+    valid_symbols,
+    ERE_MODE_OUTSIDE,
+    true,
+    ERE_OPENING_SLASH,
+    0,
+    1,
+    ERE_MODE_BODY
+  );
+
+  valid_symbols[ERE_OPENING_SLASH] = false;
+  valid_symbols[ERE_CLOSING] = true;
+  failed |= expect_scan_result_at(
+    "ERE closing exits body mode",
+    "/",
+    valid_symbols,
+    ERE_MODE_BODY,
+    true,
+    ERE_CLOSING,
+    0,
+    1,
+    ERE_MODE_OUTSIDE
+  );
+
+  valid_symbols[ERE_CLOSING] = false;
+  valid_symbols[ERE_ESCAPE_START] = true;
+  failed |= expect_scan_result_at(
+    "ERE escape guard keeps body mode",
+    "\\n",
+    valid_symbols,
+    ERE_MODE_BODY,
+    true,
+    ERE_ESCAPE_START,
+    0,
+    0,
+    ERE_MODE_BODY
+  );
+
+  valid_symbols[ERE_ESCAPE_START] = false;
+  valid_symbols[ERE_ESCAPED_DELIMITER_START] = true;
+  failed |= expect_scan_result_at(
+    "escaped delimiter guard enters delimiter mode",
+    "\\/",
+    valid_symbols,
+    ERE_MODE_BODY,
+    true,
+    ERE_ESCAPED_DELIMITER_START,
+    0,
+    0,
+    ERE_MODE_ESCAPED_DELIMITER
+  );
+
+  valid_symbols[ERE_ESCAPED_DELIMITER_START] = false;
+  valid_symbols[ERE_ESCAPED_DELIMITER_END] = true;
+  failed |= expect_scan_result_at(
+    "escaped delimiter token returns to body mode",
+    "/",
+    valid_symbols,
+    ERE_MODE_ESCAPED_DELIMITER,
+    true,
+    ERE_ESCAPED_DELIMITER_END,
+    0,
+    1,
+    ERE_MODE_BODY
+  );
+
+  valid_symbols[ERE_ESCAPED_DELIMITER_END] = false;
+  valid_symbols[ERE_COMPOUND_OPEN_GUARD] = true;
+  failed |= expect_scan_result_at(
+    "compound opener guard is zero width",
+    "[.",
+    valid_symbols,
+    ERE_MODE_BODY,
+    true,
+    ERE_COMPOUND_OPEN_GUARD,
+    0,
+    0,
+    ERE_MODE_BODY
+  );
+
+  valid_symbols[ERE_COMPOUND_OPEN_GUARD] = false;
+  valid_symbols[ERE_DOT_CLOSE_GUARD] = true;
+  failed |= expect_scan_result_at(
+    "compound closer guard is zero width",
+    ".]",
+    valid_symbols,
+    ERE_MODE_BODY,
+    true,
+    ERE_DOT_CLOSE_GUARD,
+    0,
+    0,
+    ERE_MODE_BODY
+  );
+
+  set_all_symbols_valid(valid_symbols);
+  failed |= expect_scan_result_at(
+    "raw newline resets ERE state in error mode",
+    "\nnext",
+    valid_symbols,
+    ERE_MODE_BODY,
+    true,
+    ERE_LEXICAL_END,
+    0,
+    0,
+    ERE_MODE_OUTSIDE
+  );
+  failed |= expect_scan_result_at(
+    "EOF resets escaped-delimiter state in error mode",
+    "",
+    valid_symbols,
+    ERE_MODE_ESCAPED_DELIMITER,
+    true,
+    ERE_LEXICAL_END,
+    0,
+    0,
+    ERE_MODE_OUTSIDE
+  );
+  failed |= expect_scan_result_at(
+    "error mode suppresses ERE compound guards",
+    "[.",
+    valid_symbols,
+    ERE_MODE_BODY,
+    false,
+    ERE_COMPOUND_OPEN_GUARD,
+    0,
+    0,
+    ERE_MODE_BODY
+  );
+  failed |= expect_scan_result_at(
+    "error mode suppresses escaped-delimiter guards",
+    "\\/",
+    valid_symbols,
+    ERE_MODE_BODY,
+    false,
+    ERE_ESCAPED_DELIMITER_START,
+    0,
+    0,
+    ERE_MODE_BODY
+  );
+  return failed;
+}
+
+static int check_error_mode_real_tokens(void) {
+  static const struct {
+    const char *name;
+    const char *source;
+    bool expected_scanned;
+    enum TokenType expected_symbol;
+    size_t expected_token_end;
+    EreMode expected_mode;
+  } cases[] = {
+    {"error mode emits keyword", "END", true, END_WORD, 3, ERE_MODE_OUTSIDE},
+    {"error mode emits name", "value", true, NAME_WORD, 5, ERE_MODE_OUTSIDE},
+    {"error mode emits function name",
+      "follow(",
+      true,
+      FUNC_NAME_WORD,
+      6,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits built-in",
+      "length",
+      true,
+      BUILTIN_FUNC_NAME_WORD,
+      6,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits integer",
+      "42",
+      true,
+      NUMBER_INTEGER,
+      2,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits fraction",
+      ".5",
+      true,
+      NUMBER_FRACTION,
+      2,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits exponent",
+      "1.5e+2",
+      true,
+      NUMBER_EXPONENT,
+      6,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits composite operator",
+      "+=",
+      true,
+      ADD_ASSIGN_OPERATOR,
+      2,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits GE", ">=", true, GE_OPERATOR, 2, ERE_MODE_OUTSIDE},
+    {"error mode emits append",
+      ">>",
+      true,
+      APPEND_OPERATOR,
+      2,
+      ERE_MODE_OUTSIDE},
+    {"error mode preserves slash longest match",
+      "/=",
+      true,
+      DIV_ASSIGN_OPERATOR,
+      2,
+      ERE_MODE_OUTSIDE},
+    {"error mode prefers ERE over division",
+      "/x",
+      true,
+      ERE_OPENING_SLASH,
+      1,
+      ERE_MODE_BODY},
+    {"error mode suppresses greater guard",
+      ">",
+      false,
+      OUTPUT_GREATER_GUARD,
+      0,
+      ERE_MODE_OUTSIDE},
+    {"error mode suppresses target guards",
+      "\nname",
+      false,
+      EXPRESSION_TARGET_GUARD,
+      0,
+      ERE_MODE_OUTSIDE},
+    {"error mode suppresses line-continuation markers",
+      "\\\nname",
+      false,
+      LC_BEFORE_EXPRESSION,
+      0,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits no token for unknown punctuation",
+      "@",
+      false,
+      ERROR_SENTINEL,
+      0,
+      ERE_MODE_OUTSIDE},
+  };
+
+  int failed = 0;
+  for (size_t i = 0; i < ARRAY_LENGTH(cases); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    set_all_symbols_valid(valid_symbols);
     failed |= expect_scan_result_at(
       cases[i].name,
       cases[i].source,
       valid_symbols,
-      true,
-      cases[i].token,
-      cases[i].expected_token_start,
-      cases[i].expected_token_end
+      ERE_MODE_OUTSIDE,
+      cases[i].expected_scanned,
+      cases[i].expected_symbol,
+      0,
+      cases[i].expected_token_end,
+      cases[i].expected_mode
     );
   }
   return failed;
-}
-
-static int check_do_body_recovery_guard_range(void) {
-  bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
-  valid_symbols[DO_BODY_RECOVERY_GUARD] = true;
-  return expect_scan_result(
-    "do body recovery guard",
-    "while",
-    valid_symbols,
-    true,
-    DO_BODY_RECOVERY_GUARD,
-    0
-  );
 }
 
 static int
@@ -730,7 +846,6 @@ expect_mode(const char *test_name, EreMode expected, EreMode actual) {
   if (actual == expected) {
     return 0;
   }
-
   fprintf(
     stderr,
     "%s: expected mode %u, received %u\n",
@@ -746,7 +861,6 @@ expect_length(const char *test_name, unsigned expected, unsigned actual) {
   if (actual == expected) {
     return 0;
   }
-
   fprintf(
     stderr,
     "%s: expected serialized length %u, received %u\n",
@@ -774,7 +888,7 @@ static int check_round_trip(
   return failed;
 }
 
-int main(void) {
+static int check_serialization(void) {
   int failed = 0;
   failed |= check_round_trip("outside mode round trip", ERE_MODE_OUTSIDE, 0);
   failed |= check_round_trip(
@@ -824,22 +938,22 @@ int main(void) {
     ERE_MODE_OUTSIDE,
     destination.ere_mode
   );
+  return failed;
+}
 
-  failed |= check_line_continuation_lookahead();
-  failed |= check_required_target_leading_dot_number();
-  failed |= check_required_target_invalid_layout_recovery();
-  failed |= check_parameter_recovery_boundaries();
-  failed |= check_function_body_recovery_boundaries();
-  failed |= check_statement_recovery_boundaries();
-  failed |= check_header_recovery_boundaries();
-  failed |= check_do_tail_word_boundaries();
-  failed |= check_word_recovery_prefers_valid_word();
-  failed |= check_greater_dispatch();
-  failed |= check_do_tail_character_boundaries();
-  failed |= check_required_recovery_priority();
+int main(void) {
+  int failed = 0;
+  failed |= check_serialization();
   failed |= check_source_token_ranges();
   failed |= check_blank_skip_token_ranges();
-  failed |= check_do_body_recovery_guard_range();
-
+  failed |= check_greater_dispatch();
+  failed |= check_slash_dispatch();
+  failed |= check_closed_item_boundary();
+  failed |= check_normal_pattern_item_boundary();
+  failed |= check_required_target_guards();
+  failed |= check_line_continuation_markers();
+  failed |= check_linear_line_continuation_lookahead();
+  failed |= check_ere_state_transitions();
+  failed |= check_error_mode_real_tokens();
   return failed;
 }

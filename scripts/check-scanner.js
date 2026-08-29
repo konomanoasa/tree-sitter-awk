@@ -58,24 +58,26 @@ if (process.argv.length === 3 && process.argv[2] === "--write") {
     path.join(os.tmpdir(), "tree-sitter-awk-scanner."),
   );
   try {
-    const testBinary = path.join(testDirectory, "scanner");
-    run(
-      llvmTool("clang", "CLANG"),
-      [
-        "-std=c11",
-        "-Wall",
-        "-Wextra",
-        "-Werror",
-        "-pedantic",
-        "-I",
-        path.join(grammarDirectory, "src"),
-        path.join(repositoryDirectory, "test", "scanner.c"),
-        "-o",
-        testBinary,
-      ],
-      { stdio: "inherit" },
-    );
-    run(testBinary, [], { stdio: "inherit" });
+    for (const standard of ["c99", "c17"]) {
+      const testBinary = path.join(testDirectory, `scanner-${standard}`);
+      run(
+        llvmTool("clang", "CLANG"),
+        [
+          `-std=${standard}`,
+          "-Wall",
+          "-Wextra",
+          "-Werror",
+          "-pedantic",
+          "-I",
+          path.join(grammarDirectory, "src"),
+          path.join(repositoryDirectory, "test", "scanner.c"),
+          "-o",
+          testBinary,
+        ],
+        { stdio: "inherit" },
+      );
+      run(testBinary, [], { stdio: "inherit" });
+    }
   } finally {
     fs.rmSync(testDirectory, { force: true, recursive: true });
   }

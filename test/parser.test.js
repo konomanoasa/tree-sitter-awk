@@ -196,17 +196,137 @@ function cleanContinuation(tree) {
   clean(tree);
 }
 
+function dirty(tree) {
+  assert.ok(
+    tree.includes("ERROR") || tree.includes("MISSING"),
+    `Expected CST to contain a standard recovery artifact\n${tree}`,
+  );
+  excludes(tree, "_recovery");
+}
+
 function matchingLineCount(tree, pattern) {
   return tree.split("\n").filter((line) => pattern.test(line)).length;
 }
 
-function singleActionCloserRecovery(tree) {
-  contains(tree, "closing: closer_recovery");
-  assert.equal(
-    matchingLineCount(tree, /^[ \t0-9:-]+closing:[ \t]+closer_recovery$/),
-    1,
-    "Expected one action closer-recovery node at physical EOF",
+function parseCstLines(tree) {
+  return tree
+    .split("\n")
+    .filter((line) => line.length > 0)
+    .map((line) => {
+      const match = line.match(
+        /^([ \t]*)([0-9]+):([0-9]+)[ \t]+-[ \t]+([0-9]+):([0-9]+)[ \t]+(.+)$/,
+      );
+      assert.notEqual(match, null, `Unrecognized CST line: ${line}`);
+      return {
+        description: match[6],
+        end: { column: Number(match[5]), row: Number(match[4]) },
+        indent: match[1].length,
+        start: { column: Number(match[3]), row: Number(match[2]) },
+      };
+    });
+}
+
+function sourcePoint(source, index) {
+  const prefix = source.slice(0, index);
+  const lastNewline = prefix.lastIndexOf("\n");
+  return {
+    column: Buffer.byteLength(prefix.slice(lastNewline + 1)),
+    row: prefix.split("\n").length - 1,
+  };
+}
+
+function samePoint(left, right) {
+  return left.row === right.row && left.column === right.column;
+}
+
+function relativePoint(point, origin) {
+  return {
+    column:
+      point.row === origin.row ? point.column - origin.column : point.column,
+    row: point.row - origin.row,
+  };
+}
+
+function normalizeItemSubtree(records, rootIndex) {
+  const root = records[rootIndex];
+  let endIndex = rootIndex + 1;
+  while (endIndex < records.length && records[endIndex].indent > root.indent) {
+    endIndex += 1;
+  }
+
+  return records
+    .slice(rootIndex, endIndex)
+    .map((record) => {
+      const start = relativePoint(record.start, root.start);
+      const end = relativePoint(record.end, root.start);
+      return `${" ".repeat(record.indent - root.indent)}${start.row}:${start.column} - ${end.row}:${end.column} ${record.description}`;
+    })
+    .join("\n");
+}
+
+function topLevelItems(tree) {
+  const records = parseCstLines(tree);
+  const items = [];
+  for (let index = 0; index < records.length; index += 1) {
+    if (records[index].description === "item: item") {
+      items.push({
+        end: records[index].end,
+        normalized: normalizeItemSubtree(records, index),
+        start: records[index].start,
+      });
+    }
+  }
+  return items;
+}
+
+function assertPreservedItems(testName, source, preservedSources) {
+  const sourcePath = writeSource(testName, "boundary", source);
+  const result = captureParse(sourcePath);
+  assert.ok(
+    result.status === 0 || result.status === 1,
+    parseDescription(`${testName} boundary parse`, result),
   );
+
+  const actualItems = topLevelItems(result.tree);
+  let searchStart = 0;
+  for (const [index, itemSource] of preservedSources.entries()) {
+    const sourceStart = source.indexOf(itemSource, searchStart);
+    assert.notEqual(
+      sourceStart,
+      -1,
+      `${testName}: preserved item ${JSON.stringify(itemSource)} is absent`,
+    );
+    const expectedStart = sourcePoint(source, sourceStart);
+    const expectedEnd = sourcePoint(source, sourceStart + itemSource.length);
+    const matches = actualItems.filter(
+      (item) =>
+        samePoint(item.start, expectedStart) &&
+        samePoint(item.end, expectedEnd),
+    );
+    assert.equal(
+      matches.length,
+      1,
+      `${testName}: expected one top-level item for ${JSON.stringify(itemSource)}\n${result.tree}`,
+    );
+
+    const isolatedTree = assertFresh(
+      `${testName}-isolated-${index + 1}`,
+      itemSource,
+    );
+    clean(isolatedTree);
+    const isolatedItems = topLevelItems(isolatedTree);
+    assert.equal(
+      isolatedItems.length,
+      1,
+      `${testName}: isolated source must contain exactly one item\n${isolatedTree}`,
+    );
+    assert.deepEqual(
+      matches[0].normalized,
+      isolatedItems[0].normalized,
+      `${testName}: recovered and isolated item CSTs differ for ${JSON.stringify(itemSource)}`,
+    );
+    searchStart = sourceStart + itemSource.length;
+  }
 }
 
 function freshTest(name, source, assertions) {
@@ -217,6 +337,105 @@ function determinismTest(name, initial, final, edits, assertions = () => {}) {
   test(name, () =>
     assertions(assertDeterministicEdit(name, initial, final, edits)),
   );
+}
+
+const closedItemBoundaryCases = [
+  ["ERE pattern", "/ready/ {}"],
+  ["number pattern", "1 {}"],
+  ["name pattern", "active {}"],
+  ["action-only item", "{}"],
+  ["BEGIN item", "BEGIN {}"],
+  ["END item", "END {}"],
+  ["function item", "function following() {}"],
+];
+
+for (const [label, following] of closedItemBoundaryCases) {
+  test(`a closed item boundary preserves a following ${label}`, () => {
+    const preceding = "BEGIN {}";
+    assertPreservedItems(
+      `closed-item-before-${label}`,
+      `${preceding} ${following}`,
+      [preceding, following],
+    );
+  });
+}
+
+for (const [label, following] of [
+  ["BEGIN item", "BEGIN {}"],
+  ["END item", "END {}"],
+  ["function item", "function following() {}"],
+]) {
+  test(`an actionless pattern boundary preserves a following ${label}`, () => {
+    const preceding = "active";
+    assertPreservedItems(
+      `normal-pattern-before-${label}`,
+      `${preceding} ${following}`,
+      [preceding, following],
+    );
+  });
+}
+
+const physicallyClosedMalformedItems = [
+  ["missing assignment operand", "middle { value = ; }"],
+  ["missing if body", "middle { if (condition) }"],
+  ["missing while body", "middle { while (condition) }"],
+  ["missing classic for body", "middle { for (;;) }"],
+  ["missing for-in body", "middle { for (key in values) }"],
+  ["missing nested control bodies", "middle { if (outer) while (inner) }"],
+  ["missing control operand", "middle { if (condition +) print value }"],
+  ["missing do tail", "middle { do print value; }"],
+  ["missing function parameter", "function malformed(first,) {}"],
+  ["missing function header", "function malformed {}"],
+  ["missing left range arm", ", right {}"],
+  ["missing right range arm", "left, {}"],
+];
+
+for (const [label, malformed] of physicallyClosedMalformedItems) {
+  test(`a physically closed item with ${label} preserves adjacent items`, () => {
+    const preceding = "BEGIN { print before }";
+    const following = "END { print after }";
+    assertPreservedItems(
+      `physically-closed-${label}`,
+      lines(preceding, `${malformed} ${following}`),
+      [preceding, following],
+    );
+  });
+}
+
+for (const [label, malformedLine] of [
+  ["string", 'middle { print "broken'],
+  ["ERE", "middle { print /broken"],
+  ["ERE character class opener", "middle { print /[[:"],
+  ["ERE character class", "middle { print /[[:alpha"],
+  ["ERE interval opener", "middle { print /a{"],
+  ["ERE interval", "middle { print /a{1,"],
+]) {
+  test(`a raw newline ending an unterminated ${label} preserves adjacent items`, () => {
+    const preceding = "BEGIN { print before }";
+    const following = "END { print after }";
+    assertPreservedItems(
+      `raw-newline-${label}`,
+      lines(preceding, malformedLine, `} ${following}`),
+      [preceding, following],
+    );
+  });
+}
+
+for (const [label, malformed] of [
+  ["string", 'END { print "broken'],
+  ["ERE", "END { print /broken"],
+  ["action", "END { print after"],
+  ["parenthesis", "END { print (after"],
+  ["bracket", "END { print array[after"],
+]) {
+  test(`an unterminated ${label} at EOF preserves preceding items`, () => {
+    const preceding = "BEGIN { print before }";
+    assertPreservedItems(
+      `unterminated-${label}-at-EOF`,
+      `${preceding}\n${malformed}`,
+      [preceding],
+    );
+  });
 }
 
 const fieldContractSource = `/(a|b)/, /c/ {
@@ -393,35 +612,75 @@ freshTest(
   },
 );
 
-freshTest("slash-priority", lines("BEGIN { print x /a/ }"), (tree) => {
-  contains(tree, "expression_recovery");
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
-  assert.equal(
-    matchingLineCount(tree, /^[ \t0-9:-]*ere([ \t]|$)/),
-    0,
-    "Expected division priority to prevent an ERE node",
-  );
-  assert.equal(
-    matchingLineCount(tree, /^[ \t0-9:-]*"\/"$/),
-    2,
-    "Expected each division-priority slash to have one CST token",
-  );
-});
+const invalidClassificationCases = [
+  {
+    assertions: (tree) => {
+      assert.equal(
+        matchingLineCount(tree, /^[ \t0-9:-]*ere([ \t]|$)/),
+        0,
+        "Expected division priority to prevent an ERE node",
+      );
+      assert.equal(
+        matchingLineCount(tree, /^[ \t0-9:-]*"\/"$/),
+        2,
+        "Expected each division-priority slash to have one CST token",
+      );
+    },
+    name: "division context wins over an ERE-shaped spelling",
+    source: lines("BEGIN { print x /a/ }"),
+  },
+  {
+    assertions: (tree) => {
+      assert.equal(
+        matchingLineCount(tree, /^[ \t0-9:-]*"\/"$/),
+        0,
+        "Expected no division token where '/=' is the longest match",
+      );
+    },
+    name: "div-assign never splits after an invalid lvalue",
+    source: lines("BEGIN { (a) /= b }"),
+  },
+  {
+    assertions: (tree) => {
+      excludes(tree, "output_redirection");
+    },
+    name: "greater-than-or-equal never becomes output redirection",
+    source: lines("BEGIN { print value >= }"),
+  },
+  {
+    name: "END remains reserved in expression context",
+    source: lines("BEGIN { value = (END) }"),
+  },
+  {
+    name: "print remains reserved in expression context",
+    source: lines("BEGIN { value = print }"),
+  },
+  {
+    name: "function remains reserved outside a definition",
+    source: lines("BEGIN { function }"),
+  },
+  {
+    name: "a builtin remains reserved as an assignment target",
+    source: lines("BEGIN { length = 1 }"),
+  },
+  {
+    assertions: (tree) => excludes(tree, "func_name"),
+    name: "a non-newline backslash does not create call adjacency",
+    source: lines("BEGIN {", String.raw`  f\(value)`, "  after", "}"),
+  },
+];
 
-test("div-assign-never-splits-into-division", () => {
-  const tree = assertFresh(
-    "div-assign-never-splits-into-division",
-    lines("BEGIN { (a) /= b }"),
-    1,
-  );
-  contains(tree, "ERROR");
-  assert.equal(
-    matchingLineCount(tree, /^[ \t0-9:-]*"\/"$/),
-    0,
-    "Expected no division token where '/=' is the longest match",
-  );
-});
+for (const classificationCase of invalidClassificationCases) {
+  test(classificationCase.name, () => {
+    const tree = assertFresh(
+      classificationCase.name,
+      classificationCase.source,
+      1,
+    );
+    dirty(tree);
+    classificationCase.assertions?.(tree);
+  });
+}
 
 determinismTest("division-to-match-ere", division, matchEre, ["16 3 ~ /a/"]);
 determinismTest(
@@ -616,28 +875,6 @@ determinismTest(
     excludes(tree, "collating_symbol");
   },
 );
-
-freshTest("eof-ere-recovery", "BEGIN { print /abc", (tree) => {
-  assert.match(tree, /^0:18[ \t]*-[ \t]*0:18[ \t]+ere_end_recovery$/m);
-  singleActionCloserRecovery(tree);
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
-});
-
-freshTest("eof-ere-escape-recovery", "BEGIN { print /abc\\", (tree) => {
-  assert.match(tree, /^0:18[ \t]*-[ \t]*0:19[ \t]+ere_end_recovery([ \t]|$)/m);
-  singleActionCloserRecovery(tree);
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
-});
-
-freshTest("nested-group-eof", "BEGIN { print /(a", (tree) => {
-  assert.match(tree, /^0:17[ \t]*-[ \t]*0:17[ \t]+ere_inner_recovery$/m);
-  assert.match(tree, /^0:17[ \t]*-[ \t]*0:17[ \t]+ere_end_recovery$/m);
-  singleActionCloserRecovery(tree);
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
-});
 
 const rawStatementNewline = lines("BEGIN {", "  print 1", "}");
 const continuedStatementBoundary = lines("BEGIN {", "  print 1\\", "}");
@@ -865,43 +1102,6 @@ freshTest("string", stringSource, (tree) => {
   contains(tree, "escape_sequence");
   excludes(tree, "line_continuation");
   clean(tree);
-});
-
-const rawStringRecovery = lines('BEGIN { print "abc', 'print "ok" }');
-freshTest("raw-string-recovery", rawStringRecovery, (tree) => {
-  assert.match(tree, /^0:14[ \t]*-[ \t]*0:18[ \t]+string$/m);
-  assert.match(tree, /^0:18[ \t]*-[ \t]*0:18[ \t]+string_end_recovery$/m);
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
-});
-
-freshTest("eof-string-recovery", 'BEGIN { print "abc', (tree) => {
-  assert.match(tree, /^0:18[ \t]*-[ \t]*0:18[ \t]+string_end_recovery$/m);
-  singleActionCloserRecovery(tree);
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
-});
-
-const continuedLoneEscape = lines('BEGIN { print "abc\\\\');
-freshTest("continued-lone-escape", continuedLoneEscape, (tree) => {
-  assert.match(tree, /^0:18[ \t]*-[ \t]*0:20[ \t]+escape_sequence[ \t]/m);
-  assert.match(tree, /^0:20[ \t]*-[ \t]*0:20[ \t]+string_end_recovery$/m);
-  singleActionCloserRecovery(tree);
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
-});
-
-const rawLoneEscapeRecovery = lines(
-  'BEGIN { print "abc\\\\',
-  "",
-  'print "ok" }',
-);
-freshTest("raw-lone-escape-recovery", rawLoneEscapeRecovery, (tree) => {
-  assert.match(tree, /^0:18[ \t]*-[ \t]*0:20[ \t]+escape_sequence[ \t]/m);
-  assert.match(tree, /^0:20[ \t]*-[ \t]*0:20[ \t]+string_end_recovery$/m);
-  assert.match(tree, /^0:20[ \t]*-[ \t]*1:0[ \t]+terminator:[ \t]+newline$/m);
-  excludes(tree, "ERROR");
-  excludes(tree, "MISSING");
 });
 
 const closedString = lines('BEGIN { print "abc"', "}");

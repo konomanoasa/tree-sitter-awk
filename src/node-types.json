@@ -4,11 +4,15 @@
     "named": true,
     "fields": {
       "body": {
-        "multiple": false,
+        "multiple": true,
         "required": false,
         "types": [
           {
             "type": "terminated_statement_list",
+            "named": true
+          },
+          {
+            "type": "unterminated_statement",
             "named": true
           },
           {
@@ -21,14 +25,6 @@
         "multiple": false,
         "required": true,
         "types": [
-          {
-            "type": "action_item_boundary_recovery",
-            "named": true
-          },
-          {
-            "type": "closer_recovery",
-            "named": true
-          },
           {
             "type": "}",
             "named": false
@@ -86,13 +82,9 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": true,
+      "multiple": false,
       "required": true,
       "types": [
-        {
-          "type": "ere_inner_recovery",
-          "named": true
-        },
         {
           "type": "matching_list",
           "named": true
@@ -134,15 +126,11 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": true,
-      "required": true,
+      "multiple": false,
+      "required": false,
       "types": [
         {
           "type": "class_name",
-          "named": true
-        },
-        {
-          "type": "ere_inner_recovery",
           "named": true
         }
       ]
@@ -177,15 +165,11 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": true,
-      "required": true,
+      "multiple": false,
+      "required": false,
       "types": [
         {
           "type": "collating_element",
-          "named": true
-        },
-        {
-          "type": "ere_inner_recovery",
           "named": true
         },
         {
@@ -264,15 +248,11 @@
     "named": true,
     "fields": {},
     "children": {
-      "multiple": true,
-      "required": true,
+      "multiple": false,
+      "required": false,
       "types": [
         {
           "type": "collating_element",
-          "named": true
-        },
-        {
-          "type": "ere_inner_recovery",
           "named": true
         }
       ]
@@ -297,10 +277,6 @@
         "required": false,
         "types": [
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "extended_reg_exp",
             "named": true
           }
@@ -316,16 +292,6 @@
           }
         ]
       }
-    },
-    "children": {
-      "multiple": false,
-      "required": false,
-      "types": [
-        {
-          "type": "ere_end_recovery",
-          "named": true
-        }
-      ]
     }
   },
   {
@@ -386,18 +352,9 @@
         {
           "type": "dup_count",
           "named": true
-        },
-        {
-          "type": "ere_inner_recovery",
-          "named": true
         }
       ]
     }
-  },
-  {
-    "type": "ere_end_recovery",
-    "named": true,
-    "fields": {}
   },
   {
     "type": "ere_expression",
@@ -417,10 +374,6 @@
         "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "expression_recovery",
-            "named": true
-          },
           {
             "type": "extended_reg_exp",
             "named": true
@@ -462,10 +415,6 @@
       "multiple": false,
       "required": false,
       "types": [
-        {
-          "type": "ere_inner_recovery",
-          "named": true
-        },
         {
           "type": "left_anchor",
           "named": true
@@ -528,10 +477,6 @@
           "named": true
         },
         {
-          "type": "expression_recovery",
-          "named": true
-        },
-        {
           "type": "multiple_expr_list",
           "named": true
         }
@@ -566,10 +511,6 @@
         "required": false,
         "types": [
           {
-            "type": "ere_inner_recovery",
-            "named": true
-          },
-          {
             "type": "extended_reg_exp",
             "named": true
           }
@@ -602,14 +543,6 @@
       "types": [
         {
           "type": "ere_branch",
-          "named": true
-        },
-        {
-          "type": "ere_inner_recovery",
-          "named": true
-        },
-        {
-          "type": "extended_reg_exp",
           "named": true
         }
       ]
@@ -695,10 +628,6 @@
           {
             "type": "action",
             "named": true
-          },
-          {
-            "type": "function_body_recovery",
-            "named": true
           }
         ]
       },
@@ -746,15 +675,7 @@
       "required": false,
       "types": [
         {
-          "type": "closer_recovery",
-          "named": true
-        },
-        {
           "type": "function_keyword",
-          "named": true
-        },
-        {
-          "type": "header_recovery",
           "named": true
         },
         {
@@ -799,10 +720,6 @@
           {
             "type": "terminator",
             "named": true
-          },
-          {
-            "type": "terminator_recovery",
-            "named": true
           }
         ]
       }
@@ -834,10 +751,6 @@
           {
             "type": "expr",
             "named": true
-          },
-          {
-            "type": "expression_recovery",
-            "named": true
           }
         ]
       },
@@ -856,10 +769,6 @@
       "multiple": true,
       "required": false,
       "types": [
-        {
-          "type": "closer_recovery",
-          "named": true
-        },
         {
           "type": "expr_list",
           "named": true
@@ -915,10 +824,6 @@
       "types": [
         {
           "type": "expr",
-          "named": true
-        },
-        {
-          "type": "expression_recovery",
           "named": true
         },
         {
@@ -987,10 +892,6 @@
           {
             "type": "expr",
             "named": true
-          },
-          {
-            "type": "expression_recovery",
-            "named": true
           }
         ]
       },
@@ -1010,10 +911,6 @@
         "types": [
           {
             "type": "expr",
-            "named": true
-          },
-          {
-            "type": "expression_recovery",
             "named": true
           }
         ]
@@ -1042,10 +939,6 @@
         "types": [
           {
             "type": "expr",
-            "named": true
-          },
-          {
-            "type": "expression_recovery",
             "named": true
           },
           {
@@ -1177,10 +1070,6 @@
             "named": true
           },
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "name",
             "named": true
           },
@@ -1200,10 +1089,6 @@
           "named": true
         },
         {
-          "type": "closer_recovery",
-          "named": true
-        },
-        {
           "type": "ere",
           "named": true
         },
@@ -1213,10 +1098,6 @@
         },
         {
           "type": "expr_list",
-          "named": true
-        },
-        {
-          "type": "expression_recovery",
           "named": true
         },
         {
@@ -1259,10 +1140,6 @@
         "required": true,
         "types": [
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "simple_get",
             "named": true
           }
@@ -1274,10 +1151,6 @@
         "types": [
           {
             "type": "expr",
-            "named": true
-          },
-          {
-            "type": "expression_recovery",
             "named": true
           },
           {
@@ -1307,10 +1180,6 @@
         "required": false,
         "types": [
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "print_expr",
             "named": true
           }
@@ -1330,10 +1199,6 @@
         "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "expression_recovery",
-            "named": true
-          },
           {
             "type": "print_expr",
             "named": true
@@ -1362,10 +1227,6 @@
         "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "expression_recovery",
-            "named": true
-          },
           {
             "type": "lvalue",
             "named": true
@@ -1471,10 +1332,6 @@
         "required": false,
         "types": [
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "name",
             "named": true
           },
@@ -1498,10 +1355,6 @@
           "named": true
         },
         {
-          "type": "closer_recovery",
-          "named": true
-        },
-        {
           "type": "ere",
           "named": true
         },
@@ -1511,10 +1364,6 @@
         },
         {
           "type": "expr_list",
-          "named": true
-        },
-        {
-          "type": "expression_recovery",
           "named": true
         },
         {
@@ -1570,10 +1419,6 @@
           {
             "type": "expr",
             "named": true
-          },
-          {
-            "type": "expression_recovery",
-            "named": true
           }
         ]
       },
@@ -1583,10 +1428,6 @@
         "types": [
           {
             "type": "expr",
-            "named": true
-          },
-          {
-            "type": "expression_recovery",
             "named": true
           }
         ]
@@ -1698,10 +1539,6 @@
           "named": true
         },
         {
-          "type": "expression_recovery",
-          "named": true
-        },
-        {
           "type": "line_continuation",
           "named": true
         }
@@ -1726,10 +1563,6 @@
         },
         {
           "type": "newline_opt",
-          "named": true
-        },
-        {
-          "type": "parameter_recovery",
           "named": true
         }
       ]
@@ -1786,10 +1619,6 @@
       "multiple": true,
       "required": true,
       "types": [
-        {
-          "type": "expression_recovery",
-          "named": true
-        },
         {
           "type": "line_continuation",
           "named": true
@@ -1980,10 +1809,6 @@
       "required": true,
       "types": [
         {
-          "type": "closer_recovery",
-          "named": true
-        },
-        {
           "type": "line_continuation",
           "named": true
         },
@@ -2007,10 +1832,6 @@
         "required": false,
         "types": [
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "name",
             "named": true
           }
@@ -2031,10 +1852,6 @@
       "multiple": true,
       "required": true,
       "types": [
-        {
-          "type": "closer_recovery",
-          "named": true
-        },
         {
           "type": "delete_keyword",
           "named": true
@@ -2117,7 +1934,7 @@
     "fields": {
       "closing": {
         "multiple": false,
-        "required": false,
+        "required": true,
         "types": [
           {
             "type": "\"",
@@ -2147,18 +1964,9 @@
         {
           "type": "string_content",
           "named": true
-        },
-        {
-          "type": "string_end_recovery",
-          "named": true
         }
       ]
     }
-  },
-  {
-    "type": "string_end_recovery",
-    "named": true,
-    "fields": {}
   },
   {
     "type": "sub_assign",
@@ -2174,10 +1982,6 @@
         "required": false,
         "types": [
           {
-            "type": "statement_recovery",
-            "named": true
-          },
-          {
             "type": "terminated_statement",
             "named": true
           }
@@ -2189,10 +1993,6 @@
         "types": [
           {
             "type": "expr",
-            "named": true
-          },
-          {
-            "type": "expression_recovery",
             "named": true
           }
         ]
@@ -2207,10 +2007,6 @@
           "named": true
         },
         {
-          "type": "closer_recovery",
-          "named": true
-        },
-        {
           "type": "continue_keyword",
           "named": true
         },
@@ -2219,19 +2015,11 @@
           "named": true
         },
         {
-          "type": "do_tail_recovery",
-          "named": true
-        },
-        {
           "type": "exit_keyword",
           "named": true
         },
         {
           "type": "expr",
-          "named": true
-        },
-        {
-          "type": "header_recovery",
           "named": true
         },
         {
@@ -2274,10 +2062,6 @@
         "required": false,
         "types": [
           {
-            "type": "statement_recovery",
-            "named": true
-          },
-          {
             "type": "terminated_statement",
             "named": true
           }
@@ -2298,10 +2082,6 @@
         "required": false,
         "types": [
           {
-            "type": "statement_recovery",
-            "named": true
-          },
-          {
             "type": "terminated_statement",
             "named": true
           }
@@ -2314,10 +2094,6 @@
           {
             "type": "expr",
             "named": true
-          },
-          {
-            "type": "expression_recovery",
-            "named": true
           }
         ]
       },
@@ -2325,10 +2101,6 @@
         "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "statement_recovery",
-            "named": true
-          },
           {
             "type": "terminated_statement",
             "named": true
@@ -2366,10 +2138,6 @@
           {
             "type": "newline",
             "named": true
-          },
-          {
-            "type": "terminator_recovery",
-            "named": true
           }
         ]
       },
@@ -2403,19 +2171,11 @@
           "named": true
         },
         {
-          "type": "closer_recovery",
-          "named": true
-        },
-        {
           "type": "else_keyword",
           "named": true
         },
         {
           "type": "for_keyword",
-          "named": true
-        },
-        {
-          "type": "header_recovery",
           "named": true
         },
         {
@@ -2490,10 +2250,6 @@
           {
             "type": "expr",
             "named": true
-          },
-          {
-            "type": "expression_recovery",
-            "named": true
           }
         ]
       },
@@ -2514,10 +2270,6 @@
           {
             "type": "expr",
             "named": true
-          },
-          {
-            "type": "expression_recovery",
-            "named": true
           }
         ]
       },
@@ -2537,10 +2289,6 @@
         "types": [
           {
             "type": "expr",
-            "named": true
-          },
-          {
-            "type": "expression_recovery",
             "named": true
           }
         ]
@@ -2628,10 +2376,6 @@
             "named": true
           },
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "name",
             "named": true
           },
@@ -2646,10 +2390,6 @@
       "multiple": true,
       "required": false,
       "types": [
-        {
-          "type": "closer_recovery",
-          "named": true
-        },
         {
           "type": "line_continuation",
           "named": true
@@ -2673,10 +2413,6 @@
         "multiple": false,
         "required": true,
         "types": [
-          {
-            "type": "expression_recovery",
-            "named": true
-          },
           {
             "type": "simple_get",
             "named": true
@@ -2714,10 +2450,6 @@
         "required": false,
         "types": [
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "print_expr",
             "named": true
           }
@@ -2738,10 +2470,6 @@
         "required": false,
         "types": [
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "print_expr",
             "named": true
           }
@@ -2761,10 +2489,6 @@
         "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "expression_recovery",
-            "named": true
-          },
           {
             "type": "print_expr",
             "named": true
@@ -2822,10 +2546,6 @@
         "required": false,
         "types": [
           {
-            "type": "expression_recovery",
-            "named": true
-          },
-          {
             "type": "name",
             "named": true
           },
@@ -2845,10 +2565,6 @@
       "required": false,
       "types": [
         {
-          "type": "closer_recovery",
-          "named": true
-        },
-        {
           "type": "line_continuation",
           "named": true
         },
@@ -2867,10 +2583,6 @@
         "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "statement_recovery",
-            "named": true
-          },
           {
             "type": "unterminated_statement",
             "named": true
@@ -2892,10 +2604,6 @@
         "required": false,
         "types": [
           {
-            "type": "statement_recovery",
-            "named": true
-          },
-          {
             "type": "unterminated_statement",
             "named": true
           }
@@ -2908,10 +2616,6 @@
           {
             "type": "expr",
             "named": true
-          },
-          {
-            "type": "expression_recovery",
-            "named": true
           }
         ]
       },
@@ -2919,10 +2623,6 @@
         "multiple": false,
         "required": false,
         "types": [
-          {
-            "type": "statement_recovery",
-            "named": true
-          },
           {
             "type": "terminated_statement",
             "named": true
@@ -2979,19 +2679,11 @@
       "required": false,
       "types": [
         {
-          "type": "closer_recovery",
-          "named": true
-        },
-        {
           "type": "else_keyword",
           "named": true
         },
         {
           "type": "for_keyword",
-          "named": true
-        },
-        {
-          "type": "header_recovery",
           "named": true
         },
         {
@@ -3020,13 +2712,142 @@
   {
     "type": "unterminated_statement_list",
     "named": true,
-    "fields": {},
+    "fields": {
+      "alternative": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "terminated_statement",
+            "named": true
+          }
+        ]
+      },
+      "array": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "name",
+            "named": true
+          }
+        ]
+      },
+      "body": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "terminated_statement",
+            "named": true
+          }
+        ]
+      },
+      "condition": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "expr",
+            "named": true
+          }
+        ]
+      },
+      "consequence": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "terminated_statement",
+            "named": true
+          }
+        ]
+      },
+      "initializer": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "simple_statement",
+            "named": true
+          }
+        ]
+      },
+      "statement": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "terminatable_statement",
+            "named": true
+          }
+        ]
+      },
+      "terminator": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": ";",
+            "named": false
+          },
+          {
+            "type": "newline",
+            "named": true
+          }
+        ]
+      },
+      "update": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "simple_statement",
+            "named": true
+          }
+        ]
+      },
+      "variable": {
+        "multiple": false,
+        "required": false,
+        "types": [
+          {
+            "type": "name",
+            "named": true
+          }
+        ]
+      }
+    },
     "children": {
       "multiple": true,
-      "required": true,
+      "required": false,
       "types": [
         {
+          "type": "action",
+          "named": true
+        },
+        {
+          "type": "else_keyword",
+          "named": true
+        },
+        {
+          "type": "for_keyword",
+          "named": true
+        },
+        {
+          "type": "if_keyword",
+          "named": true
+        },
+        {
+          "type": "in_keyword",
+          "named": true
+        },
+        {
           "type": "line_continuation",
+          "named": true
+        },
+        {
+          "type": "newline_opt",
           "named": true
         },
         {
@@ -3035,6 +2856,10 @@
         },
         {
           "type": "unterminated_statement",
+          "named": true
+        },
+        {
+          "type": "while_keyword",
           "named": true
         }
       ]
@@ -3135,37 +2960,9 @@
     "named": false
   },
   {
-    "type": "action_item_boundary_recovery",
-    "named": true
-  },
-  {
-    "type": "closer_recovery",
-    "named": true
-  },
-  {
     "type": "comment",
     "named": true,
     "extra": true
-  },
-  {
-    "type": "do_tail_recovery",
-    "named": true
-  },
-  {
-    "type": "ere_inner_recovery",
-    "named": true
-  },
-  {
-    "type": "expression_recovery",
-    "named": true
-  },
-  {
-    "type": "function_body_recovery",
-    "named": true
-  },
-  {
-    "type": "header_recovery",
-    "named": true
   },
   {
     "type": "left_anchor",
@@ -3180,23 +2977,11 @@
     "named": true
   },
   {
-    "type": "parameter_recovery",
-    "named": true
-  },
-  {
     "type": "right_anchor",
     "named": true
   },
   {
-    "type": "statement_recovery",
-    "named": true
-  },
-  {
     "type": "string_content",
-    "named": true
-  },
-  {
-    "type": "terminator_recovery",
     "named": true
   },
   {

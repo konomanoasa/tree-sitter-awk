@@ -69,61 +69,27 @@ enum TokenType {
   LC_BEFORE_DO_TAIL,
   LC_BEFORE_FOR_SEMICOLON,
   LC_BEFORE_FOR_UPDATE,
-  LC_BEFORE_CLOSER_RECOVERY,
-  LC_BEFORE_TERMINATOR_RECOVERY,
   LC_BEFORE_EXPRESSION,
   LC_BEFORE_COMMA,
   LC_BEFORE_OPEN_BRACKET,
   LC_BEFORE_CALL_PARENTHESIS,
   LC_BEFORE_CLOSE_PARENTHESIS,
   LC_BEFORE_CLOSE_BRACKET,
-  LC_BEFORE_ACTION_EOF,
-  EXPRESSION_RECOVERY,
-  RANGE_RIGHT_EXPRESSION_RECOVERY,
-  LIST_EXPRESSION_RECOVERY,
-  PRINT_EXPRESSION_RECOVERY,
-  PARAMETER_RECOVERY,
-  FUNCTION_BODY_RECOVERY,
-  DO_BODY_RECOVERY_GUARD,
-  DO_BODY_TERMINATOR_RECOVERY,
-  EOF_REQUIRED_MEMBER_RECOVERY,
-  STATEMENT_RECOVERY,
-  HEADER_RECOVERY,
-  FUNCTION_HEADER_RECOVERY,
-  FOR_CLAUSE_RECOVERY,
-  TERMINATOR_RECOVERY,
-  CLOSED_ITEM_TERMINATOR_RECOVERY,
-  NORMAL_ITEM_TERMINATOR_RECOVERY,
-  ACTION_EMPTY_SEMICOLON_ITEM_BOUNDARY_GUARD,
-  ACTION_CLOSE_ITEM_BOUNDARY_GUARD,
-  ACTION_ITEM_BOUNDARY_RECOVERY,
-  STRING_LONE_ESCAPE,
-  STRING_END_BOUNDARY,
+  CLOSED_ITEM_BOUNDARY,
+  NORMAL_PATTERN_ITEM_BOUNDARY,
   ERE_COMPOUND_OPEN_GUARD,
   ERE_DOT_CLOSE_GUARD,
   ERE_EQUAL_CLOSE_GUARD,
   ERE_COLON_CLOSE_GUARD,
-  ERE_GROUP_EXPRESSION_RECOVERY,
-  ERE_EMPTY_EXPRESSION_RECOVERY,
-  ERE_MISSING_BRANCH_RECOVERY,
-  ERE_LEADING_BRANCH_RECOVERY,
   ERE_ESCAPE_START,
   ERE_ESCAPED_DELIMITER_START,
   ERE_ESCAPED_DELIMITER_END,
-  ERE_LONE_ESCAPE,
-  ERE_COMPOUND_BOUNDARY,
-  ERE_INNER_SLASH_BOUNDARY,
-  ERE_INNER_END_BOUNDARY,
-  ERE_END_BOUNDARY,
+  ERE_LEXICAL_END,
   ERE_CLOSING,
-  CLOSE_PARENTHESIS_RECOVERY,
-  CLOSE_BRACKET_RECOVERY,
-  ACTION_EOF_RECOVERY,
   EXPRESSION_TARGET_GUARD,
   PRINT_EXPRESSION_TARGET_GUARD,
   ACTION_TARGET_GUARD,
   PARAMETER_TARGET_GUARD,
-  DO_TAIL_RECOVERY,
   ERROR_SENTINEL,
   TOKEN_TYPE_COUNT,
 };
@@ -133,10 +99,9 @@ enum {
   SERIALIZED_SCANNER_STATE_SIZE = 1,
 };
 
-_Static_assert(
-  SERIALIZED_SCANNER_STATE_SIZE <= TREE_SITTER_SERIALIZATION_BUFFER_SIZE,
-  "serialized scanner state must fit in Tree-sitter's buffer"
-);
+typedef char SerializedScannerStateFitsTreeSitterBuffer
+  [SERIALIZED_SCANNER_STATE_SIZE <= TREE_SITTER_SERIALIZATION_BUFFER_SIZE ? 1
+                                                                          : -1];
 
 typedef enum {
   WORD_KIND_NONE,
@@ -171,10 +136,8 @@ typedef struct {
 
 typedef enum {
   WORD_ROLE_EXPRESSION_START = 1U << 0,
-  WORD_ROLE_STATEMENT_START = 1U << 1,
-  WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY = 1U << 2,
-  WORD_ROLE_ITEM_START = 1U << 3,
-  WORD_ROLE_RESERVED_ITEM_START = 1U << 4,
+  WORD_ROLE_ITEM_START = 1U << 1,
+  WORD_ROLE_RESERVED_ITEM_START = 1U << 2,
 } WordRole;
 
 typedef struct {
@@ -260,41 +223,33 @@ static const WordToken WORD_TOKENS[] = {
   {WORD_KIND_FUNCTION,
     FUNCTION_WORD,
     WORD_ROLE_ITEM_START | WORD_ROLE_RESERVED_ITEM_START},
-  {WORD_KIND_PRINT, PRINT_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_BREAK, BREAK_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_CONTINUE, CONTINUE_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_DELETE, DELETE_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_DO, DO_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_ELSE, ELSE_WORD, WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY},
-  {WORD_KIND_EXIT, EXIT_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_FOR, FOR_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_IF, IF_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_NEXT, NEXT_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_NEXTFILE, NEXTFILE_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_PRINTF, PRINTF_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_RETURN, RETURN_WORD, WORD_ROLE_STATEMENT_START},
-  {WORD_KIND_WHILE, WHILE_WORD, WORD_ROLE_STATEMENT_START},
+  {WORD_KIND_PRINT, PRINT_WORD, 0},
+  {WORD_KIND_BREAK, BREAK_WORD, 0},
+  {WORD_KIND_CONTINUE, CONTINUE_WORD, 0},
+  {WORD_KIND_DELETE, DELETE_WORD, 0},
+  {WORD_KIND_DO, DO_WORD, 0},
+  {WORD_KIND_ELSE, ELSE_WORD, 0},
+  {WORD_KIND_EXIT, EXIT_WORD, 0},
+  {WORD_KIND_FOR, FOR_WORD, 0},
+  {WORD_KIND_IF, IF_WORD, 0},
+  {WORD_KIND_NEXT, NEXT_WORD, 0},
+  {WORD_KIND_NEXTFILE, NEXTFILE_WORD, 0},
+  {WORD_KIND_PRINTF, PRINTF_WORD, 0},
+  {WORD_KIND_RETURN, RETURN_WORD, 0},
+  {WORD_KIND_WHILE, WHILE_WORD, 0},
   {WORD_KIND_NAME,
     NAME_WORD,
-    WORD_ROLE_EXPRESSION_START |
-      WORD_ROLE_STATEMENT_START |
-      WORD_ROLE_ITEM_START},
+    WORD_ROLE_EXPRESSION_START | WORD_ROLE_ITEM_START},
   {WORD_KIND_GETLINE,
     GETLINE_WORD,
-    WORD_ROLE_EXPRESSION_START |
-      WORD_ROLE_STATEMENT_START |
-      WORD_ROLE_ITEM_START},
+    WORD_ROLE_EXPRESSION_START | WORD_ROLE_ITEM_START},
   {WORD_KIND_IN, IN_WORD, 0},
   {WORD_KIND_BUILTIN_FUNC_NAME,
     BUILTIN_FUNC_NAME_WORD,
-    WORD_ROLE_EXPRESSION_START |
-      WORD_ROLE_STATEMENT_START |
-      WORD_ROLE_ITEM_START},
+    WORD_ROLE_EXPRESSION_START | WORD_ROLE_ITEM_START},
   {WORD_KIND_FUNC_NAME,
     FUNC_NAME_WORD,
-    WORD_ROLE_EXPRESSION_START |
-      WORD_ROLE_STATEMENT_START |
-      WORD_ROLE_ITEM_START},
+    WORD_ROLE_EXPRESSION_START | WORD_ROLE_ITEM_START},
 };
 
 static const CompositeOperator COMPOSITE_OPERATORS[] = {
@@ -352,7 +307,7 @@ static bool character_starts_expression(int32_t character) {
   }
 }
 
-static bool character_starts_statement(int32_t character) {
+static bool character_starts_item(int32_t character) {
   return character == '{' || character_starts_expression(character);
 }
 
@@ -471,18 +426,13 @@ static bool word_token_is_valid(const bool *valid_symbols, WordKind kind) {
   return false;
 }
 
-static bool scan_word_token(
-  TSLexer *lexer,
-  const bool *valid_symbols,
-  WordKind kind,
-  bool *marked_end
-) {
+static bool
+scan_word_token(TSLexer *lexer, const bool *valid_symbols, WordKind kind) {
   if (!word_token_is_valid(valid_symbols, kind)) {
     return false;
   }
 
   lexer->mark_end(lexer);
-  *marked_end = true;
   return emit_word_kind(
     lexer,
     valid_symbols,
@@ -518,31 +468,6 @@ static bool word_starts_expression(WordKind kind) {
 
 static bool word_starts_print_expression(WordKind kind) {
   return kind != WORD_KIND_GETLINE && word_starts_expression(kind);
-}
-
-static bool word_is_statement_recovery_boundary(WordKind kind) {
-  return word_has_role(
-    kind,
-    WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY | WORD_ROLE_RESERVED_ITEM_START
-  );
-}
-
-static bool word_is_do_tail_recovery_boundary(WordKind kind) {
-  return kind !=
-    WORD_KIND_WHILE &&
-    word_has_role(
-      kind,
-      WORD_ROLE_STATEMENT_START |
-        WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY |
-        WORD_ROLE_RESERVED_ITEM_START
-    );
-}
-
-static bool word_is_terminator_recovery_boundary(WordKind kind) {
-  return word_has_role(
-    kind,
-    WORD_ROLE_STATEMENT_START | WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY
-  );
 }
 
 static enum TokenType number_kind_token(NumberKind kind) {
@@ -710,29 +635,22 @@ scan_composite_operator_start(TSLexer *lexer, const bool *valid_symbols) {
   return true;
 }
 
-static bool scan_print_output_boundary(TSLexer *lexer) {
-  const int32_t first = lexer->lookahead;
-  if (first != '>' && first != '|') {
-    return false;
-  }
-
-  lexer->advance(lexer, false);
-  if (first == '>') {
-    return lexer->lookahead != '=';
-  }
-  return lexer->lookahead != '|';
-}
-
-static bool has_greater_start(const bool *valid_symbols) {
+static bool
+has_greater_start(const bool *valid_symbols, bool allow_zero_width_guard) {
   return valid_symbols[GE_OPERATOR] ||
     valid_symbols[APPEND_OPERATOR] ||
-    valid_symbols[OUTPUT_GREATER_GUARD];
+    (allow_zero_width_guard && valid_symbols[OUTPUT_GREATER_GUARD]);
 }
 
 // '>' can start GE, APPEND or a plain redirection '>'. One dispatcher decides
 // from the following character, so a two-character operator that turns out to
-// be invalid cannot block the zero-width redirection guard.
-static bool scan_greater_start(TSLexer *lexer, const bool *valid_symbols) {
+// be invalid cannot block the zero-width redirection guard. Error mode emits
+// only operators that have source text.
+static bool scan_greater_start(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  bool allow_zero_width_guard
+) {
   lexer->advance(lexer, false);
   if (lexer->lookahead == '=') {
     if (!valid_symbols[GE_OPERATOR]) {
@@ -749,7 +667,7 @@ static bool scan_greater_start(TSLexer *lexer, const bool *valid_symbols) {
     lexer->result_symbol = APPEND_OPERATOR;
     return true;
   }
-  if (!valid_symbols[OUTPUT_GREATER_GUARD]) {
+  if (!allow_zero_width_guard || !valid_symbols[OUTPUT_GREATER_GUARD]) {
     return false;
   }
   lexer->result_symbol = OUTPUT_GREATER_GUARD;
@@ -760,7 +678,7 @@ static bool scan_slash_start(
   ScannerState *state,
   TSLexer *lexer,
   const bool *valid_symbols,
-  bool allow_ere
+  bool prefer_ere
 ) {
   lexer->advance(lexer, false);
   lexer->mark_end(lexer);
@@ -777,11 +695,16 @@ static bool scan_slash_start(
       return false;
     }
   }
+  if (prefer_ere && valid_symbols[ERE_OPENING_SLASH]) {
+    lexer->result_symbol = ERE_OPENING_SLASH;
+    state->ere_mode = ERE_MODE_BODY;
+    return true;
+  }
   if (valid_symbols[DIVISION_SLASH]) {
     lexer->result_symbol = DIVISION_SLASH;
     return true;
   }
-  if (allow_ere && valid_symbols[ERE_OPENING_SLASH]) {
+  if (valid_symbols[ERE_OPENING_SLASH]) {
     lexer->result_symbol = ERE_OPENING_SLASH;
     state->ere_mode = ERE_MODE_BODY;
     return true;
@@ -789,349 +712,34 @@ static bool scan_slash_start(
   return false;
 }
 
-static bool
-scan_expression_recovery(TSLexer *lexer, const bool *valid_symbols) {
-  if (
-    !valid_symbols[EXPRESSION_RECOVERY] &&
-    !valid_symbols[LIST_EXPRESSION_RECOVERY]
-  ) {
-    return false;
-  }
-
-  if (valid_symbols[LIST_EXPRESSION_RECOVERY] && lexer->lookahead == ',') {
-    lexer->result_symbol = LIST_EXPRESSION_RECOVERY;
-    return true;
-  }
-  if (!valid_symbols[EXPRESSION_RECOVERY]) {
-    return false;
-  }
-
-  switch (lexer->lookahead) {
-  case ')':
-  case ']':
-  case ',':
-  case ':':
-  case ';':
-  case '}':
-  case '\n':
-    lexer->result_symbol = EXPRESSION_RECOVERY;
-    return true;
-  default:
-    if (lexer->eof(lexer)) {
-      lexer->result_symbol = EXPRESSION_RECOVERY;
-      return true;
-    }
-    return false;
-  }
-}
-
-static bool emit_range_right_expression_recovery(
-  TSLexer *lexer,
-  const bool *valid_symbols
-) {
-  if (!valid_symbols[RANGE_RIGHT_EXPRESSION_RECOVERY]) {
-    return false;
-  }
-  if (lexer->lookahead == '{') {
-    lexer->result_symbol = RANGE_RIGHT_EXPRESSION_RECOVERY;
-    return true;
-  }
-  return false;
-}
-
-static bool word_is_unambiguous_statement_boundary(WordKind kind) {
-  return !word_has_role(kind, WORD_ROLE_EXPRESSION_START) &&
-    word_has_role(
-      kind,
-      WORD_ROLE_STATEMENT_START |
-        WORD_ROLE_STATEMENT_RECOVERY_BOUNDARY |
-        WORD_ROLE_RESERVED_ITEM_START
-    );
-}
-
-static bool character_is_do_tail_recovery_boundary(int32_t character) {
-  switch (character) {
-  case ';':
-  case '}':
-    return true;
-  default:
-    return character_starts_statement(character);
-  }
-}
-
-static bool is_closer_recovery_punctuation(int32_t character) {
-  switch (character) {
-  case ';':
-  case '\n':
-  case '{':
-  case '}':
-    return true;
-  default:
-    return false;
-  }
-}
-
-static bool emit_closer_recovery(TSLexer *lexer, const bool *valid_symbols) {
-  const bool parenthesis_valid = valid_symbols[CLOSE_PARENTHESIS_RECOVERY];
-  const bool bracket_valid = valid_symbols[CLOSE_BRACKET_RECOVERY];
-  if (!parenthesis_valid && !bracket_valid) {
-    return false;
-  }
-
-  enum TokenType recovery;
-  if (lexer->lookahead == ')') {
-    if (!bracket_valid || parenthesis_valid) {
-      return false;
-    }
-    recovery = CLOSE_BRACKET_RECOVERY;
-  } else if (lexer->lookahead == ']') {
-    if (!parenthesis_valid || bracket_valid) {
-      return false;
-    }
-    recovery = CLOSE_PARENTHESIS_RECOVERY;
-  } else {
-    if (
-      !is_closer_recovery_punctuation(lexer->lookahead) && !lexer->eof(lexer)
-    ) {
-      return false;
-    }
-    recovery =
-      parenthesis_valid ? CLOSE_PARENTHESIS_RECOVERY : CLOSE_BRACKET_RECOVERY;
-  }
-
-  lexer->result_symbol = recovery;
-  return true;
-}
-
-static bool is_function_header_recovery_boundary(int32_t character) {
-  switch (character) {
-  case ';':
-  case '\n':
-  case '{':
-    return true;
-  default:
-    return false;
-  }
-}
-
-static bool is_for_clause_recovery_boundary(int32_t character) {
-  switch (character) {
-  case ')':
-  case '\n':
-  case '{':
-  case '}':
-    return true;
-  default:
-    return false;
-  }
-}
-
-static bool emit_header_recovery(TSLexer *lexer, const bool *valid_symbols) {
-  const bool at_eof = lexer->eof(lexer);
-  if (
-    valid_symbols[HEADER_RECOVERY] &&
-    (is_closer_recovery_punctuation(lexer->lookahead) || at_eof)
-  ) {
-    lexer->result_symbol = HEADER_RECOVERY;
-    return true;
-  }
-  if (
-    valid_symbols[FUNCTION_HEADER_RECOVERY] &&
-    (is_function_header_recovery_boundary(lexer->lookahead) || at_eof)
-  ) {
-    lexer->result_symbol = FUNCTION_HEADER_RECOVERY;
-    return true;
-  }
-  if (
-    valid_symbols[FOR_CLAUSE_RECOVERY] &&
-    (is_for_clause_recovery_boundary(lexer->lookahead) || at_eof)
-  ) {
-    lexer->result_symbol = FOR_CLAUSE_RECOVERY;
-    return true;
-  }
-  return false;
-}
-
-static bool emit_word_closer_recovery(
-  TSLexer *lexer,
-  const bool *valid_symbols,
-  WordKind kind
-) {
-  if (!word_is_unambiguous_statement_boundary(kind)) {
-    return false;
-  }
-  if (valid_symbols[CLOSE_PARENTHESIS_RECOVERY]) {
-    lexer->result_symbol = CLOSE_PARENTHESIS_RECOVERY;
-    return true;
-  }
-  if (valid_symbols[CLOSE_BRACKET_RECOVERY]) {
-    lexer->result_symbol = CLOSE_BRACKET_RECOVERY;
-    return true;
-  }
-  return false;
-}
-
-static bool emit_word_required_recovery(
-  TSLexer *lexer,
-  const bool *valid_symbols,
-  WordKind kind
-) {
-  if (valid_symbols[DO_BODY_RECOVERY_GUARD] && kind == WORD_KIND_WHILE) {
-    lexer->result_symbol = DO_BODY_RECOVERY_GUARD;
-    return true;
-  }
-  // A word that is currently valid as its own token is real syntax, never a
-  // recovery boundary: "else" after a terminated do body continues an if-else
-  // inside the body instead of ending the do statement.
-  if (word_token_is_valid(valid_symbols, kind)) {
-    return false;
-  }
-  if (
-    valid_symbols[EXPRESSION_RECOVERY] &&
-    word_is_unambiguous_statement_boundary(kind)
-  ) {
-    lexer->result_symbol = EXPRESSION_RECOVERY;
-    return true;
-  }
-  if (
-    valid_symbols[STATEMENT_RECOVERY] &&
-    word_is_statement_recovery_boundary(kind)
-  ) {
-    lexer->result_symbol = STATEMENT_RECOVERY;
-    return true;
-  }
-  if (
-    valid_symbols[DO_TAIL_RECOVERY] && word_is_do_tail_recovery_boundary(kind)
-  ) {
-    lexer->result_symbol = DO_TAIL_RECOVERY;
-    return true;
-  }
-  return false;
-}
-
-static bool emit_word_terminator_recovery(
-  TSLexer *lexer,
-  const bool *valid_symbols,
-  WordKind kind
-) {
-  if (
-    valid_symbols[TERMINATOR_RECOVERY] &&
-    word_is_terminator_recovery_boundary(kind)
-  ) {
-    lexer->result_symbol = TERMINATOR_RECOVERY;
-    return true;
-  }
-  return false;
-}
-
-static bool
-emit_terminator_recovery(TSLexer *lexer, const bool *valid_symbols) {
-  if (valid_symbols[TERMINATOR_RECOVERY]) {
-    lexer->result_symbol = TERMINATOR_RECOVERY;
-    return true;
-  }
-  return false;
-}
-
-static bool emit_word_structural_boundary(
+static bool emit_word_item_boundary(
   TSLexer *lexer,
   const bool *valid_symbols,
   WordKind kind
 ) {
   const bool reserved_item_start =
     word_has_role(kind, WORD_ROLE_RESERVED_ITEM_START);
-  if (reserved_item_start && valid_symbols[ACTION_ITEM_BOUNDARY_RECOVERY]) {
-    lexer->result_symbol = ACTION_ITEM_BOUNDARY_RECOVERY;
-    return true;
-  }
-  if (reserved_item_start && valid_symbols[RANGE_RIGHT_EXPRESSION_RECOVERY]) {
-    lexer->result_symbol = RANGE_RIGHT_EXPRESSION_RECOVERY;
-    return true;
-  }
   if (
-    valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY] &&
+    valid_symbols[CLOSED_ITEM_BOUNDARY] &&
     word_has_role(kind, WORD_ROLE_ITEM_START)
   ) {
-    lexer->result_symbol = CLOSED_ITEM_TERMINATOR_RECOVERY;
+    lexer->result_symbol = CLOSED_ITEM_BOUNDARY;
     return true;
   }
-  if (reserved_item_start && valid_symbols[NORMAL_ITEM_TERMINATOR_RECOVERY]) {
-    lexer->result_symbol = NORMAL_ITEM_TERMINATOR_RECOVERY;
-    return true;
-  }
-  return false;
-}
-
-static bool emit_closed_item_terminator_recovery(
-  TSLexer *lexer,
-  const bool *valid_symbols
-) {
-  if (!valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY]) {
-    return false;
-  }
-  lexer->result_symbol = CLOSED_ITEM_TERMINATOR_RECOVERY;
-  return true;
-}
-
-static bool scan_action_item_terminator_boundary(
-  TSLexer *lexer,
-  const bool *valid_symbols
-) {
-  const bool empty_semicolon_guard_valid =
-    valid_symbols[ACTION_EMPTY_SEMICOLON_ITEM_BOUNDARY_GUARD];
-  const bool close_guard_valid =
-    valid_symbols[ACTION_CLOSE_ITEM_BOUNDARY_GUARD];
-  const bool at_semicolon = lexer->lookahead == ';';
-  if (
-    (at_semicolon && !empty_semicolon_guard_valid && !close_guard_valid) ||
-    (lexer->lookahead == '\n' && !close_guard_valid) ||
-    (!at_semicolon && lexer->lookahead != '\n')
-  ) {
-    return false;
-  }
-
-  lexer->advance(lexer, false);
-  if (!advance_layout_gap(lexer)) {
-    return false;
-  }
-
-  if (!is_word_start(lexer->lookahead)) {
-    return false;
-  }
-  const WordKind kind = scan_word_kind(lexer);
-  if (!word_has_role(kind, WORD_ROLE_RESERVED_ITEM_START)) {
-    return false;
-  }
-  lexer->result_symbol = at_semicolon && empty_semicolon_guard_valid
-    ? ACTION_EMPTY_SEMICOLON_ITEM_BOUNDARY_GUARD
-    : ACTION_CLOSE_ITEM_BOUNDARY_GUARD;
-  return true;
-}
-
-static bool
-emit_required_target_recovery(TSLexer *lexer, const bool *valid_symbols) {
-  if (valid_symbols[PARAMETER_RECOVERY]) {
-    lexer->result_symbol = PARAMETER_RECOVERY;
-    return true;
-  }
-  if (valid_symbols[FUNCTION_BODY_RECOVERY]) {
-    lexer->result_symbol = FUNCTION_BODY_RECOVERY;
-    return true;
-  }
-  if (valid_symbols[EXPRESSION_RECOVERY]) {
-    lexer->result_symbol = EXPRESSION_RECOVERY;
+  if (reserved_item_start && valid_symbols[NORMAL_PATTERN_ITEM_BOUNDARY]) {
+    lexer->result_symbol = NORMAL_PATTERN_ITEM_BOUNDARY;
     return true;
   }
   return false;
 }
 
 // Requires lexer->lookahead == '\n': decides whether the required target
-// follows the raw newline, and otherwise falls back to the target's recovery.
+// follows the raw newline.
 static bool
 scan_required_target_guard(TSLexer *lexer, const bool *valid_symbols) {
   lexer->advance(lexer, false);
   if (!advance_layout_gap(lexer)) {
-    return emit_required_target_recovery(lexer, valid_symbols);
+    return false;
   }
 
   if (valid_symbols[ACTION_TARGET_GUARD] && lexer->lookahead == '{') {
@@ -1178,89 +786,7 @@ scan_required_target_guard(TSLexer *lexer, const bool *valid_symbols) {
     }
   }
 
-  return emit_required_target_recovery(lexer, valid_symbols);
-}
-
-static bool scan_function_body_recovery(TSLexer *lexer) {
-  switch (lexer->lookahead) {
-  case ';':
-  case '}':
-  case '\n':
-    lexer->result_symbol = FUNCTION_BODY_RECOVERY;
-    return true;
-  case '{':
-    return false;
-  default:
-    if (lexer->eof(lexer)) {
-      lexer->result_symbol = FUNCTION_BODY_RECOVERY;
-      return true;
-    }
-    break;
-  }
-
-  if (is_word_start(lexer->lookahead)) {
-    const WordKind kind = scan_word_kind(lexer);
-    if (word_has_role(kind, WORD_ROLE_ITEM_START)) {
-      lexer->result_symbol = FUNCTION_BODY_RECOVERY;
-      return true;
-    }
-    return false;
-  }
-  const bool starts_expression = character_starts_expression(lexer->lookahead);
-  if (starts_expression || scan_number_start(lexer)) {
-    lexer->result_symbol = FUNCTION_BODY_RECOVERY;
-    return true;
-  }
   return false;
-}
-
-static bool
-scan_parameter_recovery_or_word(TSLexer *lexer, const bool *valid_symbols) {
-  switch (lexer->lookahead) {
-  case ',':
-  case ')':
-  case '\n':
-  case '{':
-  case '}':
-  case ';':
-    lexer->result_symbol = PARAMETER_RECOVERY;
-    return true;
-  default:
-    if (lexer->eof(lexer)) {
-      lexer->result_symbol = PARAMETER_RECOVERY;
-      return true;
-    }
-    break;
-  }
-
-  if (is_word_start(lexer->lookahead)) {
-    WordKind kind = scan_word_spelling(lexer);
-    if (kind == WORD_KIND_NAME) {
-      lexer->mark_end(lexer);
-      kind = scan_func_name_suffix(lexer, kind);
-    }
-    if (kind == WORD_KIND_NAME) {
-      return emit_word_kind(lexer, valid_symbols, kind);
-    }
-    if (word_has_role(kind, WORD_ROLE_RESERVED_ITEM_START)) {
-      lexer->result_symbol = PARAMETER_RECOVERY;
-      return true;
-    }
-  }
-  return false;
-}
-
-static bool scan_string_lone_escape(TSLexer *lexer, const bool *valid_symbols) {
-  if (!valid_symbols[STRING_LONE_ESCAPE] || lexer->lookahead != '\\') {
-    return false;
-  }
-
-  lexer->advance(lexer, false);
-  if (lexer->lookahead != '\n' && !lexer->eof(lexer)) {
-    return false;
-  }
-  lexer->result_symbol = STRING_LONE_ESCAPE;
-  return true;
 }
 
 static bool scan_ere_backslash_context(
@@ -1273,7 +799,12 @@ static bool scan_ere_backslash_context(
   }
 
   lexer->advance(lexer, false);
-  if (lexer->lookahead == '/' && valid_symbols[ERE_ESCAPED_DELIMITER_START]) {
+  if (
+    !valid_symbols[ERROR_SENTINEL] &&
+    lexer->lookahead ==
+    '/' &&
+    valid_symbols[ERE_ESCAPED_DELIMITER_START]
+  ) {
     lexer->result_symbol = ERE_ESCAPED_DELIMITER_START;
     state->ere_mode = ERE_MODE_ESCAPED_DELIMITER;
     return true;
@@ -1287,26 +818,6 @@ static bool scan_ere_backslash_context(
   ) {
     lexer->result_symbol = ERE_ESCAPE_START;
     return true;
-  }
-  if (lexer->lookahead == '\n' || lexer->eof(lexer)) {
-    if (!valid_symbols[ERROR_SENTINEL]) {
-      if (valid_symbols[ERE_GROUP_EXPRESSION_RECOVERY]) {
-        lexer->result_symbol = ERE_GROUP_EXPRESSION_RECOVERY;
-        return true;
-      }
-      if (valid_symbols[ERE_COMPOUND_BOUNDARY]) {
-        lexer->result_symbol = ERE_COMPOUND_BOUNDARY;
-        return true;
-      }
-      if (valid_symbols[ERE_INNER_END_BOUNDARY]) {
-        lexer->result_symbol = ERE_INNER_END_BOUNDARY;
-        return true;
-      }
-    }
-    if (valid_symbols[ERE_LONE_ESCAPE]) {
-      lexer->result_symbol = ERE_LONE_ESCAPE;
-      return true;
-    }
   }
   return false;
 }
@@ -1372,20 +883,6 @@ static bool word_starts_simple_statement(WordKind kind) {
   }
 }
 
-static bool is_line_continued_closer_recovery_boundary(TSLexer *lexer) {
-  switch (lexer->lookahead) {
-  case ')':
-  case ']':
-  case ';':
-  case '\n':
-  case '{':
-  case '}':
-    return true;
-  default:
-    return lexer->eof(lexer);
-  }
-}
-
 static bool advance_comment_to_boundary(TSLexer *lexer) {
   if (lexer->lookahead != '#') {
     return false;
@@ -1396,29 +893,7 @@ static bool advance_comment_to_boundary(TSLexer *lexer) {
   return true;
 }
 
-static bool scan_line_continued_closer_recovery_comment_boundary(
-  TSLexer *lexer,
-  const bool *valid_symbols
-) {
-  if (
-    !valid_symbols[LC_BEFORE_CLOSER_RECOVERY] ||
-    !advance_comment_to_boundary(lexer)
-  ) {
-    return false;
-  }
-  lexer->result_symbol = LC_BEFORE_CLOSER_RECOVERY;
-  return true;
-}
-
 static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
-  if (valid_symbols[LC_BEFORE_ACTION_EOF]) {
-    advance_comment_to_boundary(lexer);
-    if (lexer->eof(lexer)) {
-      lexer->result_symbol = LC_BEFORE_ACTION_EOF;
-      return true;
-    }
-  }
-
   const bool expression_valid = valid_symbols[LC_BEFORE_EXPRESSION];
   enum TokenType delimiter;
   switch (lexer->lookahead) {
@@ -1449,24 +924,13 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
     return true;
   }
 
-  if (
-    valid_symbols[LC_BEFORE_CLOSER_RECOVERY] &&
-    is_line_continued_closer_recovery_boundary(lexer)
-  ) {
-    lexer->result_symbol = LC_BEFORE_CLOSER_RECOVERY;
-    return true;
-  }
-
   if (is_word_start(lexer->lookahead)) {
     const WordKind kind = scan_word_kind(lexer);
     if (kind == WORD_KIND_ELSE && valid_symbols[LC_BEFORE_ELSE]) {
       lexer->result_symbol = LC_BEFORE_ELSE;
       return true;
     }
-    if (
-      valid_symbols[LC_BEFORE_DO_TAIL] &&
-      (kind == WORD_KIND_WHILE || word_is_do_tail_recovery_boundary(kind))
-    ) {
+    if (valid_symbols[LC_BEFORE_DO_TAIL] && kind == WORD_KIND_WHILE) {
       lexer->result_symbol = LC_BEFORE_DO_TAIL;
       return true;
     }
@@ -1484,20 +948,6 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
       lexer->result_symbol = LC_BEFORE_EXPRESSION;
       return true;
     }
-    if (
-      valid_symbols[LC_BEFORE_CLOSER_RECOVERY] &&
-      word_is_unambiguous_statement_boundary(kind)
-    ) {
-      lexer->result_symbol = LC_BEFORE_CLOSER_RECOVERY;
-      return true;
-    }
-    if (
-      valid_symbols[LC_BEFORE_TERMINATOR_RECOVERY] &&
-      word_is_terminator_recovery_boundary(kind)
-    ) {
-      lexer->result_symbol = LC_BEFORE_TERMINATOR_RECOVERY;
-      return true;
-    }
     return false;
   }
 
@@ -1505,30 +955,18 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
     if (scan_number_kind(lexer) == NUMBER_KIND_NONE) {
       return false;
     }
-    if (valid_symbols[LC_BEFORE_DO_TAIL]) {
-      lexer->result_symbol = LC_BEFORE_DO_TAIL;
-      return true;
-    }
     if (valid_symbols[LC_BEFORE_FOR_UPDATE]) {
       lexer->result_symbol = LC_BEFORE_FOR_UPDATE;
       return true;
     }
-    if (expression_valid || valid_symbols[LC_BEFORE_TERMINATOR_RECOVERY]) {
-      lexer->result_symbol =
-        expression_valid ? LC_BEFORE_EXPRESSION : LC_BEFORE_TERMINATOR_RECOVERY;
+    if (expression_valid) {
+      lexer->result_symbol = LC_BEFORE_EXPRESSION;
       return true;
     }
     return false;
   }
 
   const int32_t first = lexer->lookahead;
-  if (
-    valid_symbols[LC_BEFORE_DO_TAIL] &&
-    (character_is_do_tail_recovery_boundary(first) || lexer->eof(lexer))
-  ) {
-    lexer->result_symbol = LC_BEFORE_DO_TAIL;
-    return true;
-  }
   int32_t second = 0;
   if (is_composite_operator_start(first)) {
     lexer->advance(lexer, false);
@@ -1624,21 +1062,13 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
     return true;
   }
 
-  if (
-    valid_symbols[LC_BEFORE_TERMINATOR_RECOVERY] &&
-    character_starts_statement(first)
-  ) {
-    lexer->result_symbol = LC_BEFORE_TERMINATOR_RECOVERY;
-    return true;
-  }
-
   return false;
 }
 
 static bool has_line_continuation_marker(const bool *valid_symbols) {
   // The LC_BEFORE_* tokens form one contiguous enum range.
   for (
-    enum TokenType token = LC_BEFORE_OPERATOR; token <= LC_BEFORE_ACTION_EOF;
+    enum TokenType token = LC_BEFORE_OPERATOR; token <= LC_BEFORE_CLOSE_BRACKET;
     token++
   ) {
     if (valid_symbols[token]) {
@@ -1654,12 +1084,6 @@ scan_line_continuation_marker(TSLexer *lexer, const bool *valid_symbols) {
     !advance_line_continuations(lexer) || !advance_boundary_gap_remainder(lexer)
   ) {
     return false;
-  }
-
-  if (
-    scan_line_continued_closer_recovery_comment_boundary(lexer, valid_symbols)
-  ) {
-    return true;
   }
 
   return scan_boundary_target(lexer, valid_symbols);
@@ -1698,36 +1122,19 @@ void tree_sitter_awk_external_scanner_deserialize(
   }
 }
 
-typedef struct {
-  enum TokenType token;
-  const char *triggers;
-  bool at_ere_end;
-} EreExpressionRecovery;
-
-// Emission order matters where trigger sets overlap: at an empty group both
-// the group-expression and missing-branch recoveries are valid on ')'.
-static const EreExpressionRecovery ERE_EXPRESSION_RECOVERIES[] = {
-  {ERE_GROUP_EXPRESSION_RECOVERY, ")/", true},
-  {ERE_EMPTY_EXPRESSION_RECOVERY, "/", false},
-  {ERE_MISSING_BRANCH_RECOVERY, ")/|", true},
-  {ERE_LEADING_BRANCH_RECOVERY, "|", false},
-};
-
-static bool character_is_in(const char *characters, int32_t character) {
-  for (; *characters != '\0'; characters++) {
-    if (character == (int32_t)*characters) {
-      return true;
-    }
-  }
-  return false;
-}
-
 static bool scan_ere_context(
   ScannerState *state,
   TSLexer *lexer,
   const bool *valid_symbols
 ) {
   lexer->mark_end(lexer);
+
+  const bool at_ere_end = lexer->lookahead == '\n' || lexer->eof(lexer);
+  if (at_ere_end && valid_symbols[ERE_LEXICAL_END]) {
+    lexer->result_symbol = ERE_LEXICAL_END;
+    state->ere_mode = ERE_MODE_OUTSIDE;
+    return true;
+  }
 
   if (state->ere_mode == ERE_MODE_ESCAPED_DELIMITER) {
     if (lexer->lookahead == '/' && valid_symbols[ERE_ESCAPED_DELIMITER_END]) {
@@ -1740,19 +1147,7 @@ static bool scan_ere_context(
     return scan_ere_backslash_context(state, lexer, valid_symbols);
   }
 
-  const bool at_ere_end = lexer->lookahead == '\n' || lexer->eof(lexer);
   if (!valid_symbols[ERROR_SENTINEL]) {
-    for (size_t i = 0; i < ARRAY_LENGTH(ERE_EXPRESSION_RECOVERIES); i++) {
-      const EreExpressionRecovery *recovery = &ERE_EXPRESSION_RECOVERIES[i];
-      if (
-        valid_symbols[recovery->token] &&
-        (character_is_in(recovery->triggers, lexer->lookahead) ||
-          (recovery->at_ere_end && at_ere_end))
-      ) {
-        lexer->result_symbol = recovery->token;
-        return true;
-      }
-    }
     for (size_t i = 0; i < ARRAY_LENGTH(ERE_COMPOUND_GUARDS); i++) {
       if (
         valid_symbols[ERE_COMPOUND_GUARDS[i].guard] &&
@@ -1760,35 +1155,6 @@ static bool scan_ere_context(
       ) {
         return scan_ere_compound_guard(lexer, ERE_COMPOUND_GUARDS[i].guard);
       }
-    }
-    if (
-      valid_symbols[ERE_COMPOUND_BOUNDARY] &&
-      (lexer->lookahead == '/' || at_ere_end)
-    ) {
-      lexer->result_symbol = ERE_COMPOUND_BOUNDARY;
-      return true;
-    }
-    // An immediately following compound closer pair means the compound body
-    // is empty or exhausted: synchronize on the pair instead of letting the
-    // multi-atom chain consume the real closers.
-    if (
-      valid_symbols[ERE_COMPOUND_BOUNDARY] &&
-      is_ere_compound_punctuation(lexer->lookahead)
-    ) {
-      lexer->advance(lexer, false);
-      if (lexer->lookahead != ']') {
-        return false;
-      }
-      lexer->result_symbol = ERE_COMPOUND_BOUNDARY;
-      return true;
-    }
-    if (valid_symbols[ERE_INNER_SLASH_BOUNDARY] && lexer->lookahead == '/') {
-      lexer->result_symbol = ERE_INNER_SLASH_BOUNDARY;
-      return true;
-    }
-    if (valid_symbols[ERE_INNER_END_BOUNDARY] && at_ere_end) {
-      lexer->result_symbol = ERE_INNER_END_BOUNDARY;
-      return true;
     }
   }
 
@@ -1800,13 +1166,73 @@ static bool scan_ere_context(
     return true;
   }
 
-  if (at_ere_end && valid_symbols[ERE_END_BOUNDARY]) {
-    lexer->result_symbol = ERE_END_BOUNDARY;
-    state->ere_mode = ERE_MODE_OUTSIDE;
-    return true;
+  return scan_ere_backslash_context(state, lexer, valid_symbols);
+}
+
+static bool has_number_marker(const bool *valid_symbols) {
+  return valid_symbols[NUMBER_INTEGER] ||
+    valid_symbols[NUMBER_FRACTION] ||
+    valid_symbols[NUMBER_EXPONENT];
+}
+
+static bool scan_word_or_item_boundary(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  bool allow_item_boundary
+) {
+  const bool word_marker_is_valid = has_word_marker(valid_symbols);
+  if (
+    !is_word_start(lexer->lookahead) ||
+    (!word_marker_is_valid &&
+      (!allow_item_boundary ||
+        (!valid_symbols[CLOSED_ITEM_BOUNDARY] &&
+          !valid_symbols[NORMAL_PATTERN_ITEM_BOUNDARY])))
+  ) {
+    return false;
   }
 
-  return scan_ere_backslash_context(state, lexer, valid_symbols);
+  const WordKind kind = scan_word_spelling(lexer);
+  if (
+    allow_item_boundary && emit_word_item_boundary(lexer, valid_symbols, kind)
+  ) {
+    return true;
+  }
+  if (!word_marker_is_valid) {
+    return false;
+  }
+
+  return scan_word_token(lexer, valid_symbols, kind);
+}
+
+static bool scan_number_or_item_boundary(
+  TSLexer *lexer,
+  const bool *valid_symbols,
+  bool allow_item_boundary
+) {
+  const bool number_marker_is_valid = has_number_marker(valid_symbols);
+  const bool item_boundary_is_valid =
+    allow_item_boundary && valid_symbols[CLOSED_ITEM_BOUNDARY];
+  if (
+    (!is_ascii_digit(lexer->lookahead) && lexer->lookahead != '.') ||
+    (!number_marker_is_valid && !item_boundary_is_valid)
+  ) {
+    return false;
+  }
+
+  NumberKind token_kind = NUMBER_KIND_NONE;
+  const NumberKind kind = scan_number_kind_with_end(
+    lexer,
+    item_boundary_is_valid ? NULL : valid_symbols,
+    &token_kind
+  );
+  if (kind == NUMBER_KIND_NONE) {
+    return false;
+  }
+  if (item_boundary_is_valid) {
+    lexer->result_symbol = CLOSED_ITEM_BOUNDARY;
+    return true;
+  }
+  return emit_number_kind(lexer, valid_symbols, token_kind);
 }
 
 bool tree_sitter_awk_external_scanner_scan(
@@ -1824,45 +1250,21 @@ bool tree_sitter_awk_external_scanner_scan(
     return true;
   }
 
-  if (
-    state->ere_mode ==
-    ERE_MODE_OUTSIDE &&
-    valid_symbols[PARAMETER_RECOVERY] &&
-    !valid_symbols[ERROR_SENTINEL]
-  ) {
-    skip_ascii_blanks(lexer);
-    lexer->mark_end(lexer);
-    if (lexer->lookahead == '\n' && valid_symbols[PARAMETER_TARGET_GUARD]) {
-      return scan_required_target_guard(lexer, valid_symbols);
-    }
-    const bool at_word = is_word_start(lexer->lookahead);
-    if (scan_parameter_recovery_or_word(lexer, valid_symbols)) {
-      return true;
-    }
-    if (at_word) {
-      return false;
-    }
-  }
-
   if (valid_symbols[ERROR_SENTINEL]) {
     if (state->ere_mode == ERE_MODE_OUTSIDE) {
       skip_ascii_blanks(lexer);
       lexer->mark_end(lexer);
-      if (emit_range_right_expression_recovery(lexer, valid_symbols)) {
-        return true;
+      if (is_word_start(lexer->lookahead)) {
+        return scan_word_or_item_boundary(lexer, valid_symbols, false);
       }
-      if (lexer->eof(lexer) && emit_closer_recovery(lexer, valid_symbols)) {
-        return true;
-      }
-      if (lexer->eof(lexer) && valid_symbols[ACTION_EOF_RECOVERY]) {
-        lexer->result_symbol = ACTION_EOF_RECOVERY;
-        return true;
-      }
-      if (lexer->lookahead == '>' && has_greater_start(valid_symbols)) {
-        return scan_greater_start(lexer, valid_symbols);
+      if (is_ascii_digit(lexer->lookahead) || lexer->lookahead == '.') {
+        return scan_number_or_item_boundary(lexer, valid_symbols, false);
       }
       if (lexer->lookahead == '/') {
-        return scan_slash_start(state, lexer, valid_symbols, false);
+        return scan_slash_start(state, lexer, valid_symbols, true);
+      }
+      if (lexer->lookahead == '>' && has_greater_start(valid_symbols, false)) {
+        return scan_greater_start(lexer, valid_symbols, false);
       }
       if (has_valid_composite_operator_start(lexer->lookahead, valid_symbols)) {
         return scan_composite_operator_start(lexer, valid_symbols);
@@ -1873,18 +1275,6 @@ bool tree_sitter_awk_external_scanner_scan(
 
   if (state->ere_mode != ERE_MODE_OUTSIDE) {
     return false;
-  }
-
-  if (valid_symbols[STRING_END_BOUNDARY] || valid_symbols[STRING_LONE_ESCAPE]) {
-    lexer->mark_end(lexer);
-    if (
-      valid_symbols[STRING_END_BOUNDARY] &&
-      (lexer->lookahead == '\n' || lexer->eof(lexer))
-    ) {
-      lexer->result_symbol = STRING_END_BOUNDARY;
-      return true;
-    }
-    return scan_string_lone_escape(lexer, valid_symbols);
   }
 
   skip_ascii_blanks(lexer);
@@ -1901,92 +1291,11 @@ bool tree_sitter_awk_external_scanner_scan(
     return scan_required_target_guard(lexer, valid_symbols);
   }
 
-  if (valid_symbols[FUNCTION_BODY_RECOVERY]) {
-    const bool reset_on_miss =
-      is_word_start(lexer->lookahead) || lexer->lookahead == '.';
-    if (scan_function_body_recovery(lexer)) {
-      return true;
-    }
-    if (reset_on_miss) {
-      return false;
-    }
-  }
-
   if (
-    (valid_symbols[ACTION_EMPTY_SEMICOLON_ITEM_BOUNDARY_GUARD] ||
-      valid_symbols[ACTION_CLOSE_ITEM_BOUNDARY_GUARD]) &&
-    (lexer->lookahead == ';' || lexer->lookahead == '\n')
+    valid_symbols[CLOSED_ITEM_BOUNDARY] &&
+    character_starts_item(lexer->lookahead)
   ) {
-    return scan_action_item_terminator_boundary(lexer, valid_symbols);
-  }
-
-  if (emit_closer_recovery(lexer, valid_symbols)) {
-    return true;
-  }
-
-  if (valid_symbols[ACTION_EOF_RECOVERY] && lexer->eof(lexer)) {
-    lexer->result_symbol = ACTION_EOF_RECOVERY;
-    return true;
-  }
-
-  if (
-    valid_symbols[PRINT_EXPRESSION_RECOVERY] &&
-    (lexer->lookahead == '>' || lexer->lookahead == '|')
-  ) {
-    if (!scan_print_output_boundary(lexer)) {
-      return false;
-    }
-    lexer->result_symbol = PRINT_EXPRESSION_RECOVERY;
-    return true;
-  }
-
-  if (
-    valid_symbols[STATEMENT_RECOVERY] &&
-    (lexer->lookahead == '}' || lexer->eof(lexer))
-  ) {
-    lexer->result_symbol = STATEMENT_RECOVERY;
-    return true;
-  }
-
-  if (emit_header_recovery(lexer, valid_symbols)) {
-    return true;
-  }
-
-  if (scan_expression_recovery(lexer, valid_symbols)) {
-    return true;
-  }
-
-  if (emit_range_right_expression_recovery(lexer, valid_symbols)) {
-    return true;
-  }
-
-  if (
-    valid_symbols[DO_TAIL_RECOVERY] &&
-    (character_is_do_tail_recovery_boundary(lexer->lookahead) ||
-      lexer->eof(lexer))
-  ) {
-    lexer->result_symbol = DO_TAIL_RECOVERY;
-    return true;
-  }
-
-  if (
-    valid_symbols[DO_BODY_TERMINATOR_RECOVERY] &&
-    (lexer->lookahead == '}' || lexer->eof(lexer))
-  ) {
-    lexer->result_symbol = DO_BODY_TERMINATOR_RECOVERY;
-    return true;
-  }
-
-  if (valid_symbols[EOF_REQUIRED_MEMBER_RECOVERY] && lexer->eof(lexer)) {
-    lexer->result_symbol = EOF_REQUIRED_MEMBER_RECOVERY;
-    return true;
-  }
-
-  if (
-    valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY] &&
-    character_starts_statement(lexer->lookahead)
-  ) {
-    lexer->result_symbol = CLOSED_ITEM_TERMINATOR_RECOVERY;
+    lexer->result_symbol = CLOSED_ITEM_BOUNDARY;
     return true;
   }
 
@@ -1994,88 +1303,12 @@ bool tree_sitter_awk_external_scanner_scan(
     return scan_line_continuation_marker(lexer, valid_symbols);
   }
 
-  const bool word_marker_is_valid = has_word_marker(valid_symbols);
-  const bool has_number_marker = valid_symbols[NUMBER_INTEGER] ||
-    valid_symbols[NUMBER_FRACTION] ||
-    valid_symbols[NUMBER_EXPONENT];
-  if (
-    is_word_start(lexer->lookahead) &&
-    (word_marker_is_valid ||
-      valid_symbols[DO_BODY_RECOVERY_GUARD] ||
-      valid_symbols[STATEMENT_RECOVERY] ||
-      valid_symbols[DO_TAIL_RECOVERY] ||
-      valid_symbols[TERMINATOR_RECOVERY] ||
-      valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY] ||
-      valid_symbols[NORMAL_ITEM_TERMINATOR_RECOVERY] ||
-      valid_symbols[ACTION_EMPTY_SEMICOLON_ITEM_BOUNDARY_GUARD] ||
-      valid_symbols[ACTION_CLOSE_ITEM_BOUNDARY_GUARD] ||
-      valid_symbols[ACTION_ITEM_BOUNDARY_RECOVERY] ||
-      valid_symbols[RANGE_RIGHT_EXPRESSION_RECOVERY] ||
-      valid_symbols[CLOSE_PARENTHESIS_RECOVERY] ||
-      valid_symbols[CLOSE_BRACKET_RECOVERY])
-  ) {
-    const WordKind kind = scan_word_spelling(lexer);
-    if (emit_word_required_recovery(lexer, valid_symbols, kind)) {
-      return true;
-    }
-    if (emit_word_structural_boundary(lexer, valid_symbols, kind)) {
-      return true;
-    }
-    bool marked_word_end = false;
-    if (
-      word_marker_is_valid &&
-      scan_word_token(lexer, valid_symbols, kind, &marked_word_end)
-    ) {
-      return true;
-    }
-    if (marked_word_end) {
-      return false;
-    }
-    if (emit_word_closer_recovery(lexer, valid_symbols, kind)) {
-      return true;
-    }
-    return emit_word_terminator_recovery(lexer, valid_symbols, kind);
+  if (is_word_start(lexer->lookahead)) {
+    return scan_word_or_item_boundary(lexer, valid_symbols, true);
   }
 
-  if (
-    (is_ascii_digit(lexer->lookahead) || lexer->lookahead == '.') &&
-    (has_number_marker ||
-      valid_symbols[DO_TAIL_RECOVERY] ||
-      valid_symbols[TERMINATOR_RECOVERY] ||
-      valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY])
-  ) {
-    const bool recovery_precedes_number = valid_symbols[DO_TAIL_RECOVERY] ||
-      valid_symbols[CLOSED_ITEM_TERMINATOR_RECOVERY];
-    NumberKind number_token_kind = NUMBER_KIND_NONE;
-    const NumberKind kind = scan_number_kind_with_end(
-      lexer,
-      recovery_precedes_number ? NULL : valid_symbols,
-      &number_token_kind
-    );
-    if (kind != NUMBER_KIND_NONE && valid_symbols[DO_TAIL_RECOVERY]) {
-      lexer->result_symbol = DO_TAIL_RECOVERY;
-      return true;
-    }
-    if (
-      kind !=
-      NUMBER_KIND_NONE &&
-      emit_closed_item_terminator_recovery(lexer, valid_symbols)
-    ) {
-      return true;
-    }
-    if (
-      has_number_marker &&
-      emit_number_kind(lexer, valid_symbols, number_token_kind)
-    ) {
-      return true;
-    }
-    if (number_token_kind != NUMBER_KIND_NONE) {
-      return false;
-    }
-    if (kind != NUMBER_KIND_NONE) {
-      return emit_terminator_recovery(lexer, valid_symbols);
-    }
-    return false;
+  if (is_ascii_digit(lexer->lookahead) || lexer->lookahead == '.') {
+    return scan_number_or_item_boundary(lexer, valid_symbols, true);
   }
 
   if (
@@ -2085,24 +1318,15 @@ bool tree_sitter_awk_external_scanner_scan(
       valid_symbols[ERE_OPENING_SLASH] ||
       valid_symbols[DIV_ASSIGN_OPERATOR])
   ) {
-    return scan_slash_start(state, lexer, valid_symbols, true);
+    return scan_slash_start(state, lexer, valid_symbols, false);
   }
 
-  if (lexer->lookahead == '>' && has_greater_start(valid_symbols)) {
-    return scan_greater_start(lexer, valid_symbols);
+  if (lexer->lookahead == '>' && has_greater_start(valid_symbols, true)) {
+    return scan_greater_start(lexer, valid_symbols, true);
   }
 
   if (has_valid_composite_operator_start(lexer->lookahead, valid_symbols)) {
     return scan_composite_operator_start(lexer, valid_symbols);
-  }
-
-  if (
-    valid_symbols[TERMINATOR_RECOVERY] &&
-    character_starts_statement(lexer->lookahead) &&
-    !(valid_symbols[LC_BEFORE_EXPRESSION] &&
-      character_starts_expression(lexer->lookahead))
-  ) {
-    return emit_terminator_recovery(lexer, valid_symbols);
   }
 
   return false;
