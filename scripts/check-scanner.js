@@ -10,7 +10,7 @@ const {
 } = require("./tree-sitter.js");
 const scannerFiles = [
   path.join(grammarDirectory, "src", "scanner.c"),
-  path.join(repositoryDirectory, "test", "scanner.c"),
+  path.join(repositoryDirectory, "test", "scanner.test.c"),
 ];
 
 function run(command, args, options = {}) {
@@ -70,7 +70,7 @@ if (process.argv.length === 3 && process.argv[2] === "--write") {
           "-pedantic",
           "-I",
           path.join(grammarDirectory, "src"),
-          path.join(repositoryDirectory, "test", "scanner.c"),
+          path.join(repositoryDirectory, "test", "scanner.test.c"),
           "-o",
           testBinary,
         ],

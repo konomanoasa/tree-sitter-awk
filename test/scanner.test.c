@@ -1,7 +1,5 @@
 #include <stdio.h>
 
-// Keep serialization state private while exercising it in the same translation
-// unit.
 #include "../src/scanner.c"
 
 typedef struct {

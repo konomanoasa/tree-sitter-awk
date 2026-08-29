@@ -642,10 +642,8 @@ has_greater_start(const bool *valid_symbols, bool allow_zero_width_guard) {
     (allow_zero_width_guard && valid_symbols[OUTPUT_GREATER_GUARD]);
 }
 
-// '>' can start GE, APPEND or a plain redirection '>'. One dispatcher decides
-// from the following character, so a two-character operator that turns out to
-// be invalid cannot block the zero-width redirection guard. Error mode emits
-// only operators that have source text.
+// Dispatch together so an invalid two-character operator cannot block the
+// zero-width redirection guard.
 static bool scan_greater_start(
   TSLexer *lexer,
   const bool *valid_symbols,
@@ -689,8 +687,6 @@ static bool scan_slash_start(
       lexer->result_symbol = DIV_ASSIGN_OPERATOR;
       return true;
     }
-    // Where division is valid, "/=" is the longest match: never split it
-    // into a division slash followed by '='.
     if (valid_symbols[DIVISION_SLASH]) {
       return false;
     }
@@ -733,8 +729,6 @@ static bool emit_word_item_boundary(
   return false;
 }
 
-// Requires lexer->lookahead == '\n': decides whether the required target
-// follows the raw newline.
 static bool
 scan_required_target_guard(TSLexer *lexer, const bool *valid_symbols) {
   lexer->advance(lexer, false);
@@ -1066,7 +1060,6 @@ static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
 }
 
 static bool has_line_continuation_marker(const bool *valid_symbols) {
-  // The LC_BEFORE_* tokens form one contiguous enum range.
   for (
     enum TokenType token = LC_BEFORE_OPERATOR; token <= LC_BEFORE_CLOSE_BRACKET;
     token++

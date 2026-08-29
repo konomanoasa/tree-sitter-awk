@@ -109,7 +109,6 @@ function decodeEntities(text) {
     .replace(/&amp;/g, "&");
 }
 
-// Returns, per source line, the innermost span class for every character.
 function finalClassesPerLine(html) {
   const lines = [];
   for (const rowMatch of html.matchAll(/<td class=line>(.*?)<\/td>/gs)) {

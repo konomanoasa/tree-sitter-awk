@@ -30,9 +30,6 @@ const optionalNewlineLayout = ($) =>
     optional(seq($.newline_opt, repeat($.line_continuation))),
   );
 
-// A statement owns only the line continuations interior to its own trailing
-// newline_opt. Continuations after that gap belong to the surrounding list,
-// action, or item, keeping every continuation a single owner.
 const statementEndLayout = ($) =>
   optional(seq(repeat($.line_continuation), $.newline_opt));
 
