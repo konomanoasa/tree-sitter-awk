@@ -48,8 +48,11 @@ const continuedOperatorWith = ($, marker, operator) =>
 const continuedOperator = ($, operator) =>
   continuedOperatorWith($, $._lc_before_operator, operator);
 
+const continuedExpressionMember = ($, member) =>
+  choice(member, seq($._continued_expression_layout, member));
+
 const continuedExpression = ($, name, expression) =>
-  continuedMember($, $._lc_before_expression, field(name, expression));
+  continuedExpressionMember($, field(name, expression));
 
 const requiredAfterOptionalNewline = ($, targetGuard, present, required) =>
   choice(
@@ -73,7 +76,7 @@ const functionBody = ($) =>
   choice(directFunctionBody($), newlineFunctionBody($));
 
 const requiredParameter = ($) => {
-  const parameter = continuedMember($, $._lc_before_expression, $.name);
+  const parameter = continuedExpressionMember($, $.name);
   return requiredAfterOptionalNewline(
     $,
     $._parameter_target_guard,
@@ -86,7 +89,7 @@ const continuedParameter = ($) =>
   seq(continuedMember($, $._lc_before_comma, ","), requiredParameter($));
 
 const continuedRequiredMember = ($, member) =>
-  continuedMember($, $._lc_before_expression, member);
+  continuedExpressionMember($, member);
 
 const continuedRequiredExpression = ($, name, expression) =>
   continuedExpression($, name, expression);
@@ -128,18 +131,14 @@ const header = ($, keyword, rest) =>
   seq(keyword, rest, optionalNewlineLayout($));
 
 const conditionalHeader = ($, keyword) =>
-  header(
-    $,
-    keyword,
-    continuedMember($, $._lc_before_expression, $._parenthesized_condition),
-  );
+  header($, keyword, continuedExpressionMember($, $._parenthesized_condition));
 
 const keywordHeader = ($, keyword) => seq(keyword, optionalNewlineLayout($));
 
 const doWhileTail = ($) =>
   seq(
     $.while_keyword,
-    continuedMember($, $._lc_before_expression, $._parenthesized_condition),
+    continuedExpressionMember($, $._parenthesized_condition),
   );
 
 const continuedDoTail = ($) =>
@@ -171,7 +170,7 @@ const statementTerminatedBy = ($, terminator) =>
 const parenthesizedPrintStatement = ($, keyword) =>
   seq(
     keyword,
-    continuedMember($, $._lc_before_expression, "("),
+    continuedExpressionMember($, "("),
     repeat($.line_continuation),
     field("arguments", $.multiple_expr_list),
     $._continued_close_parenthesis,
@@ -311,16 +310,25 @@ const nonUnaryAtom = ($, context) => {
   return choice(...atoms);
 };
 
+const prefixUpdateExpression = ($) =>
+  prec.right(
+    PRECEDENCE.prefixUpdate,
+    seq(
+      field("operator", choice($.incr, $.decr)),
+      continuedRequiredExpression($, "operand", $.lvalue),
+    ),
+  );
+
 const tieredExpressionRules = (context) => {
   const rules = {};
   const unary = (tier) => classTierName(context, "unary", tier);
   const nonUnary = (tier) => classTierName(context, "non_unary", tier);
   const any = (tier) => anyTierName(context, tier);
   const not = `_${context.prefix}_not_expr`;
-  const prefixUpdate = `_${context.prefix}_prefix_update_expr`;
   const assignmentRight = `_${context.prefix}_assignment_right_expr`;
   const conditionalConsequence = `_${context.prefix}_conditional_consequence_expr`;
   const conditionalAlternative = `_${context.prefix}_conditional_alternative_expr`;
+  const conditionalTail = `_${context.prefix}_conditional_tail`;
   const expression = ($) => $[context.expression];
   const requiredTierName = (name, tier) =>
     `_${context.prefix}_required_${name}_${tier}_expr`;
@@ -350,6 +358,13 @@ const tieredExpressionRules = (context) => {
     continuedRequiredExpression($, "consequence", expression($));
   rules[conditionalAlternative] = ($) =>
     continuedRequiredExpression($, "alternative", expression($));
+  rules[conditionalTail] = ($) =>
+    seq(
+      $._continued_conditional_question,
+      $[conditionalConsequence],
+      $._continued_conditional_colon,
+      $[conditionalAlternative],
+    );
 
   const addAnyTier = (tier) => {
     rules[any(tier)] = ($) =>
@@ -363,6 +378,8 @@ const tieredExpressionRules = (context) => {
   };
 
   const addLeftAssociativeTier = (tier, nextTier, operator, precedence) => {
+    const tail = `_${context.prefix}_${tier}_tail`;
+    rules[tail] = ($) => seq(operator($), requiredTier($, "right", nextTier));
     for (const classification of ["unary", "non_unary"]) {
       rules[classTierName(context, classification, tier)] = ($) =>
         choice(
@@ -371,8 +388,7 @@ const tieredExpressionRules = (context) => {
             precedence,
             seq(
               field("left", aliasedClassTier($, context, classification, tier)),
-              operator($),
-              requiredTier($, "right", nextTier),
+              $[tail],
             ),
           ),
         );
@@ -381,6 +397,8 @@ const tieredExpressionRules = (context) => {
 
   const addNonAssociativeTier = (tier, nextTier, operator, precedence) => {
     addAnyTier(nextTier);
+    const tail = `_${context.prefix}_${tier}_tail`;
+    rules[tail] = ($) => seq(operator($), requiredTier($, "right", nextTier));
     for (const classification of ["unary", "non_unary"]) {
       rules[classTierName(context, classification, tier)] = ($) =>
         choice(
@@ -392,8 +410,7 @@ const tieredExpressionRules = (context) => {
                 "left",
                 aliasedClassTier($, context, classification, nextTier),
               ),
-              operator($),
-              requiredTier($, "right", nextTier),
+              $[tail],
             ),
           ),
         );
@@ -437,10 +454,7 @@ const tieredExpressionRules = (context) => {
               "condition",
               aliasedClassTier($, context, classification, "logical_or"),
             ),
-            $._continued_conditional_question,
-            $[conditionalConsequence],
-            $._continued_conditional_colon,
-            $[conditionalAlternative],
+            $[conditionalTail],
           ),
         ),
       );
@@ -448,6 +462,17 @@ const tieredExpressionRules = (context) => {
 
   const addNewlineContinuedTier = (tier, nextTier, operator, precedence) => {
     addAnyTier(nextTier);
+    const tail = `_${context.prefix}_${tier}_tail`;
+    rules[tail] = ($) =>
+      seq(
+        operator($),
+        requiredAfterOptionalNewline(
+          $,
+          expressionTargetGuard($, context),
+          continuedPresentTierExpression($, context, "right", nextTier),
+          requiredTier($, "right", nextTier),
+        ),
+      );
     for (const classification of ["unary", "non_unary"]) {
       rules[classTierName(context, classification, tier)] = ($) =>
         choice(
@@ -456,13 +481,7 @@ const tieredExpressionRules = (context) => {
             precedence,
             seq(
               field("left", aliasedClassTier($, context, classification, tier)),
-              operator($),
-              requiredAfterOptionalNewline(
-                $,
-                expressionTargetGuard($, context),
-                continuedPresentTierExpression($, context, "right", nextTier),
-                requiredTier($, "right", nextTier),
-              ),
+              $[tail],
             ),
           ),
         );
@@ -483,6 +502,12 @@ const tieredExpressionRules = (context) => {
     PRECEDENCE.logicalAnd,
   );
 
+  const membershipTail = `_${context.prefix}_membership_tail`;
+  rules[membershipTail] = ($) =>
+    seq(
+      $._continued_membership_operator,
+      continuedExpression($, "right", $.name),
+    );
   for (const classification of ["unary", "non_unary"]) {
     rules[classTierName(context, classification, "membership")] = ($) => {
       const members = [
@@ -494,8 +519,7 @@ const tieredExpressionRules = (context) => {
               "left",
               aliasedClassTier($, context, classification, "membership"),
             ),
-            $._continued_membership_operator,
-            continuedExpression($, "right", $.name),
+            $[membershipTail],
           ),
         ),
       ];
@@ -546,9 +570,8 @@ const tieredExpressionRules = (context) => {
               "left",
               aliasedClassTier($, context, classification, "concatenation"),
             ),
-            continuedMember(
+            continuedExpressionMember(
               $,
-              $._lc_before_expression,
               field(
                 "right",
                 aliasedClassTier($, context, "non_unary", "additive"),
@@ -602,6 +625,12 @@ const tieredExpressionRules = (context) => {
   const exponentiationClassifications = context.input
     ? ["unary", "non_unary"]
     : ["non_unary"];
+  const exponentiationTail = `_${context.prefix}_exponentiation_tail`;
+  rules[exponentiationTail] = ($) =>
+    seq(
+      $._continued_exponentiation_operator,
+      requiredTier($, "right", "unary"),
+    );
   for (const classification of exponentiationClassifications) {
     rules[classTierName(context, classification, "exponentiation")] = ($) =>
       choice(
@@ -613,8 +642,7 @@ const tieredExpressionRules = (context) => {
               "left",
               aliasedClassTier($, context, classification, "update"),
             ),
-            $._continued_exponentiation_operator,
-            requiredTier($, "right", "unary"),
+            $[exponentiationTail],
           ),
         ),
       );
@@ -623,18 +651,10 @@ const tieredExpressionRules = (context) => {
     rules[unary("update")] = ($) => $.unary_input_function;
   }
 
-  rules[prefixUpdate] = ($) =>
-    prec.right(
-      PRECEDENCE.prefixUpdate,
-      seq(
-        field("operator", choice($.incr, $.decr)),
-        continuedRequiredExpression($, "operand", $.lvalue),
-      ),
-    );
   rules[nonUnary("update")] = ($) =>
     choice(
       classTier($, context, "non_unary", "atom"),
-      $[prefixUpdate],
+      $._prefix_update_expr,
       prec.left(
         PRECEDENCE.postfixUpdate,
         seq(
@@ -658,8 +678,8 @@ const continuedListElementWith = ($, targetGuard, element) =>
     requiredAfterOptionalNewline(
       $,
       targetGuard,
-      continuedMember($, $._lc_before_expression, element),
-      continuedMember($, $._lc_before_expression, element),
+      continuedExpressionMember($, element),
+      continuedExpressionMember($, element),
     ),
   );
 
@@ -667,7 +687,7 @@ const continuedListElement = ($, element) =>
   continuedListElementWith($, $._expression_target_guard, element);
 
 const continuedPipeGet = ($) =>
-  continuedMember($, $._lc_before_expression, field("get", $.simple_get));
+  continuedExpressionMember($, field("get", $.simple_get));
 
 const continuedPrintListElement = ($, element) =>
   continuedListElementWith($, $._print_expression_target_guard, element);
@@ -817,6 +837,9 @@ module.exports = grammar({
         ),
       ),
 
+    _continued_expression_layout: ($) =>
+      seq($._lc_before_expression, repeat1($.line_continuation)),
+
     _continued_close_parenthesis: ($) =>
       continuedMember($, $._lc_before_close_parenthesis, ")"),
 
@@ -928,7 +951,7 @@ module.exports = grammar({
         $.function_keyword,
         repeat($.line_continuation),
         field("name", choice($.name, $.func_name)),
-        continuedMember($, $._lc_before_expression, "("),
+        continuedExpressionMember($, "("),
         repeat($.line_continuation),
       ),
 
@@ -1048,7 +1071,7 @@ module.exports = grammar({
       seq(
         field("variable", $.name),
         continuedMember($, $._lc_before_membership_operator, $.in_keyword),
-        continuedMember($, $._lc_before_expression, field("array", $.name)),
+        continuedExpressionMember($, field("array", $.name)),
       ),
 
     _for_header: ($) =>
@@ -1056,7 +1079,7 @@ module.exports = grammar({
         $,
         $.for_keyword,
         seq(
-          continuedMember($, $._lc_before_expression, "("),
+          continuedExpressionMember($, "("),
           repeat($.line_continuation),
           choice($._for_classic_clause, $._for_in_clause),
           $._continued_close_parenthesis,
@@ -1088,14 +1111,8 @@ module.exports = grammar({
         $.continue_keyword,
         $.next_keyword,
         $.nextfile_keyword,
-        seq(
-          $.exit_keyword,
-          optional(continuedMember($, $._lc_before_expression, $.expr)),
-        ),
-        seq(
-          $.return_keyword,
-          optional(continuedMember($, $._lc_before_expression, $.expr)),
-        ),
+        seq($.exit_keyword, optional(continuedExpressionMember($, $.expr))),
+        seq($.return_keyword, optional(continuedExpressionMember($, $.expr))),
         seq(
           $._do_header,
           field("body", $.terminated_statement),
@@ -1107,7 +1124,7 @@ module.exports = grammar({
       choice(
         seq(
           $.delete_keyword,
-          continuedMember($, $._lc_before_expression, field("array", $.name)),
+          continuedExpressionMember($, field("array", $.name)),
           optional(
             seq(
               continuedMember($, $._lc_before_open_bracket, "["),
@@ -1142,9 +1159,8 @@ module.exports = grammar({
           seq(
             $.print_keyword,
             optional(
-              continuedMember(
+              continuedExpressionMember(
                 $,
-                $._lc_before_expression,
                 field("arguments", $.print_expr_list),
               ),
             ),
@@ -1154,11 +1170,7 @@ module.exports = grammar({
         prec.right(
           seq(
             $.printf_keyword,
-            continuedMember(
-              $,
-              $._lc_before_expression,
-              field("arguments", $.print_expr_list),
-            ),
+            continuedExpressionMember($, field("arguments", $.print_expr_list)),
           ),
         ),
         parenthesizedPrintStatement($, $.printf_keyword),
@@ -1226,6 +1238,8 @@ module.exports = grammar({
 
     non_unary_expr: ($) => $._normal_non_unary_assignment_expr,
 
+    _prefix_update_expr: ($) => prefixUpdateExpression($),
+
     ...normalExpressionRules,
 
     ...printExpressionRules,
@@ -1248,7 +1262,7 @@ module.exports = grammar({
         choice(
           $._normal_non_unary_field_atom_expr,
           $._normal_not_expr,
-          $._normal_prefix_update_expr,
+          $._prefix_update_expr,
         ),
       ),
 
@@ -1318,13 +1332,7 @@ module.exports = grammar({
         PRECEDENCE.field,
         seq(
           $.getline_keyword,
-          optional(
-            continuedMember(
-              $,
-              $._lc_before_expression,
-              field("target", $.lvalue),
-            ),
-          ),
+          optional(continuedExpressionMember($, field("target", $.lvalue))),
         ),
       ),
 
