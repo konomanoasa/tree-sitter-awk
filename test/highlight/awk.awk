@@ -71,11 +71,14 @@ BEGIN {
 #                      ^^^^^^ string
 #                            ^ punctuation.delimiter
 
-  value += \
+  value += 2
 #       ^^ operator
-#          ^ punctuation.special
-    2
-#   ^ number
+#          ^ number
+
+  print value, \
+#              ^ punctuation.special
+    text
+#   ^^^^ variable
 }
 # <- punctuation.bracket
 

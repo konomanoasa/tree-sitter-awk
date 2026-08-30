@@ -229,10 +229,7 @@ const actionBoundaryBody = ($) =>
   actionBody(
     $,
     alias(
-      statementListWithTail(
-        $,
-        alias($._action_body_boundary_control, $.unterminated_statement),
-      ),
+      statementListWithTail($, actionBoundaryControlBody($)),
       $.unterminated_statement_list,
     ),
   );
@@ -283,9 +280,6 @@ const aliasedAnyTier = ($, context, tier) =>
 const expressionTargetGuard = ($, context) =>
   context.input ? $._expression_target_guard : $._print_expression_target_guard;
 
-const continuedPresentTierExpression = ($, context, name, tier) =>
-  continuedExpression($, name, aliasedAnyTier($, context, tier));
-
 const nonUnaryAtom = ($, context) => {
   const atoms = [
     $._parenthesized_expression,
@@ -302,15 +296,6 @@ const nonUnaryAtom = ($, context) => {
   }
   return choice(...atoms);
 };
-
-const prefixUpdateExpression = ($) =>
-  prec.right(
-    PRECEDENCE.prefixUpdate,
-    seq(
-      field("operator", choice($.incr, $.decr)),
-      continuedExpression($, "operand", $.lvalue),
-    ),
-  );
 
 const tieredExpressionRules = (context) => {
   const rules = {};
@@ -367,6 +352,7 @@ const tieredExpressionRules = (context) => {
   };
 
   const addLeftAssociativeTier = (tier, nextTier, operator, precedence) => {
+    addAnyTier(nextTier);
     const tail = `_${context.prefix}_${tier}_tail`;
     rules[tail] = ($) => seq(operator($), requiredTier($, "right", nextTier));
     for (const classification of ["unary", "non_unary"]) {
@@ -458,7 +444,7 @@ const tieredExpressionRules = (context) => {
         requiredAfterOptionalNewline(
           $,
           expressionTargetGuard($, context),
-          continuedPresentTierExpression($, context, "right", nextTier),
+          continuedExpression($, "right", aliasedAnyTier($, context, nextTier)),
           requiredTier($, "right", nextTier),
         ),
       );
@@ -571,7 +557,6 @@ const tieredExpressionRules = (context) => {
       );
   }
 
-  addAnyTier("multiplicative");
   addLeftAssociativeTier(
     "additive",
     "multiplicative",
@@ -579,7 +564,6 @@ const tieredExpressionRules = (context) => {
     PRECEDENCE.additive,
   );
 
-  addAnyTier("unary");
   addLeftAssociativeTier(
     "multiplicative",
     "unary",
@@ -1228,7 +1212,14 @@ module.exports = grammar({
 
     non_unary_expr: ($) => $._normal_non_unary_assignment_expr,
 
-    _prefix_update_expr: ($) => prefixUpdateExpression($),
+    _prefix_update_expr: ($) =>
+      prec.right(
+        PRECEDENCE.prefixUpdate,
+        seq(
+          field("operator", choice($.incr, $.decr)),
+          continuedExpression($, "operand", $.lvalue),
+        ),
+      ),
 
     ...normalExpressionRules,
 
@@ -1674,6 +1665,8 @@ module.exports = grammar({
 
     // Tree-sitter rejects the POSIX bracket spelling for these delimiter
     // characters, so the exclusion sets use its hexadecimal regex escape.
+    // The comment extra competes in ERE lexical states, so every ERE token
+    // whose set contains "#" carries a lexical precedence above the comment.
     _ordinary_character: () =>
       token.immediate(prec(1, /[^.\x5B\x5C*^$+?{|}()/\n]/)),
 
@@ -1697,19 +1690,19 @@ module.exports = grammar({
     _ere_bracket_close_character: () => token.immediate(prec(1, "]")),
 
     _ere_compound_nonmeta_character: () =>
-      token.immediate(/[^\x2D\x2F\x5C\x5D\x5E\n]/),
+      token.immediate(prec(1, /[^\x2D\x2F\x5C\x5D\x5E\n]/)),
 
     _ere_compound_meta_character: () => token.immediate(/[\x2D\x5D\x5E]/),
 
     _ere_class_name_spelling: () => token.immediate(/[A-Za-z][A-Za-z0-9]*/),
 
-    _ere_named_escape_character: () => token.immediate(/[abfnrtv]/),
+    _ere_named_escape_character: () => token.immediate(prec(2, /[abfnrtv]/)),
 
     _ere_quoted_escape_character: () =>
-      token.immediate(/[().*+?{}|^$\x5B\x5C\x5D]/),
+      token.immediate(prec(2, /[().*+?{}|^$\x5B\x5C\x5D]/)),
 
     _ere_undefined_escape_character: () =>
-      token.immediate(prec(-1, /[^0-7\x2F\x5C\n]/)),
+      token.immediate(prec(1, /[^0-7\x2F\x5C\n]/)),
 
     newline_opt: ($) => rawNewlines($),
 

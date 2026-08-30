@@ -22,6 +22,9 @@ function assertCommand(args, options = {}) {
 }
 
 test("highlight query", () => {
+  // Assertions also match nodes inside ERROR subtrees, so an invalid fixture
+  // could keep passing; require an error-free parse first.
+  assertCommand(["parse", "--quiet", fixture]);
   assertCommand([
     "highlight",
     "--check",

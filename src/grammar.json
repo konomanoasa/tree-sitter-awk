@@ -10122,8 +10122,12 @@
     "_ere_compound_nonmeta_character": {
       "type": "IMMEDIATE_TOKEN",
       "content": {
-        "type": "PATTERN",
-        "value": "[^\\x2D\\x2F\\x5C\\x5D\\x5E\\n]"
+        "type": "PREC",
+        "value": 1,
+        "content": {
+          "type": "PATTERN",
+          "value": "[^\\x2D\\x2F\\x5C\\x5D\\x5E\\n]"
+        }
       }
     },
     "_ere_compound_meta_character": {
@@ -10143,22 +10147,30 @@
     "_ere_named_escape_character": {
       "type": "IMMEDIATE_TOKEN",
       "content": {
-        "type": "PATTERN",
-        "value": "[abfnrtv]"
+        "type": "PREC",
+        "value": 2,
+        "content": {
+          "type": "PATTERN",
+          "value": "[abfnrtv]"
+        }
       }
     },
     "_ere_quoted_escape_character": {
       "type": "IMMEDIATE_TOKEN",
       "content": {
-        "type": "PATTERN",
-        "value": "[().*+?{}|^$\\x5B\\x5C\\x5D]"
+        "type": "PREC",
+        "value": 2,
+        "content": {
+          "type": "PATTERN",
+          "value": "[().*+?{}|^$\\x5B\\x5C\\x5D]"
+        }
       }
     },
     "_ere_undefined_escape_character": {
       "type": "IMMEDIATE_TOKEN",
       "content": {
         "type": "PREC",
-        "value": -1,
+        "value": 1,
         "content": {
           "type": "PATTERN",
           "value": "[^0-7\\x2F\\x5C\\n]"

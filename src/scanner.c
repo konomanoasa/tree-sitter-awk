@@ -333,12 +333,19 @@ static void skip_ascii_blanks(TSLexer *lexer) {
   }
 }
 
-static bool advance_comment_to_boundary(TSLexer *lexer);
+static void advance_comment_to_boundary(TSLexer *lexer) {
+  if (lexer->lookahead != '#') {
+    return;
+  }
+  do {
+    lexer->advance(lexer, false);
+  } while (lexer->lookahead != '\n' && !lexer->eof(lexer));
+}
 
 static bool advance_layout_gap(TSLexer *lexer) {
   for (;;) {
     skip_ascii_blanks(lexer);
-    (void)advance_comment_to_boundary(lexer);
+    advance_comment_to_boundary(lexer);
     if (lexer->lookahead == '\n') {
       lexer->advance(lexer, false);
       continue;
@@ -402,28 +409,31 @@ static WordKind scan_word_kind(TSLexer *lexer) {
   return scan_func_name_suffix(lexer, scan_word_spelling(lexer));
 }
 
-static bool
-emit_word_kind(TSLexer *lexer, const bool *valid_symbols, WordKind kind) {
+static const WordToken *find_word_token(WordKind kind) {
   for (size_t i = 0; i < ARRAY_LENGTH(WORD_TOKENS); i++) {
-    if (WORD_TOKENS[i].kind == kind && valid_symbols[WORD_TOKENS[i].token]) {
-      lexer->result_symbol = WORD_TOKENS[i].token;
-      return true;
+    if (WORD_TOKENS[i].kind == kind) {
+      return &WORD_TOKENS[i];
     }
   }
+  return NULL;
+}
 
-  return false;
+static bool
+emit_word_kind(TSLexer *lexer, const bool *valid_symbols, WordKind kind) {
+  const WordToken *token = find_word_token(kind);
+  if (token == NULL || !valid_symbols[token->token]) {
+    return false;
+  }
+  lexer->result_symbol = token->token;
+  return true;
 }
 
 static bool word_token_is_valid(const bool *valid_symbols, WordKind kind) {
   if (kind == WORD_KIND_NAME && valid_symbols[FUNC_NAME_WORD]) {
     return true;
   }
-  for (size_t i = 0; i < ARRAY_LENGTH(WORD_TOKENS); i++) {
-    if (WORD_TOKENS[i].kind == kind && valid_symbols[WORD_TOKENS[i].token]) {
-      return true;
-    }
-  }
-  return false;
+  const WordToken *token = find_word_token(kind);
+  return token != NULL && valid_symbols[token->token];
 }
 
 static bool
@@ -450,12 +460,8 @@ static bool has_word_marker(const bool *valid_symbols) {
 }
 
 static unsigned word_roles(WordKind kind) {
-  for (size_t i = 0; i < ARRAY_LENGTH(WORD_TOKENS); i++) {
-    if (WORD_TOKENS[i].kind == kind) {
-      return WORD_TOKENS[i].roles;
-    }
-  }
-  return 0;
+  const WordToken *token = find_word_token(kind);
+  return token == NULL ? 0 : token->roles;
 }
 
 static bool word_has_role(WordKind kind, unsigned roles) {
@@ -793,12 +799,10 @@ static bool scan_ere_backslash_context(
   }
 
   lexer->advance(lexer, false);
-  if (
-    !valid_symbols[ERROR_SENTINEL] &&
-    lexer->lookahead ==
-    '/' &&
-    valid_symbols[ERE_ESCAPED_DELIMITER_START]
-  ) {
+  if (valid_symbols[ERROR_SENTINEL]) {
+    return false;
+  }
+  if (lexer->lookahead == '/' && valid_symbols[ERE_ESCAPED_DELIMITER_START]) {
     lexer->result_symbol = ERE_ESCAPED_DELIMITER_START;
     state->ere_mode = ERE_MODE_ESCAPED_DELIMITER;
     return true;
@@ -807,7 +811,6 @@ static bool scan_ere_backslash_context(
     lexer->lookahead !=
     '\n' &&
     !lexer->eof(lexer) &&
-    !valid_symbols[ERROR_SENTINEL] &&
     valid_symbols[ERE_ESCAPE_START]
   ) {
     lexer->result_symbol = ERE_ESCAPE_START;
@@ -875,16 +878,6 @@ static bool word_starts_simple_statement(WordKind kind) {
   default:
     return word_starts_expression(kind);
   }
-}
-
-static bool advance_comment_to_boundary(TSLexer *lexer) {
-  if (lexer->lookahead != '#') {
-    return false;
-  }
-  do {
-    lexer->advance(lexer, false);
-  } while (lexer->lookahead != '\n' && !lexer->eof(lexer));
-  return true;
 }
 
 static bool scan_boundary_target(TSLexer *lexer, const bool *valid_symbols) {
