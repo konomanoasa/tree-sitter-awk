@@ -5,19 +5,23 @@
   "license": "MIT",
   "repository": "git+https://github.com/konomanoasa/tree-sitter-awk.git",
   "files": [
+    "bindings/c",
+    "CMakeLists.txt",
     "grammar.js",
+    "Makefile",
     "queries/*.scm",
     "src/*.c",
     "src/*.json",
     "src/tree_sitter/*.h",
+    "test/binding.test.c",
     "tree-sitter.json"
   ],
   "publishConfig": {
     "access": "public"
   },
   "scripts": {
-    "check": "biome check . && node scripts/check-scanner.js && node scripts/check-generated.js && npm test",
-    "format": "biome check --write . && node scripts/check-scanner.js --write",
+    "check": "biome check . && node scripts/check-c.js && node scripts/check-generated.js && npm test",
+    "format": "biome check --write . && node scripts/check-c.js --write",
     "generate": "npm run tree-sitter -- generate",
     "test": "npm run tree-sitter -- test --rebuild && node --test",
     "test:fuzz": "npm run tree-sitter -- fuzz --rebuild --iterations 100 --edits 5",

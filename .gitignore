@@ -1,6 +1,10 @@
+*.a
 *.dylib
 *.o
+*.pc
 
 .DS_Store
+
+build/
 
 node_modules/
