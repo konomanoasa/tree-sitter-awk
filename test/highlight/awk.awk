@@ -120,16 +120,26 @@ BEGIN {
 /[^]a-c[:alpha:][.].][=a=]-]/ { print }
 # <- punctuation.delimiter
 #^ punctuation.bracket
-# ^ punctuation.special
+# ^ operator
 #  ^ character.special
 #   ^ character.special
-#    ^ punctuation.special
+#    ^ operator
 #     ^ character.special
-#      ^^ punctuation.bracket
+#      ^ punctuation.bracket
+#       ^ punctuation.delimiter
 #        ^^^^^ character.special
-#             ^^ punctuation.bracket
-#               ^^^^^ character.special
-#                    ^^^^^ character.special
+#             ^ punctuation.delimiter
+#              ^ punctuation.bracket
+#               ^ punctuation.bracket
+#                ^ punctuation.delimiter
+#                 ^ character.special
+#                  ^ punctuation.delimiter
+#                   ^ punctuation.bracket
+#                    ^ punctuation.bracket
+#                     ^ punctuation.delimiter
+#                      ^ character.special
+#                       ^ punctuation.delimiter
+#                        ^ punctuation.bracket
 #                         ^ string.regexp
 #                          ^ punctuation.bracket
 #                           ^ punctuation.delimiter
@@ -138,7 +148,7 @@ BEGIN {
 # <- punctuation.delimiter
 #^ punctuation.bracket
 # ^ character.special
-#  ^ punctuation.special
+#  ^ operator
 #   ^ string.regexp
 #    ^ punctuation.bracket
 #     ^ punctuation.delimiter

@@ -61,9 +61,33 @@ const finalCaptureCases = [
     row: 1,
   },
   {
+    column: 3,
+    expected: "punctuation bracket",
+    label: "equivalence class opening bracket",
+    row: 2,
+  },
+  {
     column: 4,
+    expected: "punctuation delimiter",
+    label: "equivalence class opening marker",
+    row: 2,
+  },
+  {
+    column: 5,
     expected: "character special",
-    label: "equivalence class delimiter",
+    label: "equivalence class element",
+    row: 2,
+  },
+  {
+    column: 6,
+    expected: "punctuation delimiter",
+    label: "equivalence class closing marker",
+    row: 2,
+  },
+  {
+    column: 7,
+    expected: "punctuation bracket",
+    label: "equivalence class closing bracket",
     row: 2,
   },
   {

@@ -110,18 +110,16 @@
 
 [
   (collating_element)
-  (collating_symbol)
-  (equivalence_class)
   (meta_character)
   (class_name)
   (wildcard)
 ] @character.special
 
 (nonmatching_list
-  "^" @punctuation.special)
+  "^" @operator)
 
 (start_range
-  "-" @punctuation.special)
+  "-" @operator)
 
 (collating_element
   "-" @string.regexp)
@@ -137,11 +135,22 @@
   "]" @punctuation.bracket)
 
 (character_class
-  [
-    "["
-    ":"
-    "]"
-  ] @punctuation.bracket)
+  ["[" "]"] @punctuation.bracket)
+
+(character_class
+  ":" @punctuation.delimiter)
+
+(collating_symbol
+  ["[" "]"] @punctuation.bracket)
+
+(collating_symbol
+  "." @punctuation.delimiter)
+
+(equivalence_class
+  ["[" "]"] @punctuation.bracket)
+
+(equivalence_class
+  "=" @punctuation.delimiter)
 
 [
   (escaped_delimiter)
@@ -157,9 +166,6 @@
 
 (escaped_delimiter
   "/" @string.escape)
-
-(equivalence_class
-  "=" @character.special)
 
 (non_unary_expr
   "?" @keyword.conditional.ternary)
