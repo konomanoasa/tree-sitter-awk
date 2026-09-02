@@ -15,12 +15,11 @@ npm install @konomanoasa/tree-sitter-posix-awk
 ## Development
 
 ```sh
-npm ci
-npm run tree-sitter -- parse script.awk
-npm run check
+npm install
+npm run parse -- script.awk
 ```
 
-## Specification
+## Specifications
 
 - [POSIX.1-2024 `awk`](https://pubs.opengroup.org/onlinepubs/9799919799.2024edition/utilities/awk.html)
 - [POSIX.1-2024 extended regular expressions](https://pubs.opengroup.org/onlinepubs/9799919799.2024edition/basedefs/V1_chap09.html#tag_09_04)

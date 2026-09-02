@@ -1,10 +1,13 @@
-*.a
 *.dylib
-*.o
-*.pc
 
 .DS_Store
 
+*.a
+*.o
+*.pc
 build/
+
+Cargo.lock
+target/
 
 node_modules/

@@ -25,6 +25,7 @@
     "check": "biome check . && node scripts/check-c.js && node scripts/check-generated.js && npm test",
     "format": "biome check --write . && node scripts/check-c.js --write",
     "generate": "npm run tree-sitter -- generate",
+    "parse": "npm run tree-sitter -- parse --scope source.awk",
     "test": "npm run tree-sitter -- test --rebuild && node --test",
     "test:fuzz": "npm run tree-sitter -- fuzz --rebuild --iterations 100 --edits 5",
     "tree-sitter": "node scripts/tree-sitter.js"
