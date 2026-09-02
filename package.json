@@ -5,17 +5,11 @@
   "license": "MIT",
   "repository": "git+https://github.com/konomanoasa/tree-sitter-posix-awk.git",
   "files": [
-    "bindings/c",
-    "bindings/rust",
-    "Cargo.toml",
-    "CMakeLists.txt",
     "grammar.js",
-    "Makefile",
     "queries/*.scm",
     "src/*.c",
     "src/*.json",
     "src/tree_sitter/*.h",
-    "test/binding.test.c",
     "tree-sitter.json"
   ],
   "publishConfig": {

@@ -8,21 +8,11 @@ const {
   repositoryDirectory,
   throwIfFailed,
 } = require("./tree-sitter.js");
-const bindingFiles = [
-  path.join(
-    repositoryDirectory,
-    "bindings",
-    "c",
-    "tree_sitter",
-    "tree-sitter-posix-awk.h",
-  ),
-  path.join(repositoryDirectory, "test", "binding.test.c"),
-];
 const scannerFiles = [
   path.join(grammarDirectory, "src", "scanner.c"),
   path.join(repositoryDirectory, "test", "scanner.test.c"),
 ];
-const cFiles = [...bindingFiles, ...scannerFiles];
+const cFiles = scannerFiles;
 
 function run(command, args, options = {}) {
   const result = childProcess.spawnSync(command, args, {
@@ -65,37 +55,18 @@ if (process.argv.length === 3 && process.argv[2] === "--write") {
   );
   try {
     const clang = llvmTool("clang", "CLANG");
-    const bindingInclude = path.join(repositoryDirectory, "bindings", "c");
     const scannerInclude = path.join(grammarDirectory, "src");
-    const compileCommands = [
-      {
-        arguments: [clang, "-std=c17", "-xc", "-fsyntax-only", bindingFiles[0]],
-        directory: repositoryDirectory,
-        file: bindingFiles[0],
-      },
-      {
-        arguments: [
-          clang,
-          "-std=c17",
-          `-I${bindingInclude}`,
-          "-fsyntax-only",
-          bindingFiles[1],
-        ],
-        directory: repositoryDirectory,
-        file: bindingFiles[1],
-      },
-      ...scannerFiles.map((scannerFile) => ({
-        arguments: [
-          clang,
-          "-std=c17",
-          `-I${scannerInclude}`,
-          "-fsyntax-only",
-          scannerFile,
-        ],
-        directory: repositoryDirectory,
-        file: scannerFile,
-      })),
-    ];
+    const compileCommands = scannerFiles.map((scannerFile) => ({
+      arguments: [
+        clang,
+        "-std=c17",
+        `-I${scannerInclude}`,
+        "-fsyntax-only",
+        scannerFile,
+      ],
+      directory: repositoryDirectory,
+      file: scannerFile,
+    }));
     fs.writeFileSync(
       path.join(testDirectory, "compile_commands.json"),
       `${JSON.stringify(compileCommands)}\n`,
@@ -115,22 +86,6 @@ if (process.argv.length === 3 && process.argv[2] === "--write") {
     }
 
     for (const standard of ["c99", "c17"]) {
-      run(
-        clang,
-        [
-          `-std=${standard}`,
-          "-Wall",
-          "-Wextra",
-          "-Werror",
-          "-pedantic",
-          "-I",
-          bindingInclude,
-          "-fsyntax-only",
-          bindingFiles[1],
-        ],
-        { stdio: "inherit" },
-      );
-
       const testBinary = path.join(testDirectory, `scanner-${standard}`);
       run(
         clang,
