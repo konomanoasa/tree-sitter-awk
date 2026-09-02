@@ -1,6 +1,6 @@
 LANGUAGE_NAME := tree-sitter-posix-awk
 HOMEPAGE_URL := https://github.com/konomanoasa/tree-sitter-posix-awk
-VERSION := 0.6.0
+VERSION := 0.7.0
 DESCRIPTION := Tree-sitter grammar for POSIX awk.
 
 PREFIX ?= /usr/local
