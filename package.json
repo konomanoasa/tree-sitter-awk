@@ -29,7 +29,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.11",
-    "tree-sitter-cli": "0.26.13"
+    "tree-sitter-cli": "0.27.0"
   },
   "allowScripts": {
     "tree-sitter-cli": true

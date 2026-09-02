@@ -135,19 +135,28 @@
   "]" @punctuation.bracket)
 
 (character_class
-  ["[" "]"] @punctuation.bracket)
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
 
 (character_class
   ":" @punctuation.delimiter)
 
 (collating_symbol
-  ["[" "]"] @punctuation.bracket)
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
 
 (collating_symbol
   "." @punctuation.delimiter)
 
 (equivalence_class
-  ["[" "]"] @punctuation.bracket)
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
 
 (equivalence_class
   "=" @punctuation.delimiter)

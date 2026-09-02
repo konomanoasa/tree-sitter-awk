@@ -33,7 +33,7 @@ test("highlight query", () => {
     grammar.scope,
     fixture,
   ]);
-  assertCommand(["query", "--test", "--scope", grammar.scope, query, fixture]);
+  assertCommand(["query", "--test", query, fixture]);
 });
 
 // `query --test` passes when any capture at a position matches, so it cannot
@@ -170,7 +170,10 @@ test("final capture resolution", () => {
       [
         "highlight",
         "--html",
-        "--css-classes",
+        "--layout",
+        "line-numbers",
+        "--style",
+        "classes",
         "--scope",
         grammar.scope,
         probePath,
