@@ -1,5 +1,5 @@
-LANGUAGE_NAME := tree-sitter-awk
-HOMEPAGE_URL := https://github.com/konomanoasa/tree-sitter-awk
+LANGUAGE_NAME := tree-sitter-posix-awk
+HOMEPAGE_URL := https://github.com/konomanoasa/tree-sitter-posix-awk
 VERSION := 0.6.0
 DESCRIPTION := Tree-sitter grammar for POSIX awk.
 
@@ -82,7 +82,7 @@ test: $(TEST)
 	./$(TEST)
 
 install: all
-	install -d '$(DESTDIR)$(DATADIR)'/tree-sitter/queries/awk \
+	install -d '$(DESTDIR)$(DATADIR)'/tree-sitter/queries/posix_awk \
 		'$(DESTDIR)$(INCLUDEDIR)'/tree_sitter \
 		'$(DESTDIR)$(PCLIBDIR)' \
 		'$(DESTDIR)$(LIBDIR)'
@@ -105,7 +105,7 @@ else
 		ln -sf lib$(LANGUAGE_NAME).$(SOEXTVER_MAJOR) $(SHARED_LIBRARY)
 endif
 	install -m644 queries/*.scm \
-		'$(DESTDIR)$(DATADIR)'/tree-sitter/queries/awk
+		'$(DESTDIR)$(DATADIR)'/tree-sitter/queries/posix_awk
 
 uninstall:
 	$(RM) '$(DESTDIR)$(LIBDIR)'/$(STATIC_LIBRARY) \
@@ -119,7 +119,7 @@ else
 		'$(DESTDIR)$(LIBDIR)'/lib$(LANGUAGE_NAME).$(SOEXTVER_MAJOR) \
 		'$(DESTDIR)$(LIBDIR)'/$(SHARED_LIBRARY)
 endif
-	$(RM) -r '$(DESTDIR)$(DATADIR)'/tree-sitter/queries/awk
+	$(RM) -r '$(DESTDIR)$(DATADIR)'/tree-sitter/queries/posix_awk
 
 clean:
 	$(RM) $(OBJECTS) $(STATIC_LIBRARY) $(SHARED_LIBRARY) \

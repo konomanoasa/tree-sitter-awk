@@ -1,6 +1,6 @@
-# tree-sitter-awk
+# tree-sitter-posix-awk
 
-[![CI](https://github.com/konomanoasa/tree-sitter-awk/actions/workflows/ci.yml/badge.svg)](https://github.com/konomanoasa/tree-sitter-awk/actions/workflows/ci.yml)
+[![CI](https://github.com/konomanoasa/tree-sitter-posix-awk/actions/workflows/ci.yml/badge.svg)](https://github.com/konomanoasa/tree-sitter-posix-awk/actions/workflows/ci.yml)
 [![npm](https://img.shields.io/npm/v/@konomanoasa/tree-sitter-awk)](https://www.npmjs.com/package/@konomanoasa/tree-sitter-awk)
 
 [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) grammar for

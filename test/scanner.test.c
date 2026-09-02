@@ -70,8 +70,11 @@ static int expect_scan_result_at(
 ) {
   MockLexer mock = make_mock_lexer(source);
   ScannerState state = {.ere_mode = initial_mode};
-  const bool scanned =
-    tree_sitter_awk_external_scanner_scan(&state, &mock.lexer, valid_symbols);
+  const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
+    &state,
+    &mock.lexer,
+    valid_symbols
+  );
   if (
     scanned ==
     expected_scanned &&
@@ -554,8 +557,11 @@ static int check_linear_line_continuation_lookahead(void) {
   ScannerState state = {.ere_mode = ERE_MODE_OUTSIDE};
   bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
   valid_symbols[LC_BEFORE_EXPRESSION] = true;
-  const bool scanned =
-    tree_sitter_awk_external_scanner_scan(&state, &mock.lexer, valid_symbols);
+  const bool scanned = tree_sitter_posix_awk_external_scanner_scan(
+    &state,
+    &mock.lexer,
+    valid_symbols
+  );
   const bool valid_result = scanned &&
     mock.lexer.result_symbol ==
     LC_BEFORE_EXPRESSION &&
@@ -878,10 +884,14 @@ static int check_round_trip(
   ScannerState destination = {.ere_mode = ERE_MODE_ESCAPED_DELIMITER};
   char buffer[TREE_SITTER_SERIALIZATION_BUFFER_SIZE] = {0};
   const unsigned length =
-    tree_sitter_awk_external_scanner_serialize(&source, buffer);
+    tree_sitter_posix_awk_external_scanner_serialize(&source, buffer);
 
   int failed = expect_length(test_name, expected_length, length);
-  tree_sitter_awk_external_scanner_deserialize(&destination, buffer, length);
+  tree_sitter_posix_awk_external_scanner_deserialize(
+    &destination,
+    buffer,
+    length
+  );
   failed |= expect_mode(test_name, mode, destination.ere_mode);
   return failed;
 }
@@ -905,7 +915,7 @@ static int check_serialization(void) {
     0,
   };
   ScannerState destination = {.ere_mode = ERE_MODE_BODY};
-  tree_sitter_awk_external_scanner_deserialize(&destination, buffer, 0);
+  tree_sitter_posix_awk_external_scanner_deserialize(&destination, buffer, 0);
   failed |= expect_mode(
     "empty serialized state resets to outside",
     ERE_MODE_OUTSIDE,
@@ -913,7 +923,7 @@ static int check_serialization(void) {
   );
 
   destination.ere_mode = ERE_MODE_BODY;
-  tree_sitter_awk_external_scanner_deserialize(
+  tree_sitter_posix_awk_external_scanner_deserialize(
     &destination,
     buffer,
     SERIALIZED_SCANNER_STATE_SIZE + 1
@@ -926,7 +936,7 @@ static int check_serialization(void) {
 
   buffer[0] = (char)(ERE_MODE_ESCAPED_DELIMITER + 1);
   destination.ere_mode = ERE_MODE_BODY;
-  tree_sitter_awk_external_scanner_deserialize(
+  tree_sitter_posix_awk_external_scanner_deserialize(
     &destination,
     buffer,
     SERIALIZED_SCANNER_STATE_SIZE

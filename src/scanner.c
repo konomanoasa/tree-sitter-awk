@@ -1075,16 +1075,16 @@ scan_line_continuation_marker(TSLexer *lexer, const bool *valid_symbols) {
   return scan_boundary_target(lexer, valid_symbols);
 }
 
-void *tree_sitter_awk_external_scanner_create(void) {
+void *tree_sitter_posix_awk_external_scanner_create(void) {
   return calloc(1, sizeof(ScannerState));
 }
 
-void tree_sitter_awk_external_scanner_destroy(void *payload) {
+void tree_sitter_posix_awk_external_scanner_destroy(void *payload) {
   free(payload);
 }
 
 unsigned
-tree_sitter_awk_external_scanner_serialize(void *payload, char *buffer) {
+tree_sitter_posix_awk_external_scanner_serialize(void *payload, char *buffer) {
   const ScannerState *state = payload;
   if (state->ere_mode == ERE_MODE_OUTSIDE) {
     return 0;
@@ -1093,7 +1093,7 @@ tree_sitter_awk_external_scanner_serialize(void *payload, char *buffer) {
   return SERIALIZED_SCANNER_STATE_SIZE;
 }
 
-void tree_sitter_awk_external_scanner_deserialize(
+void tree_sitter_posix_awk_external_scanner_deserialize(
   void *payload,
   const char *buffer,
   unsigned length
@@ -1221,7 +1221,7 @@ static bool scan_number_or_item_boundary(
   return emit_number_kind(lexer, valid_symbols, token_kind);
 }
 
-bool tree_sitter_awk_external_scanner_scan(
+bool tree_sitter_posix_awk_external_scanner_scan(
   void *payload,
   TSLexer *lexer,
   const bool *valid_symbols

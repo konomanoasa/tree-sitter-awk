@@ -665,7 +665,7 @@ const continuedPrintListElement = ($, element) =>
   continuedListElementWith($, $._print_expression_target_guard, element);
 
 module.exports = grammar({
-  name: "awk",
+  name: "posix_awk",
 
   externals: ($) => [
     $._begin_word,

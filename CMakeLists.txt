@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.13)
 
 project(
-  tree-sitter-awk
+  tree-sitter-posix-awk
   VERSION 0.6.0
   DESCRIPTION "Tree-sitter grammar for POSIX awk."
-  HOMEPAGE_URL "https://github.com/konomanoasa/tree-sitter-awk"
+  HOMEPAGE_URL "https://github.com/konomanoasa/tree-sitter-posix-awk"
   LANGUAGES C
 )
 
@@ -30,21 +30,21 @@ if(CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
   include(CTest)
 endif()
 
-add_library(tree-sitter-awk src/parser.c src/scanner.c)
+add_library(tree-sitter-posix-awk src/parser.c src/scanner.c)
 target_include_directories(
-  tree-sitter-awk
+  tree-sitter-posix-awk
   INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/bindings/c>
     $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>
 )
 target_compile_definitions(
-  tree-sitter-awk
+  tree-sitter-posix-awk
   PRIVATE
     $<$<BOOL:${TREE_SITTER_REUSE_ALLOCATOR}>:TREE_SITTER_REUSE_ALLOCATOR>
     $<$<CONFIG:Debug>:TREE_SITTER_DEBUG>
 )
 set_target_properties(
-  tree-sitter-awk
+  tree-sitter-posix-awk
   PROPERTIES
     C_STANDARD 11
     C_STANDARD_REQUIRED ON
@@ -54,22 +54,22 @@ set_target_properties(
 )
 
 if(BUILD_TESTING AND CMAKE_CURRENT_SOURCE_DIR STREQUAL CMAKE_SOURCE_DIR)
-  add_executable(tree-sitter-awk-binding-test test/binding.test.c)
-  target_link_libraries(tree-sitter-awk-binding-test PRIVATE tree-sitter-awk)
+  add_executable(tree-sitter-posix-awk-binding-test test/binding.test.c)
+  target_link_libraries(tree-sitter-posix-awk-binding-test PRIVATE tree-sitter-posix-awk)
   add_test(
-    NAME tree-sitter-awk-binding
-    COMMAND tree-sitter-awk-binding-test
+    NAME tree-sitter-posix-awk-binding
+    COMMAND tree-sitter-posix-awk-binding-test
   )
 endif()
 
 configure_file(
-  bindings/c/tree-sitter-awk.pc.in
-  "${CMAKE_CURRENT_BINARY_DIR}/tree-sitter-awk.pc"
+  bindings/c/tree-sitter-posix-awk.pc.in
+  "${CMAKE_CURRENT_BINARY_DIR}/tree-sitter-posix-awk.pc"
   @ONLY
 )
 
 install(
-  TARGETS tree-sitter-awk
+  TARGETS tree-sitter-posix-awk
   ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
   RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
@@ -80,11 +80,11 @@ install(
   FILES_MATCHING PATTERN "*.h"
 )
 install(
-  FILES "${CMAKE_CURRENT_BINARY_DIR}/tree-sitter-awk.pc"
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/tree-sitter-posix-awk.pc"
   DESTINATION "${CMAKE_INSTALL_LIBDIR}/pkgconfig"
 )
 install(
   DIRECTORY queries/
-  DESTINATION "${CMAKE_INSTALL_DATADIR}/tree-sitter/queries/awk"
+  DESTINATION "${CMAKE_INSTALL_DATADIR}/tree-sitter/queries/posix_awk"
   FILES_MATCHING PATTERN "*.scm"
 )

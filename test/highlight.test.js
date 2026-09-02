@@ -106,7 +106,7 @@ const finalCaptureSource = [
 ].join("\n");
 
 function themedEnvironment() {
-  const environment = createEnvironment("tree-sitter-awk-highlight.");
+  const environment = createEnvironment("tree-sitter-posix-awk-highlight.");
   const configPath = path.join(
     environment.directory,
     "config",

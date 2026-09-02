@@ -14,7 +14,7 @@ const bindingFiles = [
     "bindings",
     "c",
     "tree_sitter",
-    "tree-sitter-awk.h",
+    "tree-sitter-posix-awk.h",
   ),
   path.join(repositoryDirectory, "test", "binding.test.c"),
 ];
@@ -61,7 +61,7 @@ if (process.argv.length === 3 && process.argv[2] === "--write") {
   );
 
   const testDirectory = fs.mkdtempSync(
-    path.join(os.tmpdir(), "tree-sitter-awk-c."),
+    path.join(os.tmpdir(), "tree-sitter-posix-awk-c."),
   );
   try {
     const clang = llvmTool("clang", "CLANG");

@@ -6,9 +6,9 @@ description = "Tree-sitter grammar for POSIX awk."
 edition = "2024"
 keywords = [ "incremental", "parsing", "tree-sitter", "awk" ]
 license = "MIT"
-name = "tree-sitter-awk"
+name = "tree-sitter-posix-awk"
 readme = "README.md"
-repository = "https://github.com/konomanoasa/tree-sitter-awk"
+repository = "https://github.com/konomanoasa/tree-sitter-posix-awk"
 version = "0.6.0"
 
 build = "bindings/rust/build.rs"

@@ -30,13 +30,13 @@ if (
 const grammarDirectory = path.resolve(repositoryDirectory, grammarPath);
 const treeSitterCli = require.resolve("tree-sitter-cli/cli.js");
 
-function createEnvironment(prefix = "tree-sitter-awk.") {
+function createEnvironment(prefix = "tree-sitter-posix-awk.") {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
   const cacheDirectory = path.join(
     repositoryDirectory,
     "node_modules",
     ".cache",
-    "tree-sitter-awk",
+    "tree-sitter-posix-awk",
   );
   const configDirectory = path.join(directory, "config");
   const libraryDirectory = path.join(directory, "lib");
