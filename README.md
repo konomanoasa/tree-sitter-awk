@@ -12,6 +12,14 @@ POSIX.1-2024 `awk`.
 npm install @konomanoasa/tree-sitter-awk
 ```
 
+## Development
+
+```sh
+npm ci
+npm run tree-sitter -- parse script.awk
+npm run check
+```
+
 ## Specification
 
 - [POSIX.1-2024 `awk`](https://pubs.opengroup.org/onlinepubs/9799919799.2024edition/utilities/awk.html)

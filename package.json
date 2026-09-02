@@ -6,6 +6,8 @@
   "repository": "git+https://github.com/konomanoasa/tree-sitter-awk.git",
   "files": [
     "bindings/c",
+    "bindings/rust",
+    "Cargo.toml",
     "CMakeLists.txt",
     "grammar.js",
     "Makefile",
