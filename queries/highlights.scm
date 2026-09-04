@@ -87,24 +87,22 @@
 ] @punctuation.bracket
 
 (lvalue
-  "[" @punctuation.bracket
-  "]" @punctuation.bracket)
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
 
 (simple_statement
-  "[" @punctuation.bracket
-  "]" @punctuation.bracket)
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
 
 (string
-  opening: "\"" @punctuation.delimiter)
-
-(string
-  closing: "\"" @punctuation.delimiter)
+  "\"" @punctuation.delimiter)
 
 (ere
-  opening: "/" @punctuation.delimiter)
-
-(ere
-  closing: "/" @punctuation.delimiter)
+  "/" @punctuation.delimiter)
 
 (ordinary_character) @string.regexp
 
@@ -131,8 +129,10 @@
   "-" @string.regexp)
 
 (bracket_expression
-  "[" @punctuation.bracket
-  "]" @punctuation.bracket)
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
 
 (character_class
   [
@@ -177,28 +177,28 @@
   "/" @string.escape)
 
 (non_unary_expr
-  "?" @keyword.conditional.ternary)
+  [
+    "?"
+    ":"
+  ] @keyword.conditional.ternary)
 
 (unary_expr
-  "?" @keyword.conditional.ternary)
+  [
+    "?"
+    ":"
+  ] @keyword.conditional.ternary)
 
 (non_unary_print_expr
-  "?" @keyword.conditional.ternary)
+  [
+    "?"
+    ":"
+  ] @keyword.conditional.ternary)
 
 (unary_print_expr
-  "?" @keyword.conditional.ternary)
-
-(non_unary_expr
-  ":" @keyword.conditional.ternary)
-
-(unary_expr
-  ":" @keyword.conditional.ternary)
-
-(non_unary_print_expr
-  ":" @keyword.conditional.ternary)
-
-(unary_print_expr
-  ":" @keyword.conditional.ternary)
+  [
+    "?"
+    ":"
+  ] @keyword.conditional.ternary)
 
 (item
   name: [

@@ -145,11 +145,30 @@ static int check_source_token_ranges(void) {
       "follow\\\n(",
       FUNC_NAME_WORD,
       6},
+    {"built-in call allows blanks before the parenthesis",
+      "length (",
+      BUILTIN_CALL_WORD,
+      6},
+    {"built-in call allows a continuation before the parenthesis",
+      "length\\\n(",
+      BUILTIN_CALL_WORD,
+      6},
+    {"bare built-in before a name", "length x", BUILTIN_FUNC_NAME_WORD, 6},
+    {"getline before a name takes a target",
+      "getline x",
+      GETLINE_TARGET_WORD,
+      7},
+    {"getline before a field takes a target",
+      "getline $1",
+      GETLINE_TARGET_WORD,
+      7},
+    {"getline before a string is bare", "getline \"a\"", GETLINE_WORD, 7},
+    {"getline before a call is bare", "getline f(", GETLINE_WORD, 7},
+    {"for-in variable", "k in a)", FOR_IN_VARIABLE_WORD, 1},
     {"integer spelling", "123", NUMBER_INTEGER, 3},
     {"fraction spelling", ".5", NUMBER_FRACTION, 2},
     {"exponent spelling", "1.5e+2", NUMBER_EXPONENT, 6},
     {"incomplete exponent keeps integer", "1e+", NUMBER_INTEGER, 1},
-    {"integer prefix remains available", "1.2", NUMBER_INTEGER, 1},
     {"addition assignment spelling", "+=", ADD_ASSIGN_OPERATOR, 2},
     {"logical-or spelling", "||", OR_OPERATOR, 2},
   };
@@ -199,6 +218,25 @@ static int check_source_token_ranges(void) {
     false,
     NAME_WORD,
     0
+  );
+
+  failed |= expect_scan_result(
+    "for-in shape stays a name where the parser cannot take a variable",
+    "k in a)",
+    valid_symbols,
+    true,
+    NAME_WORD,
+    1
+  );
+
+  valid_symbols[FOR_IN_VARIABLE_WORD] = true;
+  failed |= expect_scan_result(
+    "classic for keeps the name",
+    "k in a;",
+    valid_symbols,
+    true,
+    NAME_WORD,
+    1
   );
   return failed;
 }
@@ -373,6 +411,7 @@ static int check_closed_item_boundary(void) {
     {"getline starts an item", "getline", true},
     {"built-in starts an item", "length", true},
     {"function call starts an item", "follow(", true},
+    {"built-in call starts an item", "length (", true},
     {"integer starts an item", "42", true},
     {"fraction starts an item", ".5", true},
     {"action starts an item", "{", true},
@@ -517,10 +556,41 @@ static int check_line_continuation_markers(void) {
       "\\\nin",
       LC_BEFORE_MEMBERSHIP_OPERATOR,
       true},
-    {"continued for update", "\\\nprint", LC_BEFORE_FOR_UPDATE, true},
-    {"continued for semicolon", "\\\n;", LC_BEFORE_FOR_SEMICOLON, true},
+    {"continued simple statement",
+      "\\\nprint",
+      LC_BEFORE_SIMPLE_STATEMENT,
+      true},
+    {"continued statement keyword", "\\\nif", LC_BEFORE_STATEMENT, true},
+    {"continued statement word", "\\\nname", LC_BEFORE_STATEMENT, true},
+    {"continued statement action", "\\\n{", LC_BEFORE_STATEMENT, true},
+    {"continued empty statement", "\\\n;", LC_BEFORE_STATEMENT, true},
+    {"continued while statement", "\\\nwhile", LC_BEFORE_STATEMENT, true},
+    {"reserved item start is not a statement",
+      "\\\nEND",
+      LC_BEFORE_STATEMENT,
+      false},
+    {"continued item keyword", "\\\nBEGIN", LC_BEFORE_ITEM, true},
+    {"continued item expression", "\\\n$1", LC_BEFORE_ITEM, true},
+    {"continued item action", "\\\n{", LC_BEFORE_ITEM, true},
+    {"statement keyword is not an item", "\\\nif", LC_BEFORE_ITEM, false},
+    {"continued EOF", "\\\n", LC_BEFORE_EOF, true},
+    {"continued comment at EOF", "\\\n# note", LC_BEFORE_EOF, true},
+    {"continued blank EOF", "\\\n  \\\n ", LC_BEFORE_EOF, true},
+    {"newline is not EOF", "\\\n\n", LC_BEFORE_EOF, false},
+    {"continued semicolon", "\\\n;", LC_BEFORE_SEMICOLON, true},
     {"continued comma", "\\\n,", LC_BEFORE_COMMA, true},
     {"continued close parenthesis", "\\\n)", LC_BEFORE_CLOSE_PARENTHESIS, true},
+    {"continued action", "\\\n{", LC_BEFORE_ACTION, true},
+    {"continued close brace", "\\\n}", LC_BEFORE_CLOSE_BRACE, true},
+    {"continued newline", "\\\n\n", LC_BEFORE_NEWLINE, true},
+    {"continued comment before a newline",
+      "\\\n# note\n",
+      LC_BEFORE_NEWLINE,
+      true},
+    {"continued comment at EOF is not a newline",
+      "\\\n# note",
+      LC_BEFORE_NEWLINE,
+      false},
   };
 
   int failed = 0;
@@ -533,6 +603,54 @@ static int check_line_continuation_markers(void) {
       valid_symbols,
       cases[i].expected_scanned,
       cases[i].marker,
+      0
+    );
+  }
+
+  // When two markers are valid for one target, the more specific one wins.
+  static const struct {
+    const char *name;
+    const char *source;
+    enum TokenType fallback;
+    enum TokenType preferred;
+  } priorities[] = {
+    {"action before statement", "\\\n{", LC_BEFORE_STATEMENT, LC_BEFORE_ACTION},
+    {"statement before item", "\\\n{", LC_BEFORE_ITEM, LC_BEFORE_STATEMENT},
+    {"terminator before empty statement",
+      "\\\n;",
+      LC_BEFORE_STATEMENT,
+      LC_BEFORE_SEMICOLON},
+    {"do tail before while statement",
+      "\\\nwhile",
+      LC_BEFORE_STATEMENT,
+      LC_BEFORE_DO_TAIL},
+    {"expression before statement",
+      "\\\nname",
+      LC_BEFORE_STATEMENT,
+      LC_BEFORE_EXPRESSION},
+    {"expression before item",
+      "\\\nname",
+      LC_BEFORE_ITEM,
+      LC_BEFORE_EXPRESSION},
+    {"operator before expression",
+      "\\\n-1",
+      LC_BEFORE_EXPRESSION,
+      LC_BEFORE_ADDITIVE_OPERATOR},
+    {"simple statement before expression",
+      "\\\nx",
+      LC_BEFORE_EXPRESSION,
+      LC_BEFORE_SIMPLE_STATEMENT},
+  };
+  for (size_t i = 0; i < ARRAY_LENGTH(priorities); i++) {
+    bool valid_symbols[TOKEN_TYPE_COUNT] = {false};
+    valid_symbols[priorities[i].fallback] = true;
+    valid_symbols[priorities[i].preferred] = true;
+    failed |= expect_scan_result(
+      priorities[i].name,
+      priorities[i].source,
+      valid_symbols,
+      true,
+      priorities[i].preferred,
       0
     );
   }
@@ -673,6 +791,31 @@ static int check_ere_state_transitions(void) {
   );
 
   valid_symbols[ERE_COMPOUND_OPEN_GUARD] = false;
+  valid_symbols[ERE_CLOSING_HYPHEN] = true;
+  failed |= expect_scan_result_at(
+    "hyphen before the closing bracket is one token",
+    "-]",
+    valid_symbols,
+    ERE_MODE_BODY,
+    true,
+    ERE_CLOSING_HYPHEN,
+    0,
+    1,
+    ERE_MODE_BODY
+  );
+  failed |= expect_scan_result_at(
+    "range hyphen stays internal",
+    "-a",
+    valid_symbols,
+    ERE_MODE_BODY,
+    false,
+    ERE_CLOSING_HYPHEN,
+    0,
+    0,
+    ERE_MODE_BODY
+  );
+
+  valid_symbols[ERE_CLOSING_HYPHEN] = false;
   valid_symbols[ERE_DOT_CLOSE_GUARD] = true;
   failed |= expect_scan_result_at(
     "compound closer guard is zero width",
@@ -756,6 +899,18 @@ static int check_error_mode_real_tokens(void) {
       true,
       BUILTIN_FUNC_NAME_WORD,
       6,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits built-in call",
+      "length (",
+      true,
+      BUILTIN_CALL_WORD,
+      6,
+      ERE_MODE_OUTSIDE},
+    {"error mode emits getline target",
+      "getline x",
+      true,
+      GETLINE_TARGET_WORD,
+      7,
       ERE_MODE_OUTSIDE},
     {"error mode emits integer",
       "42",

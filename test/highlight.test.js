@@ -1,7 +1,7 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { test } = require("node:test");
+const { after, before, test } = require("node:test");
 const {
   createEnvironment,
   grammar,
@@ -12,8 +12,37 @@ const {
 const fixture = path.join(repositoryDirectory, "test", "highlight", "awk.awk");
 const query = path.join(repositoryDirectory, "queries", "highlights.scm");
 
-function assertCommand(args, options = {}) {
-  const result = run(args, options);
+// One environment for every command, so the CLI compiles the parser once and
+// every capture name has a distinct theme color for the HTML probe below.
+let environment;
+
+before(() => {
+  environment = createEnvironment("tree-sitter-posix-awk-highlight.");
+  const configPath = path.join(
+    environment.directory,
+    "config",
+    "tree-sitter",
+    "config.json",
+  );
+  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
+  config.theme = {};
+  const captureNames = new Set(
+    fs.readFileSync(query, "utf8").match(/@[a-z.]+/g),
+  );
+  let color = 17;
+  for (const captureName of captureNames) {
+    config.theme[captureName.slice(1)] = color;
+    color += 1;
+  }
+  fs.writeFileSync(configPath, JSON.stringify(config));
+});
+
+after(() => {
+  environment.remove();
+});
+
+function assertCommand(args) {
+  const result = run(args, { environment });
   if (result.error !== undefined) {
     throw result.error;
   }
@@ -105,28 +134,6 @@ const finalCaptureSource = [
   "",
 ].join("\n");
 
-function themedEnvironment() {
-  const environment = createEnvironment("tree-sitter-posix-awk-highlight.");
-  const configPath = path.join(
-    environment.directory,
-    "config",
-    "tree-sitter",
-    "config.json",
-  );
-  const config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-  config.theme = {};
-  const captureNames = new Set(
-    fs.readFileSync(query, "utf8").match(/@[a-z.]+/g),
-  );
-  let color = 17;
-  for (const captureName of captureNames) {
-    config.theme[captureName.slice(1)] = color;
-    color += 1;
-  }
-  fs.writeFileSync(configPath, JSON.stringify(config));
-  return environment;
-}
-
 function decodeEntities(text) {
   return text
     .replace(/&lt;/g, "<")
@@ -162,33 +169,25 @@ function finalClassesPerLine(html) {
 }
 
 test("final capture resolution", () => {
-  const environment = themedEnvironment();
-  try {
-    const probePath = path.join(environment.directory, "probe.awk");
-    fs.writeFileSync(probePath, finalCaptureSource);
-    const result = assertCommand(
-      [
-        "highlight",
-        "--html",
-        "--layout",
-        "line-numbers",
-        "--style",
-        "classes",
-        "--scope",
-        grammar.scope,
-        probePath,
-      ],
-      { environment },
+  const probePath = path.join(environment.directory, "probe.awk");
+  fs.writeFileSync(probePath, finalCaptureSource);
+  const result = assertCommand([
+    "highlight",
+    "--html",
+    "--layout",
+    "line-numbers",
+    "--style",
+    "classes",
+    "--scope",
+    grammar.scope,
+    probePath,
+  ]);
+  const lines = finalClassesPerLine(result.stdout);
+  for (const { column, expected, label, row } of finalCaptureCases) {
+    assert.equal(
+      lines[row]?.[column],
+      expected,
+      `${label} at ${row}:${column}\n${result.stdout}`,
     );
-    const lines = finalClassesPerLine(result.stdout);
-    for (const { column, expected, label, row } of finalCaptureCases) {
-      assert.equal(
-        lines[row]?.[column],
-        expected,
-        `${label} at ${row}:${column}\n${result.stdout}`,
-      );
-    }
-  } finally {
-    environment.remove();
   }
 });

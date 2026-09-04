@@ -4,15 +4,11 @@
     "named": true,
     "fields": {
       "body": {
-        "multiple": true,
+        "multiple": false,
         "required": false,
         "types": [
           {
             "type": "terminated_statement_list",
-            "named": true
-          },
-          {
-            "type": "unterminated_statement",
             "named": true
           },
           {
@@ -225,7 +221,7 @@
     "fields": {},
     "children": {
       "multiple": false,
-      "required": true,
+      "required": false,
       "types": [
         {
           "type": "collating_element",
@@ -1684,22 +1680,15 @@
     "type": "program",
     "named": true,
     "root": true,
-    "fields": {
-      "item": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "item",
-            "named": true
-          }
-        ]
-      }
-    },
+    "fields": {},
     "children": {
       "multiple": true,
       "required": false,
       "types": [
+        {
+          "type": "item",
+          "named": true
+        },
         {
           "type": "item_list",
           "named": true
@@ -2712,142 +2701,13 @@
   {
     "type": "unterminated_statement_list",
     "named": true,
-    "fields": {
-      "alternative": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "terminated_statement",
-            "named": true
-          }
-        ]
-      },
-      "array": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "name",
-            "named": true
-          }
-        ]
-      },
-      "body": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "terminated_statement",
-            "named": true
-          }
-        ]
-      },
-      "condition": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "expr",
-            "named": true
-          }
-        ]
-      },
-      "consequence": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "terminated_statement",
-            "named": true
-          }
-        ]
-      },
-      "initializer": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "simple_statement",
-            "named": true
-          }
-        ]
-      },
-      "statement": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "terminatable_statement",
-            "named": true
-          }
-        ]
-      },
-      "terminator": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": ";",
-            "named": false
-          },
-          {
-            "type": "newline",
-            "named": true
-          }
-        ]
-      },
-      "update": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "simple_statement",
-            "named": true
-          }
-        ]
-      },
-      "variable": {
-        "multiple": false,
-        "required": false,
-        "types": [
-          {
-            "type": "name",
-            "named": true
-          }
-        ]
-      }
-    },
+    "fields": {},
     "children": {
       "multiple": true,
-      "required": false,
+      "required": true,
       "types": [
         {
-          "type": "action",
-          "named": true
-        },
-        {
-          "type": "else_keyword",
-          "named": true
-        },
-        {
-          "type": "for_keyword",
-          "named": true
-        },
-        {
-          "type": "if_keyword",
-          "named": true
-        },
-        {
-          "type": "in_keyword",
-          "named": true
-        },
-        {
           "type": "line_continuation",
-          "named": true
-        },
-        {
-          "type": "newline_opt",
           "named": true
         },
         {
@@ -2856,10 +2716,6 @@
         },
         {
           "type": "unterminated_statement",
-          "named": true
-        },
-        {
-          "type": "while_keyword",
           "named": true
         }
       ]

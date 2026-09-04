@@ -269,6 +269,8 @@ function relativePoint(point, origin) {
   };
 }
 
+// An item inside item_list carries the `item` field and the final item of
+// program does not; the comparison is about the item itself.
 function normalizeItemSubtree(records, rootIndex) {
   const root = records[rootIndex];
   let endIndex = rootIndex + 1;
@@ -281,7 +283,8 @@ function normalizeItemSubtree(records, rootIndex) {
     .map((record) => {
       const start = relativePoint(record.start, root.start);
       const end = relativePoint(record.end, root.start);
-      return `${"  ".repeat(record.depth - root.depth)}${start.row}:${start.column} - ${end.row}:${end.column} ${record.description}`;
+      const description = record === root ? "item" : record.description;
+      return `${"  ".repeat(record.depth - root.depth)}${start.row}:${start.column} - ${end.row}:${end.column} ${description}`;
     })
     .join("\n");
 }
@@ -290,7 +293,7 @@ function topLevelItems(tree) {
   const records = parseCstLines(tree);
   const items = [];
   for (let index = 0; index < records.length; index += 1) {
-    if (records[index].description === "item: item") {
+    if (["item: item", "item"].includes(records[index].description)) {
       items.push({
         end: records[index].end,
         normalized: normalizeItemSubtree(records, index),
@@ -359,6 +362,22 @@ function determinismTest(name, initial, final, edits, assertions = () => {}) {
   test(name, () =>
     assertions(assertDeterministicEdit(name, initial, final, edits)),
   );
+}
+
+// Applies the edits, then reverts them in reverse order, so the final source
+// equals the initial one while the intermediate versions (and the subtrees
+// reused from them) passed through syntax errors.
+function editHistoryTest(name, source, edits) {
+  const reverts = [];
+  let current = Buffer.from(source);
+  for (const edit of edits) {
+    const [position, deleteCount] = edit.split(" ").map(Number);
+    const inserted = edit.slice(edit.indexOf(" ", edit.indexOf(" ") + 1) + 1);
+    const deleted = current.subarray(position, position + deleteCount);
+    reverts.unshift(`${position} ${Buffer.byteLength(inserted)} ${deleted}`);
+    current = applyEdits(name, current, [edit]);
+  }
+  determinismTest(name, source, source, [...edits, ...reverts]);
 }
 
 const closedItemBoundaryCases = [
@@ -694,13 +713,19 @@ const invalidClassificationCases = [
 
 for (const classificationCase of invalidClassificationCases) {
   test(classificationCase.name, () => {
-    const tree = assertFresh(
+    const sourcePath = writeSource(
       classificationCase.name,
+      "invalid",
       classificationCase.source,
-      1,
     );
-    dirty(tree);
-    classificationCase.assertions?.(tree);
+    const result = captureParse(sourcePath);
+    // A parse that recovers with missing nodes alone exits with 0.
+    assert.ok(
+      result.status === 0 || result.status === 1,
+      parseDescription(`${classificationCase.name} fresh parse`, result),
+    );
+    dirty(result.tree);
+    classificationCase.assertions?.(result.tree);
   });
 }
 
@@ -1264,6 +1289,97 @@ determinismTest(
   continuedBuiltinConcat,
   bareBuiltinConcat,
   ["18 2  "],
+);
+
+editHistoryTest(
+  "a closed item stays terminated after an edit history that broke its action",
+  lines(
+    "",
+    "BEGIN {",
+    "  print > file",
+    "  print value >> archive",
+    "  print value | command",
+    "  printf format > file",
+    "  print (left > right)",
+    "  print left || right",
+    "  print (command | getline input_target)",
+    "  print value | getline output_target",
+    "  print value > target > suffix",
+    "}",
+  ),
+  ["133 3 ", "18 0 lN}"],
+);
+editHistoryTest(
+  "a builtin call keeps its parenthesis after an edit history that split the name",
+  lines(
+    "",
+    "BEGIN {",
+    "  f()",
+    "  f(value)",
+    "  f (value)",
+    "  call\\",
+    "(value)",
+    "  length",
+    "  length()",
+    "  length (value)",
+    "  atan2(1, 2)",
+    "}",
+  ),
+  ["83 3 ", "44 0 eD]", "6 0 >9|"],
+);
+editHistoryTest(
+  "division stays division after an edit history that concatenated the operands",
+  lines(
+    "",
+    "BEGIN {",
+    "  a * b + c",
+    "  a + b * c / d % e",
+    "  -d ^ e + f",
+    "  g ^ h ^ i",
+    "  j - k - l",
+    "  m n + o",
+    "  !p && q",
+    "}",
+  ),
+  ["33 1 ", "1 0 a,^"],
+);
+editHistoryTest(
+  "a getline target survives an edit history with an unterminated string",
+  lines(
+    "",
+    "BEGIN {",
+    "  left\\",
+    "~ right",
+    "  array[position\\",
+    "]",
+    "  getline target\\",
+    "<= limit",
+    "  getline target\\",
+    "< source",
+    "}",
+  ),
+  ["17 3 ", "34 3 ", '76 0 "', "54 2 "],
+);
+
+// A leading newline_opt closes when the continuation after it is followed
+// by an item. An edit elsewhere re-lexes that continuation after the closed
+// node; the marker must still record what follows it, or a later edit that
+// replaces the item with a newline reuses the closed node.
+const closedLeadingNewline = "\n \\\n x\n";
+const reopenedLeadingNewline = "\n \\\n \n\ny";
+determinismTest(
+  "reopen-leading-newline-after-unrelated-edit",
+  closedLeadingNewline,
+  reopenedLeadingNewline,
+  ["7 0 y", "5 1 \n"],
+  (tree) => {
+    assert.equal(
+      matchingLineCount(tree, /^[ \t0-9:-]+leading: newline_opt/),
+      1,
+      "Expected one leading newline_opt",
+    );
+    contains(tree, "line_continuation");
+  },
 );
 
 const separatedEmptyStatement = lines("BEGIN {", "; x", "}");

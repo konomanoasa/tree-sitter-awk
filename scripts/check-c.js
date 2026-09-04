@@ -8,11 +8,10 @@ const {
   repositoryDirectory,
   throwIfFailed,
 } = require("./tree-sitter.js");
-const scannerFiles = [
+const cFiles = [
   path.join(grammarDirectory, "src", "scanner.c"),
   path.join(repositoryDirectory, "test", "scanner.test.c"),
 ];
-const cFiles = scannerFiles;
 
 function run(command, args, options = {}) {
   const result = childProcess.spawnSync(command, args, {
@@ -56,16 +55,16 @@ if (process.argv.length === 3 && process.argv[2] === "--write") {
   try {
     const clang = llvmTool("clang", "CLANG");
     const scannerInclude = path.join(grammarDirectory, "src");
-    const compileCommands = scannerFiles.map((scannerFile) => ({
+    const compileCommands = cFiles.map((cFile) => ({
       arguments: [
         clang,
         "-std=c17",
         `-I${scannerInclude}`,
         "-fsyntax-only",
-        scannerFile,
+        cFile,
       ],
       directory: repositoryDirectory,
-      file: scannerFile,
+      file: cFile,
     }));
     fs.writeFileSync(
       path.join(testDirectory, "compile_commands.json"),

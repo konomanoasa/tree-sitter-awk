@@ -2,8 +2,4 @@
 
 *.dylib
 
-*.a
-*.o
-build/
-
 node_modules/
