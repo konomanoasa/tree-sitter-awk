@@ -1,0 +1,136 @@
+==================
+Empty program
+==================
+
+---
+
+(program)
+
+==================
+BEGIN action and output fields
+==================
+BEGIN { print 1 }
+---
+
+(program
+  (rule
+    pattern: (special_pattern)
+    action: (block
+      body: (statement_list
+        (print_statement
+          arguments: (output_arguments
+            argument: (number)))))))
+
+==================
+Range pattern permits newline after comma
+==================
+a,
+b {}
+---
+
+(program (rule pattern: (range_pattern start: (identifier) end: (identifier)) action: (block)))
+
+==================
+Raw newline between pattern and action separates rules
+==================
+a
+{}
+---
+
+(program (rule pattern: (identifier)) (rule action: (block)))
+
+==================
+GNU special patterns and func spelling
+==================
+BEGINFILE {}; ENDFILE {}; func f() {}
+---
+
+(program
+ (rule pattern: (special_pattern) action: (block))
+ (rule pattern: (special_pattern) action: (block))
+ (function_definition name: (identifier) parameters: (parameter_list) body: (block)))
+
+==================
+Same-line rules require the documented semicolon
+:error
+==================
+BEGIN {} BEGIN {}
+---
+
+==================
+Special pattern requires an action
+:error
+==================
+BEGIN
+---
+
+==================
+Top-level semicolon requires a preceding item
+:error
+==================
+;BEGIN {}
+---
+
+==================
+Top-level block can consume only one semicolon
+:error
+==================
+BEGIN {};;
+---
+
+==================
+Pattern-only rule cannot consume a semicolon after newline
+:error
+==================
+1
+;
+---
+
+==================
+Directive terminator cannot be followed by an empty top-level item
+:error
+==================
+@namespace "awk"
+;
+---
+
+==================
+Block-ending items permit newline before their semicolon
+==================
+BEGIN {}
+;
+function f() {}
+;
+---
+(program
+ (rule pattern: (special_pattern) action: (block))
+ (function_definition name: (identifier) parameters: (parameter_list) body: (block)))
+
+==================
+Functions separate adjacent rules without extra separators
+==================
+BEGIN {} function f() {} function g() {} END {}
+---
+(program
+ (rule pattern: (special_pattern) action: (block))
+ (function_definition name: (identifier) parameters: (parameter_list) body: (block))
+ (function_definition name: (identifier) parameters: (parameter_list) body: (block))
+ (rule pattern: (special_pattern) action: (block)))
+
+==================
+Directive can follow an action on the same line
+==================
+BEGIN {} @namespace "lib"
+END {}
+---
+(program
+ (rule pattern: (special_pattern) action: (block))
+ (namespace_directive name: (directive_string (directive_text)))
+ (rule pattern: (special_pattern) action: (block)))
+
+==================
+Pattern-only rule still requires a separator before a function
+:error
+==================
+1 function f() {}
+---

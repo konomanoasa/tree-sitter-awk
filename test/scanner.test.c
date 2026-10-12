@@ -1,0 +1,503 @@
+#include "../src/scanner.c"
+
+#include <assert.h>
+#include <stdio.h>
+
+enum {
+  SCANNER_LIFECYCLE_ITERATIONS = 1024,
+  DESERIALIZATION_POISON_BYTE = 0xff,
+};
+
+#ifdef TREE_SITTER_REUSE_ALLOCATOR
+static size_t live_allocations;
+
+static void *reuse_calloc(size_t count, size_t size) {
+  void *result = calloc(count, size);
+  if (result != NULL) ++live_allocations;
+  return result;
+}
+
+static void reuse_free(void *allocation) {
+  if (allocation != NULL) {
+    assert(live_allocations > 0);
+    --live_allocations;
+  }
+  free(allocation);
+}
+
+void *(*ts_current_calloc)(size_t, size_t) = reuse_calloc;
+void (*ts_current_free)(void *) = reuse_free;
+#endif
+
+typedef struct {
+  TSLexer lexer;
+  const char *source;
+  size_t length;
+  size_t position;
+  size_t end;
+} Input;
+
+static void advance(TSLexer *lexer, bool skip) {
+  (void)skip;
+  Input *input = (Input *)lexer;
+  if (input->position < input->length) ++input->position;
+  lexer->lookahead = input->position < input->length
+    ? (unsigned char)input->source[input->position]
+    : 0;
+}
+
+static void mark_end(TSLexer *lexer) {
+  Input *input = (Input *)lexer;
+  input->end = input->position;
+}
+
+static bool eof(const TSLexer *lexer) {
+  const Input *input = (const Input *)lexer;
+  return input->position == input->length;
+}
+
+static Input input_for(const char *source, size_t length) {
+  Input input = {
+    .lexer =
+      {.lookahead = (unsigned char)source[0],
+        .advance = advance,
+        .mark_end = mark_end,
+        .eof = eof},
+    .source = source,
+    .length = length,
+  };
+  return input;
+}
+
+static void restore_position(Input *input) {
+  input->position = input->end;
+  input->lexer.lookahead = input->position < input->length
+    ? (unsigned char)input->source[input->position]
+    : 0;
+}
+
+static unsigned save(Scanner *scanner, char *buffer) {
+  unsigned length =
+    tree_sitter_gawk_external_scanner_serialize(scanner, buffer);
+  assert(length <= TREE_SITTER_SERIALIZATION_BUFFER_SIZE);
+  return length;
+}
+
+static void assert_resumed_tokens(
+  const char *source,
+  const enum Token *tokens,
+  unsigned count
+) {
+  Scanner scanner = {0};
+  Input input = input_for(source, strlen(source));
+  for (unsigned i = 0; i < count; ++i) {
+    char before[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+    unsigned length = save(&scanner, before);
+    Scanner resumed;
+    memset(&resumed, DESERIALIZATION_POISON_BYTE, sizeof(resumed));
+    tree_sitter_gawk_external_scanner_deserialize(&resumed, before, length);
+    Input copied = input;
+    bool valid[ERROR_SENTINEL + 1] = {0};
+    valid[tokens[i]] = true;
+    assert(
+      tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+    );
+    assert(
+      tree_sitter_gawk_external_scanner_scan(&resumed, &copied.lexer, valid)
+    );
+    assert(input.lexer.result_symbol == tokens[i]);
+    assert(copied.lexer.result_symbol == tokens[i]);
+    assert(input.end == copied.end);
+    char left[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+    char right[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+    length = save(&scanner, left);
+    assert(length == save(&resumed, right));
+    assert(memcmp(left, right, length) == 0);
+    restore_position(&input);
+  }
+  assert(input.position == input.length);
+}
+
+static void resumed_tokens_match_uninterrupted_scanning(void) {
+  const enum Token escape[] = {
+    REGEXP_START,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_PLUS,
+    ESCAPE_PREPARE,
+    ESCAPE_START,
+    LINE_CONTINUATION,
+    ESCAPE_FRAGMENT,
+    ESCAPE_END,
+    REGEXP_END
+  };
+  assert_resumed_tokens(
+    "/a\\x2\\\nb/",
+    escape,
+    sizeof(escape) / sizeof(*escape)
+  );
+  const enum Token interval[] = {
+    REGEXP_START,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_INTERVAL_OPEN,
+    REGEX_RAW,
+    RX_COUNT,
+    REGEX_RAW,
+    RX_COMMA,
+    REGEX_RAW,
+    RX_COUNT,
+    REGEX_RAW,
+    RX_INTERVAL_CLOSE,
+    REGEX_RAW,
+    RX_MODIFIER,
+    REGEX_RAW,
+    REGEXP_END
+  };
+  assert_resumed_tokens(
+    "/a{1,2}?/",
+    interval,
+    sizeof(interval) / sizeof(*interval)
+  );
+  const enum Token bracket[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_NEGATION,
+    REGEX_RAW,
+    RX_CLASS_OPEN,
+    REGEX_RAW,
+    RX_CLASS_MARKER,
+    REGEX_RAW,
+    RX_PAYLOAD,
+    REGEX_RAW,
+    RX_CLASS_CLOSE,
+    REGEX_RAW,
+    RX_FORM_END,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW,
+    REGEXP_END
+  };
+  assert_resumed_tokens(
+    "/[^[:alpha:]/]/",
+    bracket,
+    sizeof(bracket) / sizeof(*bracket)
+  );
+  const enum Token escaped_class_marker[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_CLASS_OPEN,
+    REGEX_RAW,
+    RX_CLASS_MARKER,
+    REGEX_RAW,
+    RX_PAYLOAD,
+    REGEX_RAW,
+    RX_CLASS_CLOSE,
+    ESCAPE_PREPARE,
+    ESCAPE,
+    RX_FORM_END,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW,
+    REGEXP_END
+  };
+  assert_resumed_tokens(
+    "/[[:alpha\\x3a]/]/",
+    escaped_class_marker,
+    sizeof(escaped_class_marker) / sizeof(*escaped_class_marker)
+  );
+  const enum Token left_backslash[] = {
+    REGEXP_START,
+    RX_CHARACTER,
+    ESCAPE_PREPARE,
+    ESCAPE,
+    REGEX_TEXT,
+    RX_CHARACTER,
+    REGEX_TEXT,
+    REGEX_TEXT,
+    REGEXP_END
+  };
+  assert_resumed_tokens(
+    "/\\x5c\\\\./",
+    left_backslash,
+    sizeof(left_backslash) / sizeof(*left_backslash)
+  );
+  const enum Token range[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_RANGE,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW,
+    REGEXP_END
+  };
+  assert_resumed_tokens("/[a-z]/", range, sizeof(range) / sizeof(*range));
+  const enum Token unmatched_bracket[] = {
+    REGEXP_START,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW,
+    REGEXP_END
+  };
+  assert_resumed_tokens(
+    "/]x[a]/",
+    unmatched_bracket,
+    sizeof(unmatched_bracket) / sizeof(*unmatched_bracket)
+  );
+  const enum Token restored_bracket[] = {
+    REGEXP_START,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW,
+    REGEXP_END
+  };
+  assert_resumed_tokens(
+    "/]x[:[a/]/",
+    restored_bracket,
+    sizeof(restored_bracket) / sizeof(*restored_bracket)
+  );
+  const enum Token nested_host_class[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_CHARACTER,
+    ESCAPE_PREPARE,
+    ESCAPE,
+    REGEX_TEXT,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_CHARACTER,
+    ESCAPE_PREPARE,
+    ESCAPE,
+    REGEX_TEXT,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    REGEXP_END
+  };
+  assert_resumed_tokens(
+    "/[\\x5c[:\\x5c[:a]]]/",
+    nested_host_class,
+    sizeof(nested_host_class) / sizeof(*nested_host_class)
+  );
+}
+
+static void literal_break_preserves_name_context_without_consuming_lf(void) {
+  const enum Literal literals[] = {STRING, DIRECTIVE, REGEXP};
+  for (unsigned i = 0; i < sizeof(literals) / sizeof(*literals); ++i) {
+    Scanner expected = {.shadows = 7, .non_awk = true};
+    Scanner scanner = expected;
+    scanner.literal = literals[i];
+    scanner.escape = (Escape){.left = 3, .open = true, .started = true};
+    scanner.regexp =
+      (Regexp){.host_depth = 3, .bracket = true, .group_depth = 2};
+    Input input = input_for("\n", 1);
+    bool valid[ERROR_SENTINEL + 1] = {0};
+    char before[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+    char after[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+    unsigned length = save(&scanner, before);
+    assert(
+      !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+    );
+    assert(
+      save(&scanner, after) == length && memcmp(before, after, length) == 0
+    );
+    valid[LITERAL_BREAK] = true;
+    assert(
+      tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+    );
+    assert(input.lexer.result_symbol == LITERAL_BREAK);
+    assert(input.position == 0 && input.end == 0);
+    length = save(&expected, before);
+    assert(
+      save(&scanner, after) == length && memcmp(before, after, length) == 0
+    );
+    assert(
+      !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+    );
+    Scanner resumed;
+    tree_sitter_gawk_external_scanner_deserialize(&resumed, after, length);
+    assert(
+      save(&resumed, after) == length && memcmp(before, after, length) == 0
+    );
+
+    scanner = expected;
+    scanner.literal = literals[i];
+    input = input_for("\\\n", 2);
+    valid[LINE_CONTINUATION] = true;
+    length = save(&scanner, before);
+    assert(
+      tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+    );
+    assert(input.lexer.result_symbol == LINE_CONTINUATION && input.end == 2);
+    assert(
+      save(&scanner, after) == length && memcmp(before, after, length) == 0
+    );
+  }
+}
+
+static void failed_scan_preserves_saved_context(void) {
+  const uint32_t shadowed_keywords = (1U << 0) | (1U << 1) | (1U << 2);
+  Scanner scanner = {.shadows = shadowed_keywords, .non_awk = true};
+  char before[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  char after[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  unsigned length = save(&scanner, before);
+  const char source[] = "function";
+  Input input = input_for(source, sizeof(source) - 1);
+  bool valid[ERROR_SENTINEL + 1] = {0};
+  valid[IDENTIFIER] = true;
+  assert(
+    !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+  );
+  assert(save(&scanner, after) == length);
+  assert(memcmp(before, after, length) == 0);
+  valid[ERROR_SENTINEL] = true;
+  assert(
+    !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+  );
+  assert(save(&scanner, after) == length);
+  assert(memcmp(before, after, length) == 0);
+  tree_sitter_gawk_external_scanner_deserialize(&scanner, NULL, 0);
+  assert(scanner.shadows == 0 && !scanner.non_awk && scanner.literal == NONE);
+}
+
+static void assert_no_state_after(
+  const char *source,
+  const enum Token *tokens,
+  unsigned count
+) {
+  Scanner scanner = {0};
+  Input input = input_for(source, strlen(source));
+  for (unsigned i = 0; i < count; ++i) {
+    bool valid[ERROR_SENTINEL + 1] = {0};
+    valid[tokens[i]] = true;
+    assert(
+      tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+    );
+    assert(input.lexer.result_symbol == tokens[i]);
+    restore_position(&input);
+  }
+  assert(input.position == input.length);
+  Scanner empty = {0};
+  char expected[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  char actual[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  unsigned length = save(&empty, expected);
+  assert(save(&scanner, actual) == length);
+  assert(memcmp(expected, actual, length) == 0);
+}
+
+static void completed_constructs_leave_no_scanner_state(void) {
+  const enum Token regexp[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_NEGATION,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW,
+    RX_INTERVAL_OPEN,
+    REGEX_RAW,
+    RX_COUNT,
+    REGEX_RAW,
+    RX_INTERVAL_CLOSE,
+    REGEX_RAW,
+    REGEXP_END
+  };
+  assert_no_state_after("/[^a]{3}/", regexp, sizeof(regexp) / sizeof(*regexp));
+  const enum Token split_escape[] = {
+    STRING_START,
+    ESCAPE_PREPARE,
+    ESCAPE_START,
+    LINE_CONTINUATION,
+    ESCAPE_FRAGMENT,
+    ESCAPE_END,
+    STRING_END
+  };
+  assert_no_state_after(
+    "\"\\1\\\n2\"",
+    split_escape,
+    sizeof(split_escape) / sizeof(*split_escape)
+  );
+  const enum Token qualified[] =
+    {QUALIFIER, QUALIFIED_SEPARATOR, QUALIFIED_IDENTIFIER};
+  assert_no_state_after(
+    "awk::x",
+    qualified,
+    sizeof(qualified) / sizeof(*qualified)
+  );
+}
+
+static void actual_nul_is_not_end_of_input(void) {
+  const char source[] = {'\0', 'x'};
+  Input input = input_for(source, sizeof(source));
+  Scanner scanner = {0};
+  bool valid[ERROR_SENTINEL + 1] = {0};
+  valid[END_OF_INPUT] = true;
+  assert(
+    !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+  );
+}
+
+static void scanner_lifecycle_releases_allocations(void) {
+  for (unsigned i = 0; i < SCANNER_LIFECYCLE_ITERATIONS; ++i) {
+    Scanner *scanner = tree_sitter_gawk_external_scanner_create();
+    assert(scanner && scanner->literal == NONE && scanner->shadows == 0);
+    tree_sitter_gawk_external_scanner_destroy(scanner);
+  }
+#ifdef TREE_SITTER_REUSE_ALLOCATOR
+  assert(live_allocations == 0);
+#endif
+}
+
+int main(void) {
+  resumed_tokens_match_uninterrupted_scanning();
+  literal_break_preserves_name_context_without_consuming_lf();
+  failed_scan_preserves_saved_context();
+  completed_constructs_leave_no_scanner_state();
+  actual_nul_is_not_end_of_input();
+  scanner_lifecycle_releases_allocations();
+  puts(
+    "scanner: resume, failed scan, reset, completed state, and NUL/EOF checks passed"
+  );
+  return 0;
+}

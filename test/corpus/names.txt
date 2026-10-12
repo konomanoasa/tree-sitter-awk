@@ -1,0 +1,382 @@
+==================
+GNU builtin shadowed by a parameter
+==================
+function f(systime) {return systime (3)}
+BEGIN {print systime (3)}
+---
+
+(program
+  (function_definition
+    name: (identifier)
+    parameters: (parameter_list (identifier))
+    body: (block
+      body: (statement_list
+        (return_statement
+          value: (concatenation_expression
+            left: (identifier)
+            right: (parenthesized_expression (number)))))))
+  (rule
+    pattern: (special_pattern)
+    action: (block
+      body: (statement_list
+        (print_statement
+          arguments: (output_arguments
+            argument: (function_call
+              name: (builtin_function)
+              arguments: (argument_list argument: (number)))))))))
+
+==================
+Directive text keeps ordinary backslashes and escaped quote distinct
+==================
+@ include "a\qb\"c\
+d"
+@nsinclude ""
+@load _"extension"
+---
+
+(program
+  (include_directive path: (directive_string
+    (directive_text) (escape_sequence) (directive_text)
+    (line_continuation) (directive_text)))
+  (nsinclude_directive path: (directive_string))
+  (load_directive path: (directive_string (directive_text))))
+
+==================
+Directive backslash pair cannot escape the following quote
+==================
+@load "a\\"
+@include "b\\\"c"
+---
+
+(program
+  (load_directive path: (directive_string (directive_text)))
+  (include_directive path: (directive_string
+    (directive_text) (escape_sequence) (directive_text))))
+
+==================
+Directive backslash pair cannot continue the line
+:error
+==================
+@include "a\\
+b"
+---
+
+==================
+Directive name is not a prefix of a longer name
+:error
+==================
+@namespace_"lib"
+---
+
+==================
+Qualified function definition and call
+==================
+function lib::f(x) {return x}
+BEGIN {print lib::f(3), lib::f (3)}
+---
+
+(program
+  (function_definition
+    name: (qualified_name namespace: (identifier) name: (identifier))
+    parameters: (parameter_list (identifier))
+    body: (block body: (statement_list (return_statement value: (identifier)))))
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments
+        argument: (function_call
+          name: (qualified_name namespace: (identifier) name: (identifier))
+          arguments: (argument_list argument: (number)))
+        argument: (concatenation_expression
+          left: (qualified_name namespace: (identifier) name: (identifier))
+          right: (parenthesized_expression (number)))))))))
+
+==================
+GNU keyword as explicit namespace component
+==================
+BEGIN {print switch::x, lib::switch}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments
+        argument: (qualified_name namespace: (identifier) name: (identifier))
+        argument: (qualified_name namespace: (identifier) name: (identifier))))))))
+
+==================
+Standard builtin cannot be qualified
+:error
+==================
+BEGIN {print lib::length(1)}
+---
+
+==================
+Qualified name cannot contain a gap after separator
+:error
+==================
+BEGIN {print lib:: x}
+---
+
+==================
+Underscore component before a quote is not a translation marker
+==================
+BEGIN {print lib::_"x"}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments
+        argument: (concatenation_expression
+          left: (qualified_name namespace: (identifier) name: (identifier))
+          right: (string (string_content)))))))))
+
+==================
+Qualified parameter is rejected
+:error
+==================
+function f(lib::x) {}
+---
+
+==================
+GNU keyword cannot be namespace directive operand
+:error
+==================
+@namespace "switch"
+---
+
+==================
+GNU builtin can be namespace directive operand according to the manual
+==================
+@namespace "gensub"
+---
+
+(program (namespace_directive name: (directive_string (directive_text))))
+
+==================
+Directive requires a separator or EOF after the operand
+:error
+==================
+@namespace "lib" BEGIN {}
+---
+
+==================
+Namespace changes builtin classification and explicit awk qualifier restores it
+==================
+@namespace "lib"
+BEGIN {print systime (3), awk::systime (3)}
+---
+
+(program
+  (namespace_directive
+    name: (directive_string (directive_text)))
+  (rule
+    pattern: (special_pattern)
+    action: (block
+      body: (statement_list
+        (print_statement
+          arguments: (output_arguments
+            argument: (concatenation_expression
+              left: (identifier)
+              right: (parenthesized_expression (number)))
+            argument: (function_call
+              name: (qualified_name
+                namespace: (identifier)
+                name: (builtin_function))
+              arguments: (argument_list argument: (number)))))))))
+
+==================
+Awk-qualified GNU builtin remains shadowed by a parameter
+==================
+@namespace "lib"
+function f(systime) {return awk::systime (3)}
+BEGIN {print awk::systime (3)}
+---
+(program
+ (namespace_directive name: (directive_string (directive_text)))
+ (function_definition name: (identifier) parameters: (parameter_list (identifier))
+  body: (block body: (statement_list (return_statement value:
+   (concatenation_expression left: (qualified_name namespace: (identifier) name: (identifier))
+    right: (parenthesized_expression (number)))))))
+ (rule pattern: (special_pattern) action: (block body: (statement_list
+  (print_statement arguments: (output_arguments argument: (function_call
+   name: (qualified_name namespace: (identifier) name: (builtin_function))
+   arguments: (argument_list argument: (number)))))))))
+
+==================
+Directive names remain ordinary outside a namespace operand
+==================
+include = include::namespace
+---
+(program (rule pattern: (assignment_expression left: (identifier)
+ right: (qualified_name namespace: (identifier) name: (identifier)))))
+
+==================
+Directive name include cannot be a namespace operand
+:error
+==================
+@namespace "include"
+---
+
+==================
+Directive name nsinclude cannot be a namespace operand
+:error
+==================
+@namespace "nsinclude"
+---
+
+==================
+Directive name load cannot be a namespace operand
+:error
+==================
+@namespace "load"
+---
+
+==================
+Directive name namespace cannot be a namespace operand
+:error
+==================
+@namespace "namespace"
+---
+
+==================
+Directive names are ordinary in unqualified calls and non-awk components
+==================
+include(1)
+lib::load
+@include::f(1)
+@lib::namespace(1)
+@nsinclude_fn(1)
+awk::include_suffix
+---
+(program
+ (rule pattern: (function_call name: (identifier) arguments: (argument_list argument: (number))))
+ (rule pattern: (qualified_name namespace: (identifier) name: (identifier)))
+ (rule pattern: (indirect_function_call name: (qualified_name namespace: (identifier) name: (identifier)) arguments: (argument_list argument: (number))))
+ (rule pattern: (indirect_function_call name: (qualified_name namespace: (identifier) name: (identifier)) arguments: (argument_list argument: (number))))
+ (rule pattern: (indirect_function_call name: (identifier) arguments: (argument_list argument: (number))))
+ (rule pattern: (qualified_name namespace: (identifier) name: (identifier))))
+
+==================
+Explicit awk component reserves directive name include
+:error
+==================
+awk::include
+---
+
+==================
+Directive name include cannot become an indirect call
+:error
+==================
+BEGIN {@include(1)}
+---
+
+==================
+Explicit awk component reserves directive name load
+:error
+==================
+awk::load
+---
+
+==================
+Directive name load cannot become an indirect call
+:error
+==================
+BEGIN {@load(1)}
+---
+
+==================
+Explicit awk component reserves directive name namespace
+:error
+==================
+awk::namespace
+---
+
+==================
+Directive name namespace cannot become an indirect call
+:error
+==================
+BEGIN {@namespace(1)}
+---
+
+==================
+Explicit awk component reserves directive name nsinclude
+:error
+==================
+awk::nsinclude
+---
+
+==================
+Directive name nsinclude cannot become an indirect call
+:error
+==================
+BEGIN {@nsinclude(1)}
+---
+
+==================
+Parameter cannot unreserve an explicit awk directive component
+:error
+==================
+function f(include) {return awk::include}
+---
+
+==================
+Parameter cannot turn a directive into an indirect call
+:error
+==================
+function f(include) {return @include(1)}
+---
+
+==================
+Continuation after at sign does not unreserve a directive name
+:error
+==================
+BEGIN {@\
+include(1)}
+---
+
+==================
+Parameter cannot unreserve explicit awk keyword switch
+:error
+==================
+function f(switch) {return awk::switch}
+---
+
+==================
+Parameter cannot unreserve explicit awk keyword case
+:error
+==================
+function f(case) {return awk::case}
+---
+
+==================
+Parameter cannot unreserve explicit awk keyword default
+:error
+==================
+function f(default) {return awk::default}
+---
+
+==================
+Parameter cannot unreserve explicit awk keyword BEGINFILE
+:error
+==================
+function f(BEGINFILE) {return awk::BEGINFILE}
+---
+
+==================
+Parameter cannot unreserve explicit awk keyword ENDFILE
+:error
+==================
+function f(ENDFILE) {return awk::ENDFILE}
+---
+
+==================
+Keyword parameter shadows a simple name and leaves another namespace ordinary
+==================
+function f(switch) {return switch lib::switch}
+---
+(program (function_definition name: (identifier)
+ parameters: (parameter_list (identifier))
+ body: (block body: (statement_list (return_statement
+  value: (concatenation_expression left: (identifier)
+   right: (qualified_name namespace: (identifier) name: (identifier))))))))

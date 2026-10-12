@@ -1,0 +1,184 @@
+==================
+GNU numeric forms and suffix separation
+==================
+BEGIN {print 018, 021, 0xff, 0x1.fp2, 1.0f, .5e2}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments
+        argument: (number)
+        argument: (number)
+        argument: (number)
+        argument: (number)
+        argument: (concatenation_expression left: (number) right: (identifier))
+        argument: (number)))))))
+
+==================
+Hexadecimal radix point requires exponent
+:error
+==================
+BEGIN {print 0x1.2}
+---
+
+==================
+Escapes with fixed digit limits, missing digits, and unknown letters
+==================
+BEGIN {print "\1234\x414\u3042z\x\u\q\0\n"}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments argument: (string
+        (escape_sequence) (string_content)
+        (escape_sequence) (string_content)
+        (escape_sequence) (string_content)
+        (escape_sequence) (escape_sequence) (escape_sequence)
+        (escape_sequence) (escape_sequence))))))))
+
+==================
+Localized string requires adjacency
+==================
+BEGIN {print _"日本語", _ "text"}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments
+        argument: (localized_string (string (string_content)))
+        argument: (concatenation_expression
+          left: (identifier) right: (string (string_content)))))))))
+
+==================
+Literal continuations preserve text and split numeric escapes
+==================
+BEGIN {print "a\
+b\1\
+2"}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments argument: (string
+        (string_content) (line_continuation) (string_content)
+        (escape_sequence fragment: (escape_fragment) (line_continuation) fragment: (escape_fragment)))))))))
+
+==================
+Layout continuations do not join identifiers or numbers
+==================
+BEGIN {print a\
+b, 1\
+2}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments
+        argument: (concatenation_expression left: (identifier) (line_continuation) right: (identifier))
+        argument: (concatenation_expression left: (number) (line_continuation) right: (number))))))))
+
+==================
+Raw line feed is not string content
+:error
+==================
+BEGIN {print "a
+b"}
+---
+
+==================
+Division has priority over a concatenated regexp
+==================
+BEGIN {print 6/2}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments
+        argument: (binary_expression left: (number) right: (number))))))))
+
+==================
+Slash before equals starts a regexp unless it assigns
+==================
+BEGIN {print 1 /=x/, a /= 2}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments
+        argument: (concatenation_expression
+          left: (number)
+          right: (regexp pattern: (regular_expression (regex_branch (regex_character (regex_text)) (regex_character (regex_text))))))
+        argument: (assignment_expression left: (identifier) right: (number))))))))
+
+==================
+Incomplete hexadecimal exponent cannot fall back to concatenation
+:error
+==================
+0x1.8p
+---
+
+==================
+Field index preserves the documented localized string marker
+==================
+$_"x"
+---
+(program (rule pattern: (field_reference index: (localized_string (string (string_content))))))
+
+==================
+CR between backslash and LF is not a layout continuation
+:error
+==================
+BEGIN {print 1\
++2}
+---
+
+==================
+CR between backslash and LF is not a string continuation
+:error
+==================
+BEGIN {print "a\
+b"}
+---
+
+==================
+CR between backslash and LF is not a regexp continuation
+:error
+==================
+/a\
+b/
+---
+
+==================
+Numbers preserve following identifiers and updates according to the manual
+==================
+1p5
+08X
+0p++
+---
+(program
+ (rule pattern: (concatenation_expression left: (number) right: (identifier)))
+ (rule pattern: (concatenation_expression left: (number) right: (identifier)))
+ (rule pattern: (concatenation_expression left: (number) right: (update_expression operand: (identifier)))))
+
+==================
+Unterminated directive operand remains an error before later rules
+:error
+==================
+@include "missing
+BEGIN {x /= 2}
+---
+
+==================
+Unterminated regexp remains an error before later rules
+:error
+==================
+/broken
+x /= 2
+---

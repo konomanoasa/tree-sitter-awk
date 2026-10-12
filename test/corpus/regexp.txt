@@ -1,0 +1,684 @@
+==================
+Anchor and host delimiter leaves preserve their spelling and byte ranges
+:cst
+==================
+/^a$/
+---
+
+0:0 - 0:5   program
+0:0 - 0:5     rule
+0:0 - 0:5       pattern: regexp
+0:0 - 0:1         "/"
+0:1 - 0:4         pattern: regular_expression
+0:1 - 0:4           regex_branch
+0:1 - 0:2             regex_anchor
+0:1 - 0:2               "^"
+0:2 - 0:3             regex_character
+0:2 - 0:3               regex_text `a`
+0:3 - 0:4             regex_anchor
+0:3 - 0:4               "$"
+0:4 - 0:5         "/"
+
+==================
+Numeric escape creates a quantifier
+==================
+/a\x2bb/
+---
+
+(program
+  (rule
+    pattern: (regexp
+      pattern: (regular_expression
+        (regex_branch
+          (regex_repetition
+            operand: (regex_character (regex_text))
+            quantifier: (regex_quantifier
+              operator: (regex_operator escape: (escape_sequence))))
+          (regex_character (regex_text)))))))
+
+==================
+Numeric escapes create group delimiters
+==================
+/\x28a\x29/
+---
+
+(program
+  (rule
+    pattern: (regexp
+      pattern: (regular_expression
+        (regex_branch
+          (regex_group
+            opening: (regex_delimiter escape: (escape_sequence))
+            pattern: (regular_expression (regex_branch (regex_character (regex_text))))
+            closing: (regex_delimiter escape: (escape_sequence))))))))
+
+==================
+Escaped backslash and following source form a GNU character class
+==================
+/\x5cw/
+---
+
+(program
+  (rule
+    pattern: (regexp
+      pattern: (regular_expression
+        (regex_branch
+          (regex_character_class escape: (escape_sequence) (regex_text)))))))
+
+==================
+Escaped backslash quotes the backslash of a following regexp escape
+==================
+/\x5c\./
+/a\x5c\//
+---
+
+(program
+  (rule
+    pattern: (regexp
+      pattern: (regular_expression
+        (regex_branch
+          (regex_character escape: (escape_sequence) (regex_text))
+          (regex_wildcard)))))
+  (rule
+    pattern: (regexp
+      pattern: (regular_expression
+        (regex_branch
+          (regex_character (regex_text))
+          (regex_character escape: (escape_sequence) (regex_text))
+          (regex_character (regex_text)))))))
+
+==================
+Escaped backslash pairs with the first backslash of a backslash pair
+==================
+/\x5c\\./
+/[\x5c\\]]/
+---
+
+(program
+  (rule pattern: (regexp pattern: (regular_expression (regex_branch
+    (regex_character escape: (escape_sequence) (regex_text))
+    (regex_character (regex_text) (regex_text))))))
+  (rule pattern: (regexp pattern: (regular_expression (regex_branch
+    (regex_bracket_expression opening: (regex_delimiter)
+      (regex_character escape: (escape_sequence) (regex_text))
+      (regex_character (regex_text) (regex_text))
+      closing: (regex_delimiter)))))))
+
+==================
+Backslash left by a backslash pair cannot precede the closing slash
+:error
+==================
+/\x5c\\/
+---
+
+==================
+Escaped backslash cannot precede the closing slash
+:error
+==================
+x = /a\x5c/ / 1
+---
+
+==================
+Backslash left by a backslash pair escapes a closing bracket
+:error
+==================
+/[\x5c\\]/
+---
+
+==================
+Raw host delimiter state is separate from decoded bracket state
+==================
+/[a\x5d]/
+---
+
+(program
+  (rule
+    pattern: (regexp
+      pattern: (regular_expression
+        (regex_branch
+          (regex_bracket_expression
+            opening: (regex_delimiter)
+            (regex_character (regex_text))
+            closing: (regex_delimiter escape: (escape_sequence)))
+          (regex_character (regex_text)))))))
+
+==================
+Numeric escape retains fragments and line continuation
+==================
+/a\x2\
+b/
+---
+
+(program
+  (rule
+    pattern: (regexp
+      pattern: (regular_expression
+        (regex_branch
+          (regex_repetition
+            operand: (regex_character (regex_text))
+            quantifier: (regex_quantifier
+              operator: (regex_operator
+                escape: (escape_sequence
+                  fragment: (escape_fragment)
+                  (line_continuation)
+                  fragment: (escape_fragment))))))))))
+
+==================
+Empty regexp has no pattern
+==================
+//
+---
+(program (rule pattern: (regexp)))
+
+==================
+Empty groups and branches preserve only their source delimiters
+==================
+/|()||/
+---
+(program (rule pattern: (regexp pattern: (regular_expression
+  (regex_operator)
+  (regex_branch (regex_group opening: (regex_delimiter) closing: (regex_delimiter)))
+  (regex_operator) (regex_operator)))))
+
+==================
+Raw and GNU anchors are distinct from backspace and character classes
+==================
+/^.$\y\B\<\>\`\'\b\w\W\s\S)/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_anchor) (regex_wildcard) (regex_anchor)
+  (regex_anchor escape: (escape_sequence)) (regex_anchor escape: (escape_sequence))
+  (regex_anchor escape: (escape_sequence)) (regex_anchor escape: (escape_sequence))
+  (regex_anchor escape: (escape_sequence)) (regex_anchor escape: (escape_sequence))
+  (regex_character escape: (escape_sequence))
+  (regex_character_class escape: (escape_sequence)) (regex_character_class escape: (escape_sequence))
+  (regex_character_class escape: (escape_sequence)) (regex_character_class escape: (escape_sequence))
+  (regex_character (regex_text)))))))
+
+==================
+Repeated quantifiers retain their own non-greedy modifiers
+==================
+/a+??**/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_repetition operand: (regex_character (regex_text))
+    quantifier: (regex_quantifier operator: (regex_operator) modifier: (regex_repetition_modifier))
+    quantifier: (regex_quantifier operator: (regex_operator))
+    quantifier: (regex_quantifier operator: (regex_operator))
+    quantifier: (regex_quantifier operator: (regex_operator))))))))
+
+==================
+Intervals preserve minimum maximum and modifier without synthesized counts
+==================
+/a{0}{255}{1,}{1,2}?/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_repetition operand: (regex_character (regex_text))
+    quantifier: (regex_quantifier interval: (regex_interval opening: (regex_delimiter) minimum: (regex_count (regex_digits)) closing: (regex_delimiter)))
+    quantifier: (regex_quantifier interval: (regex_interval opening: (regex_delimiter) minimum: (regex_count (regex_digits)) closing: (regex_delimiter)))
+    quantifier: (regex_quantifier interval: (regex_interval opening: (regex_delimiter) minimum: (regex_count (regex_digits)) closing: (regex_delimiter)))
+    quantifier: (regex_quantifier interval: (regex_interval opening: (regex_delimiter) minimum: (regex_count (regex_digits)) maximum: (regex_count (regex_digits)) closing: (regex_delimiter)) modifier: (regex_repetition_modifier))))))))
+
+==================
+Brace without an immediately following digit remains literal
+==================
+/a{,2}{b}{ 2}/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text))
+  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text))
+  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text)))))))
+
+==================
+Numeric escapes construct an interval and its counts
+==================
+/a\x7b\061\x2c\062\x7d/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_repetition operand: (regex_character (regex_text))
+    quantifier: (regex_quantifier interval: (regex_interval
+      opening: (regex_delimiter escape: (escape_sequence))
+      minimum: (regex_count escape: (escape_sequence))
+      escape: (escape_sequence)
+      maximum: (regex_count escape: (escape_sequence))
+      closing: (regex_delimiter escape: (escape_sequence))))))))))
+
+==================
+Range endpoints and bracket edge literals keep distinct owners
+==================
+/[^]a-c\w-]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_character (regex_text))
+    (regex_range start: (regex_character (regex_text)) operator: (regex_operator) end: (regex_character (regex_text)))
+    (regex_character escape: (escape_sequence)) (regex_character (regex_text))
+    closing: (regex_delimiter)))))))
+
+==================
+Only the first caret is bracket negation
+==================
+/[^^]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter) (regex_character (regex_text)) closing: (regex_delimiter)))))))
+
+==================
+POSIX classes collating symbols and equivalence classes retain payloads
+==================
+/[[:alpha:][.é.][=a=]\/]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_collating_symbol opening: (regex_delimiter) payload: (regex_collating_element (regex_text)) closing: (regex_delimiter))
+    (regex_equivalence_class opening: (regex_delimiter) payload: (regex_collating_element (regex_text)) closing: (regex_delimiter))
+    (regex_character escape: (escape_sequence)) closing: (regex_delimiter)))))))
+
+==================
+Character class closing marker may be a numeric escape
+==================
+/[[:alpha\x3a]/]/
+---
+
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_posix_class
+      opening: (regex_delimiter)
+      payload: (regex_class_name (regex_text))
+      closing: (regex_delimiter escape: (escape_sequence)))
+    (regex_character (regex_text))
+    closing: (regex_delimiter)))))))
+
+==================
+Collating form closing bracket may be a numeric escape
+==================
+/[[.a.\x5d]/
+---
+
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_collating_symbol
+      opening: (regex_delimiter)
+      payload: (regex_collating_element (regex_text))
+      closing: (regex_delimiter escape: (escape_sequence)))
+    closing: (regex_delimiter)))))))
+
+==================
+Outer bracket after an equivalence class may be a numeric escape
+==================
+/[[=a=]\x5d/
+---
+
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_equivalence_class
+      opening: (regex_delimiter)
+      payload: (regex_collating_element (regex_text))
+      closing: (regex_delimiter))
+    closing: (regex_delimiter escape: (escape_sequence))))))))
+
+==================
+Raw slash after a collating form ends the host regexp
+:error
+==================
+/[[.a.]/]/
+---
+
+==================
+Raw slash after an equivalence class ends the host regexp
+:error
+==================
+/[[=a=]/]/
+---
+
+==================
+Escaped outer bracket after a character class leaves the host regexp open
+:error
+==================
+/[[:alpha:]\x5d/
+---
+
+==================
+Collating symbol can be a range endpoint
+==================
+/[[.a.]-[.c.]]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_range
+      start: (regex_collating_symbol opening: (regex_delimiter) payload: (regex_collating_element (regex_text)) closing: (regex_delimiter))
+      operator: (regex_operator)
+      end: (regex_collating_symbol opening: (regex_delimiter) payload: (regex_collating_element (regex_text)) closing: (regex_delimiter)))
+    closing: (regex_delimiter)))))))
+
+==================
+Collating forms read the backslash of an undecoded escape literally
+==================
+/[[.\.]-a][[=\=]][[.\x5c.]]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_range
+      start: (regex_collating_symbol opening: (regex_delimiter) payload: (regex_collating_element (regex_text)) closing: (regex_delimiter))
+      operator: (regex_operator)
+      end: (regex_character (regex_text)))
+    closing: (regex_delimiter))
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_equivalence_class opening: (regex_delimiter) payload: (regex_collating_element (regex_text)) closing: (regex_delimiter))
+    closing: (regex_delimiter))
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_collating_symbol opening: (regex_delimiter) payload: (regex_collating_element escape: (escape_sequence)) closing: (regex_delimiter))
+    closing: (regex_delimiter)))))))
+
+==================
+Undecoded escape is two collating characters
+:error
+==================
+/[[.\q.]]/
+---
+
+==================
+Undecoded escape cannot spell a character class name
+:error
+==================
+/[[:alp\ha:]]/
+---
+
+==================
+Numeric backslash is not part of a character class name
+:error
+==================
+/[[:\x5calpha:]]/
+---
+
+==================
+UTF-8 byte escapes form one character and invalid bytes retain their source
+==================
+/\xc3\xa9\303\251\xffa/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_character escape: (escape_sequence) escape: (escape_sequence))
+  (regex_character escape: (escape_sequence) escape: (escape_sequence))
+  (regex_character escape: (escape_sequence)) (regex_character (regex_text)))))))
+
+==================
+Unencodable Unicode escapes are literal question marks
+==================
+/a\u110000\ud800/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_character (regex_text)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)))))))
+
+==================
+An interval cannot exceed the MinRX count limit
+:error
+==================
+/a{256}/
+---
+
+==================
+Interval maximum cannot be less than its minimum
+:error
+==================
+/a{2,1}/
+---
+
+==================
+An opened interval cannot return to literal braces
+:error
+==================
+/a{1x}/
+---
+
+==================
+An interval requires a closing brace
+:error
+==================
+/a{2/
+---
+
+==================
+Quantifiers require a preceding atom
+:error
+==================
+/*a/
+---
+
+==================
+Ranges cannot reuse an endpoint
+:error
+==================
+/[a-c-e]/
+---
+
+==================
+Three consecutive hyphens do not form a range chain
+:error
+==================
+/[a---c]/
+---
+
+==================
+Hyphen after a range operator ends the range
+==================
+/[!--x][*---]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_range start: (regex_character (regex_text)) operator: (regex_operator) end: (regex_character (regex_text)))
+    (regex_character (regex_text))
+    closing: (regex_delimiter))
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_range start: (regex_character (regex_text)) operator: (regex_operator) end: (regex_character (regex_text)))
+    (regex_character (regex_text))
+    closing: (regex_delimiter)))))))
+
+==================
+Unknown POSIX character class is rejected
+:error
+==================
+/[[:unknown:]]/
+---
+
+==================
+MinRX collating elements are single characters
+:error
+==================
+/[[.ch.]]/
+---
+
+==================
+Character class is not a range endpoint
+:error
+==================
+/[a-[:digit:]]/
+---
+
+==================
+All twelve POSIX character classes are supported
+==================
+/[[:alnum:][:alpha:][:blank:][:cntrl:][:digit:][:graph:][:lower:][:print:][:punct:][:space:][:upper:][:xdigit:]]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    closing: (regex_delimiter)))))))
+
+==================
+Unmatched raw closing bracket changes the later host slash boundary
+:error
+==================
+/]x[/]/
+---
+
+==================
+Later raw brackets do not restore slash protection after an unmatched closing
+:error
+==================
+/][[][/]/
+---
+
+==================
+Leading literal closing bracket does not cancel a raw bracket
+==================
+/[]x[/]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_bracket_expression opening: (regex_delimiter)
+  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text))
+  closing: (regex_delimiter)))))))
+
+==================
+Reversed literal range endpoints are rejected
+:error
+==================
+/[z-a]/
+---
+
+==================
+Reversed escaped range endpoints are rejected
+:error
+==================
+/[\x7a-\u0061]/
+---
+
+==================
+Reversed collating range endpoints are rejected
+:error
+==================
+/[[.z.]-[.a.]]/
+---
+
+==================
+Reversed Unicode range endpoints are rejected
+:error
+==================
+/[ê-é]/
+---
+
+==================
+Unicode range endpoints use character order
+==================
+/[é-ê]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_bracket_expression opening: (regex_delimiter)
+  (regex_range start: (regex_character (regex_text)) operator: (regex_operator) end: (regex_character (regex_text)))
+  closing: (regex_delimiter)))))))
+
+==================
+Hyphen after a character class is a literal member
+==================
+/[[:alpha:]-a]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_bracket_expression opening: (regex_delimiter)
+  (regex_posix_class opening: (regex_delimiter) payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+  (regex_character (regex_text)) (regex_character (regex_text)) closing: (regex_delimiter)))))))
+
+==================
+Single-character equivalence class can start a range
+==================
+/[[=a=]-z]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_bracket_expression opening: (regex_delimiter)
+  (regex_range start: (regex_equivalence_class opening: (regex_delimiter)
+   payload: (regex_collating_element (regex_text)) closing: (regex_delimiter))
+   operator: (regex_operator) end: (regex_character (regex_text)))
+  closing: (regex_delimiter)))))))
+
+==================
+Equivalence class cannot end a range
+:error
+==================
+/[a-[=z=]]/
+---
+
+==================
+Numeric backslash uses the documented GNU boundary operators
+==================
+/\x5cb\x5cy/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_character escape: (escape_sequence) (regex_text))
+ (regex_anchor escape: (escape_sequence) (regex_text)))))))
+
+==================
+GNU boundary escape is a literal character within brackets according to the manual
+==================
+/[\y]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_bracket_expression opening: (regex_delimiter)
+  (regex_character escape: (escape_sequence)) closing: (regex_delimiter)))))))
+
+==================
+Nested raw class openings require an equal number of host closings
+:error
+==================
+/[\x5c[:\x5c[:a]]/
+---
+
+==================
+Nested raw class depth is independent of decoded bracket structure
+==================
+/[\x5c[:\x5c[:a]]]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_bracket_expression opening: (regex_delimiter)
+  (regex_character escape: (escape_sequence) (regex_text))
+  (regex_character (regex_text))
+  (regex_character escape: (escape_sequence) (regex_text))
+  (regex_character (regex_text)) (regex_character (regex_text)) closing: (regex_delimiter))
+ (regex_character (regex_text)) (regex_character (regex_text)))))))
+
+==================
+Raw class openings can restore slash protection after an unmatched closing
+==================
+/]x[:[a/]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_character (regex_text)) (regex_character (regex_text))
+ (regex_bracket_expression opening: (regex_delimiter)
+  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text))
+  closing: (regex_delimiter)))))))
+
+==================
+Continuation between a raw bracket and colon does not nest the host bracket
+:error
+==================
+/[[\
+:alpha:]/]/
+---
+
+==================
+Continuation between a raw bracket and colon does not restore a negative host depth
+:error
+==================
+/]x[\
+:[a/]/
+---
+
+==================
+Continuation after an opening bracket keeps the leading literal closing bracket
+==================
+/[\
+]a/]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+ (regex_bracket_expression opening: (regex_delimiter) (line_continuation)
+  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text))
+  closing: (regex_delimiter)))))))

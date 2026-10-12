@@ -1,0 +1,29 @@
+{
+  "$schema": "https://tree-sitter.github.io/tree-sitter/assets/schemas/config.schema.json",
+  "grammars": [
+    {
+      "name": "gawk",
+      "title": "GNU Awk",
+      "scope": "source.gawk",
+      "path": ".",
+      "file-types": ["awk"],
+      "injection-regex": "^(gawk|awk)$",
+      "highlights": "queries/highlights.scm",
+      "external-files": ["src/tokens.h"]
+    }
+  ],
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT",
+    "description": "Tree-sitter grammar for GNU Awk 5.4.1.",
+    "links": { "repository": "https://github.com/konomanoasa/tree-sitter-gawk" }
+  },
+  "bindings": {
+    "c": false,
+    "go": false,
+    "node": false,
+    "python": false,
+    "rust": true,
+    "swift": false
+  }
+}

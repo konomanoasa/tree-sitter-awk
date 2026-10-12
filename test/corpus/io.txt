@@ -1,0 +1,271 @@
+==================
+Getline consumes target before considering a following update
+==================
+getline x++ y
+---
+
+(program (rule pattern: (concatenation_expression left: (getline_expression target: (identifier)) right: (update_expression operand: (identifier)))))
+
+==================
+Getline leaves a qualified call to concatenation
+==================
+getline lib::f(1)
+getline awk::systime()
+---
+
+(program
+  (rule pattern: (concatenation_expression left: (getline_expression)
+    right: (function_call name: (qualified_name namespace: (identifier) name: (identifier))
+      arguments: (argument_list argument: (number)))))
+  (rule pattern: (concatenation_expression left: (getline_expression)
+    right: (function_call name: (qualified_name namespace: (identifier) name: (builtin_function))
+      arguments: (argument_list)))))
+
+==================
+File source includes addition but leaves concatenation outside
+==================
+getline x < 1+1 "g"
+---
+
+(program (rule pattern: (concatenation_expression left: (getline_expression target: (identifier) source: (binary_expression left: (number) right: (number))) right: (string (string_content)))))
+
+==================
+Pipe binds within a conditional alternative
+==================
+x=1?"a":"b"|getline v
+---
+
+(program (rule pattern: (assignment_expression left: (identifier) right: (conditional_expression condition: (number) consequence: (string (string_content)) alternative: (getline_expression source: (string (string_content)) target: (identifier))))))
+
+==================
+File operator after pipe input is a comparison
+==================
+"cmd"|getline x<y
+---
+
+(program (rule pattern: (binary_expression left: (getline_expression source: (string (string_content)) target: (identifier)) right: (identifier))))
+
+==================
+Comparison after file source remains outside
+==================
+getline < a < b
+---
+
+(program (rule pattern: (binary_expression left: (getline_expression source: (identifier)) right: (identifier))))
+
+==================
+Grouped getline can be a field index
+==================
+$(getline)
+---
+
+(program (rule pattern: (field_reference index: (parenthesized_expression (getline_expression)))))
+
+==================
+Pipes associate left
+==================
+"cmd"|getline x|getline y
+---
+
+(program (rule pattern: (getline_expression source: (getline_expression source: (string (string_content)) target: (identifier)) target: (identifier))))
+
+==================
+Parentheses around all output arguments belong to the argument list
+==================
+BEGIN {print (a)}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement arguments: (output_arguments argument: (identifier)))))))
+
+==================
+Multiple parenthesized output arguments
+==================
+BEGIN {print (a,b)}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement arguments: (output_arguments argument: (identifier) argument: (identifier)))))))
+
+==================
+Arithmetic after closing parenthesis retains expression grouping
+==================
+BEGIN {print (a)+b}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement arguments: (output_arguments argument: (binary_expression left: (parenthesized_expression (identifier)) right: (identifier))))))))
+
+==================
+Comma after closing parenthesis retains expression grouping
+==================
+BEGIN {print (a),b}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement arguments: (output_arguments argument: (parenthesized_expression (identifier)) argument: (identifier)))))))
+
+==================
+Output redirection belongs to the statement
+==================
+BEGIN {print a > b}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement arguments: (output_arguments argument: (identifier)) redirect: (output_redirection destination: (identifier)))))))
+
+==================
+Conditional destination requires parentheses
+==================
+BEGIN {print a > (b?c:d)}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement arguments: (output_arguments argument: (identifier)) redirect: (output_redirection destination: (parenthesized_expression (conditional_expression condition: (identifier) consequence: (identifier) alternative: (identifier)))))))))
+
+==================
+Printf can syntactically omit arguments
+==================
+BEGIN {printf}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (printf_statement)))))
+
+==================
+Print can omit arguments before coprocess redirection
+==================
+BEGIN {print |& cmd}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement redirect: (output_redirection destination: (identifier)))))))
+
+==================
+Array membership resolves an apparent output argument list
+==================
+BEGIN {print (a,b) in arr}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement arguments: (output_arguments argument: (membership_expression index: (index_list index: (identifier) index: (identifier)) array: (identifier))))))))
+
+==================
+Getline does not fall back to omitting an available target
+:error
+==================
+getline x++
+---
+
+==================
+Pipe input keyword is not a prefix of a longer name
+:error
+==================
+"cmd" | getline_x
+---
+
+==================
+Getline cannot be a direct field index
+:error
+==================
+$getline
+---
+
+==================
+Empty parenthesized output arguments are rejected
+:error
+==================
+BEGIN {print ()}
+---
+
+==================
+Output destination cannot be an unparenthesized conditional
+:error
+==================
+BEGIN {print a > b?c:d}
+---
+
+==================
+Output destination keeps concatenation and input pipes
+==================
+BEGIN {print a > b c | getline d}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (print_statement arguments: (output_arguments argument: (identifier)) redirect: (output_redirection destination: (getline_expression source: (concatenation_expression left: (identifier) right: (identifier)) target: (identifier))))))))
+
+==================
+Output destination excludes lower-precedence operators
+:error
+==================
+BEGIN {print a > b ~ c}
+---
+
+==================
+Output destination is not a comparison operand
+:error
+==================
+BEGIN {print a > "b" > "c"}
+---
+
+==================
+Comparisons do not chain through an input pipe command
+:error
+==================
+a < b < c | getline
+---
+
+==================
+Typed regexp is not an output argument
+:error
+==================
+BEGIN {print @/a/}
+---
+
+==================
+Comparison and input pipe associate left according to the manual
+==================
+a < b | getline x
+---
+(program (rule pattern: (getline_expression
+ source: (binary_expression left: (identifier) right: (identifier)) target: (identifier))))
+
+==================
+Pipe input must be grouped before multiplying its result
+:error
+==================
+"c" | getline * 2
+---
+
+==================
+Pipe input must be grouped before concatenating its result
+:error
+==================
+"c" | getline z "s"
+---
+
+==================
+Output subscripts admit the documented arbitrary expressions
+==================
+BEGIN {print a[1 > 2], a["c" | getline]}
+---
+(program (rule pattern: (special_pattern) action: (block body: (statement_list
+ (print_statement arguments: (output_arguments
+  argument: (subscript_expression array: (identifier) subscript: (subscript_list
+   index: (binary_expression left: (number) right: (number))))
+  argument: (subscript_expression array: (identifier) subscript: (subscript_list
+   index: (getline_expression source: (string (string_content)))))))))))
+
+==================
+Postfix field update is not a getline target according to the manual
+:error
+==================
+getline $1++
+---
+
+==================
+Getline field index may contain a parenthesized update
+==================
+getline $(x++)
+---
+(program (rule pattern: (getline_expression
+ target: (field_reference index: (parenthesized_expression (update_expression operand: (identifier)))))))
+
+==================
+Prefix update after a getline field target is a concatenation operand
+==================
+getline $2 ++$2
+---
+(program (rule pattern: (concatenation_expression
+ left: (getline_expression target: (field_reference index: (number)))
+ right: (update_expression operand: (field_reference index: (number))))))

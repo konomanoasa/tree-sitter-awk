@@ -1,0 +1,358 @@
+==================
+Assignment associates right
+==================
+a=b=c
+---
+
+(program (rule pattern: (assignment_expression left: (identifier) right: (assignment_expression left: (identifier) right: (identifier)))))
+
+==================
+Exponent binds above unary and multiplication above addition
+==================
+-2**2 + 3*4
+---
+
+(program (rule pattern: (binary_expression left: (unary_expression operand: (binary_expression left: (number) right: (number))) right: (binary_expression left: (number) right: (number)))))
+
+==================
+Postfix update applies to field reference
+==================
+$x++
+---
+
+(program (rule pattern: (update_expression operand: (field_reference index: (identifier)))))
+
+==================
+Prefix update applies to field reference
+==================
+++$x
+---
+
+(program (rule pattern: (update_expression operand: (field_reference index: (identifier)))))
+
+==================
+Field index unary operand follows unary precedence
+==================
+$-x^2
+$!y++
+$-getline z
+$-x*2
+---
+
+(program
+  (rule pattern: (field_reference index: (unary_expression operand: (binary_expression left: (identifier) right: (number)))))
+  (rule pattern: (field_reference index: (unary_expression operand: (update_expression operand: (identifier)))))
+  (rule pattern: (field_reference index: (unary_expression operand: (getline_expression target: (identifier)))))
+  (rule pattern: (binary_expression left: (field_reference index: (unary_expression operand: (identifier))) right: (number))))
+
+==================
+Multiple subscript lists remain nested
+==================
+a[i,j][k]
+---
+
+(program (rule pattern: (subscript_expression array: (subscript_expression array: (identifier) subscript: (subscript_list index: (identifier) index: (identifier))) subscript: (subscript_list index: (identifier)))))
+
+==================
+Membership index list and subarray
+==================
+(i,j) in a[x]
+---
+
+(program (rule pattern: (membership_expression index: (index_list index: (identifier) index: (identifier)) array: (subscript_expression array: (identifier) subscript: (subscript_list index: (identifier))))))
+
+==================
+Conditional associates right
+==================
+a?b:c?d:e
+---
+
+(program (rule pattern: (conditional_expression condition: (identifier) consequence: (identifier) alternative: (conditional_expression condition: (identifier) consequence: (identifier) alternative: (identifier)))))
+
+==================
+Arithmetic binds above concatenation
+==================
+a+b c*d
+---
+
+(program (rule pattern: (concatenation_expression left: (binary_expression left: (identifier) right: (identifier)) right: (binary_expression left: (identifier) right: (identifier)))))
+
+==================
+Bare length takes no implicit source argument
+==================
+length "abc"
+---
+
+(program (rule pattern: (concatenation_expression left: (function_call name: (builtin_function)) right: (string (string_content)))))
+
+==================
+Indirect call keeps variable name
+==================
+@cb(1)
+---
+
+(program (rule pattern: (indirect_function_call name: (identifier) arguments: (argument_list argument: (number)))))
+
+==================
+Indirect qualified call
+==================
+@lib::cb(1)
+---
+
+(program (rule pattern: (indirect_function_call name: (qualified_name namespace: (identifier) name: (identifier)) arguments: (argument_list argument: (number)))))
+
+==================
+Parenthesized comparison can be compared
+==================
+(a<b)<c
+---
+
+(program (rule pattern: (binary_expression left: (parenthesized_expression (binary_expression left: (identifier) right: (identifier))) right: (identifier))))
+
+==================
+Logical operator permits following newline
+==================
+a&&
+b
+---
+
+(program (rule pattern: (binary_expression left: (identifier) right: (identifier))))
+
+==================
+Argument comma permits following newline
+==================
+f(1,
+2)
+---
+
+(program (rule pattern: (function_call name: (identifier) arguments: (argument_list argument: (number) argument: (number)))))
+
+==================
+Typed regexp assignment
+==================
+x=@/a/
+---
+
+(program (rule pattern: (assignment_expression left: (identifier) right: (typed_regexp (regexp pattern: (regular_expression (regex_branch (regex_character (regex_text)))))))))
+
+==================
+Typed regexp argument
+==================
+f(@/a/)
+---
+
+(program (rule pattern: (function_call name: (identifier) arguments: (argument_list argument: (typed_regexp (regexp pattern: (regular_expression (regex_branch (regex_character (regex_text))))))))))
+
+==================
+Typed regexp match operand
+==================
+x~@/a/
+---
+
+(program (rule pattern: (binary_expression left: (identifier) right: (typed_regexp (regexp pattern: (regular_expression (regex_branch (regex_character (regex_text)))))))))
+
+==================
+Unparenthesized comparisons cannot chain
+:error
+==================
+a<b<c
+---
+
+==================
+Membership keyword is not a prefix of a longer name
+:error
+==================
+x = (a,b) in_
+---
+
+==================
+Assignment needs an lvalue
+:error
+==================
+1=2
+---
+
+==================
+Parenthesized expression is not an update target
+:error
+==================
+(a)++
+---
+
+==================
+Typed regexp is not a compound assignment value
+:error
+==================
+x+=@/a/
+---
+
+==================
+Typed regexp argument cannot be grouped
+:error
+==================
+f((@/a/))
+---
+
+==================
+Typed regexp is not a pattern
+:error
+==================
+@/a/
+---
+
+==================
+Opening parenthesis does not permit raw newline
+:error
+==================
+(
+a)
+---
+
+==================
+Addition does not permit raw newline
+:error
+==================
+a+
+b
+---
+
+==================
+Nested field references bind above postfix update according to the manual
+==================
+$$x++
+---
+(program (rule pattern: (update_expression operand:
+ (field_reference index: (field_reference index: (identifier))))))
+
+==================
+Logical right operand requires parentheses around assignment
+:error
+==================
+a && y = 2
+---
+
+==================
+Logical or right operand requires parentheses around assignment
+:error
+==================
+a || y = 2
+---
+
+==================
+Match expression is not a membership array
+:error
+==================
+y in a ~ b
+---
+
+==================
+Bare membership index list is not an arithmetic operand
+:error
+==================
+1 + (b,c) in d
+---
+
+==================
+Logical operators retain allowed blank lines after a continuation
+==================
+a && \
+
+b
+a || \
+
+b
+---
+(program
+ (rule pattern: (binary_expression left: (identifier) (line_continuation) right: (identifier)))
+ (rule pattern: (binary_expression left: (identifier) (line_continuation) right: (identifier))))
+
+==================
+Conditional operators retain allowed blank lines after a continuation
+==================
+a ? \
+
+b : c
+a ? b : \
+
+c
+---
+(program
+ (rule pattern: (conditional_expression condition: (identifier) (line_continuation) consequence: (identifier) alternative: (identifier)))
+ (rule pattern: (conditional_expression condition: (identifier) consequence: (identifier) (line_continuation) alternative: (identifier))))
+
+==================
+Only the first subscript permits a preceding gap
+==================
+a [1][2][3]
+---
+(program (rule pattern: (subscript_expression
+ array: (subscript_expression array: (subscript_expression array: (identifier)
+  subscript: (subscript_list index: (number))) subscript: (subscript_list index: (number)))
+ subscript: (subscript_list index: (number)))))
+
+==================
+Nested subscript cannot follow a space
+:error
+==================
+a[1] [2]
+---
+
+==================
+Nested subscript cannot follow an external continuation extra
+:error
+==================
+a[1]\
+[2]
+---
+
+==================
+Match right operand requires parentheses around assignment
+:error
+==================
+$1 ~ a = 1
+---
+
+==================
+Match right operand permits a parenthesized assignment
+==================
+$1 ~ (a = 1)
+---
+(program (rule pattern: (binary_expression
+ left: (field_reference index: (number))
+ right: (parenthesized_expression (assignment_expression left: (identifier) right: (number))))))
+
+==================
+Slash equals begins a concatenated regexp where precedence excludes assignment
+==================
+$1 ~ a /=x/
+---
+(program (rule pattern: (binary_expression
+ left: (field_reference index: (number))
+ right: (concatenation_expression left: (identifier)
+  right: (regexp pattern: (regular_expression (regex_branch (regex_character (regex_text)) (regex_character (regex_text)))))))))
+
+==================
+Adjacent field updates remain separate concatenation operands according to the manual
+==================
+--$2 ++$3
+++$1 ++b
+$1++ ++$2
+++$$1 ++b
+--a ++b
+---
+(program
+ (rule pattern: (concatenation_expression
+  left: (update_expression operand: (field_reference index: (number)))
+  right: (update_expression operand: (field_reference index: (number)))))
+ (rule pattern: (concatenation_expression
+  left: (update_expression operand: (field_reference index: (number)))
+  right: (update_expression operand: (identifier))))
+ (rule pattern: (concatenation_expression
+  left: (update_expression operand: (field_reference index: (number)))
+  right: (update_expression operand: (field_reference index: (number)))))
+ (rule pattern: (concatenation_expression
+  left: (update_expression operand: (field_reference index: (field_reference index: (number))))
+  right: (update_expression operand: (identifier))))
+ (rule pattern: (concatenation_expression
+  left: (update_expression operand: (identifier))
+  right: (update_expression operand: (identifier)))))

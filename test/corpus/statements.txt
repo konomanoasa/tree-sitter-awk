@@ -1,0 +1,228 @@
+==================
+Empty statements and explicit simple-statement terminators
+==================
+BEGIN {; ; print 1;
+printf;}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (empty_statement) (empty_statement) (print_statement arguments: (output_arguments argument: (number))) (printf_statement)))))
+
+==================
+Else belongs to the closest if
+==================
+BEGIN {if(x) if(y) print 1; else print 2}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (if_statement condition: (identifier) consequence: (if_statement condition: (identifier) consequence: (print_statement arguments: (output_arguments argument: (number))) alternative: (print_statement arguments: (output_arguments argument: (number)))))))))
+
+==================
+If block and following statement are separate
+==================
+BEGIN {if(x) {}
+print 1;}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (if_statement condition: (identifier) consequence: (block)) (print_statement arguments: (output_arguments argument: (number)))))))
+
+==================
+Else may follow a newline
+==================
+BEGIN {if(x) {}
+else {}}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (if_statement condition: (identifier) consequence: (block) alternative: (block))))))
+
+==================
+Empty for header does not synthesize expressions
+==================
+BEGIN {for(;;) break}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (for_statement body: (break_statement))))))
+
+==================
+For initializer and update accept output statements
+==================
+BEGIN {for(print 1;0;printf "%d",1) print 2}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (for_statement initializer: (print_statement arguments: (output_arguments argument: (number))) condition: (number) update: (printf_statement arguments: (output_arguments argument: (string (string_content)) argument: (number))) body: (print_statement arguments: (output_arguments argument: (number))))))))
+
+==================
+For initializer accepts delete
+==================
+BEGIN {for(delete a;0;) {}}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (for_statement initializer: (delete_statement target: (identifier)) condition: (number) body: (block))))))
+
+==================
+For-in visits a subarray
+==================
+BEGIN {for(i in a[x]) print i}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (for_in_statement index: (identifier) array: (subscript_expression array: (identifier) subscript: (subscript_list index: (identifier))) body: (print_statement arguments: (output_arguments argument: (identifier))))))))
+
+==================
+Membership can be a classic for initializer
+==================
+BEGIN {for(i in a;0;) {}}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (for_statement initializer: (membership_expression index: (identifier) array: (identifier)) condition: (number) body: (block))))))
+
+==================
+Do owns trailing while and condition
+==================
+BEGIN {do {x++} while(x<3);}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (do_statement body: (block body: (statement_list (expression_statement expression: (update_expression operand: (identifier))))) condition: (binary_expression left: (identifier) right: (number))) (empty_statement)))))
+
+==================
+Do ends at its condition before a following statement
+==================
+BEGIN {do {} while(0) print 2}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list
+  (do_statement body: (block) condition: (number))
+  (print_statement arguments: (output_arguments argument: (number)))))))
+
+==================
+Else follows a completed do without a semicolon
+==================
+BEGIN {if(x) do {} while(0) else print 2}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list
+  (if_statement condition: (identifier)
+    consequence: (do_statement body: (block) condition: (number))
+    alternative: (print_statement arguments: (output_arguments argument: (number))))))))
+
+==================
+Nested do statements retain their own trailing conditions
+==================
+BEGIN {do do ; while(x) while(y)}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list
+  (do_statement
+    body: (do_statement body: (empty_statement) condition: (identifier))
+    condition: (identifier))))))
+
+==================
+Semicolon after a do separates it from else
+:error
+==================
+BEGIN {if(x) do {} while(0); else print 2}
+---
+
+==================
+Semicolon after a nested do cannot precede the outer while
+:error
+==================
+BEGIN {do do {} while(0); while(0)}
+---
+
+==================
+While header permits following newline
+==================
+BEGIN {while(x)
+print x;}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (while_statement condition: (identifier) body: (print_statement arguments: (output_arguments argument: (identifier))))))))
+
+==================
+Delete preserves a multi-dimensional target
+==================
+BEGIN {delete a[i][j]}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (delete_statement target: (subscript_expression array: (subscript_expression array: (identifier) subscript: (subscript_list index: (identifier))) subscript: (subscript_list index: (identifier))))))))
+
+==================
+Switch clauses retain separate bodies and constant structure
+==================
+BEGIN {switch(x) {case -1: print 1; break; case "a": default: print 2}}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (switch_statement value: (identifier) (case_clause value: (unary_expression operand: (number)) body: (statement_list (print_statement arguments: (output_arguments argument: (number))) (break_statement))) (case_clause value: (string (string_content))) (default_clause body: (statement_list (print_statement arguments: (output_arguments argument: (number))))))))))
+
+==================
+Control-flow context validation is delegated to consumers
+==================
+BEGIN {return; break; continue; next; nextfile; exit}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list (return_statement) (break_statement) (continue_statement) (next_statement) (nextfile_statement) (exit_statement)))))
+
+==================
+For update does not accept exit
+:error
+==================
+BEGIN {for(;0;exit) {}}
+---
+
+==================
+For-in index cannot be a subscript
+:error
+==================
+BEGIN {for(a[i] in b) {}}
+---
+
+==================
+Case value cannot be grouped
+:error
+==================
+BEGIN {switch(x) {case (1):}}
+---
+
+==================
+Case value cannot be an arithmetic expression
+:error
+==================
+BEGIN {switch(x) {case 1+2:}}
+---
+
+==================
+Clause boundary does not replace a statement terminator
+:error
+==================
+BEGIN {switch(x) {case 1: print 1 case 2:}}
+---
+
+==================
+Else does not replace a simple-statement terminator
+:error
+==================
+BEGIN {if(x) print 1 else print 2}
+---
+
+==================
+For header semicolon does not permit an undocumented newline
+:error
+==================
+BEGIN {for (;
+0;) print 1}
+---
+
+==================
+For update cannot begin with an undocumented newline
+:error
+==================
+BEGIN {for (;;
+) break}
+---
+
+==================
+Case permits a positive numeric constant despite the interpreter crash
+==================
+BEGIN {switch (3) {case +3: print 1}}
+---
+(program (rule pattern: (special_pattern) action: (block body: (statement_list
+ (switch_statement value: (number) (case_clause value: (unary_expression operand: (number))
+  body: (statement_list (print_statement arguments: (output_arguments argument: (number))))))))))
