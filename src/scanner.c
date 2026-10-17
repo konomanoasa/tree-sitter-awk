@@ -16,7 +16,7 @@ typedef struct {
   bool started;
 } Escape;
 
-// host_* tracks raw delimiters; other regex state tracks the decoded pattern.
+// host_* tracks source delimiters; other state tracks the decoded pattern.
 typedef struct {
   uint32_t unit_left;
   bool unit_raw;
@@ -146,11 +146,9 @@ static void numeric_escape(
   uint32_t value = octal ? (uint32_t)(code - '0') : 0;
   uint32_t first_break = 0;
   while (count < limit) {
-    while (continuation(reader)) {
-      if (!first_break) first_break = reader->offset - start;
-      take(reader);
-      take(reader);
-    }
+    if (!first_break && continuation(reader))
+      first_break = reader->offset - start;
+    skip_continuations(reader);
     int next = digit(peek(reader, 0), base);
     if (next < 0) break;
     take(reader);
@@ -275,11 +273,8 @@ static Name read_name(TSLexer *lexer) {
   return name;
 }
 
-static bool directive_name(const char *name) {
-  return strcmp(name, "include") == 0 ||
-    strcmp(name, "load") == 0 ||
-    strcmp(name, "namespace") == 0 ||
-    strcmp(name, "nsinclude") == 0;
+static bool awk_namespace(const Name *name) {
+  return strcmp(name->text, "awk") == 0;
 }
 
 static enum Token name_token(
@@ -294,7 +289,7 @@ static enum Token name_token(
     kind == STANDARD_KEYWORD ||
     (qualified &&
       qualified_awk &&
-      (kind == EXTENSION_KEYWORD || directive_name(name.text)))
+      (kind == EXTENSION_KEYWORD || kind == DIRECTIVE_NAME))
   )
     return ERROR_SENTINEL;
   if (kind == STANDARD_BUILTIN) {
@@ -303,7 +298,7 @@ static enum Token name_token(
   }
   bool shadowed = (!qualified || qualified_awk) &&
     (scanner->shadows & (UINT32_C(1) << name.word.bit));
-  if (kind == ORDINARY || shadowed) return identifier;
+  if (kind == ORDINARY || kind == DIRECTIVE_NAME || shadowed) return identifier;
   if (kind == EXTENSION_KEYWORD) {
     if (!qualified) return (enum Token)(KEYWORD_BEGINFILE + name.word.bit);
     return identifier;
@@ -318,7 +313,7 @@ static bool scan_qualifier(
   const bool *valid,
   const Name *name
 ) {
-  bool awk = name->length == 3 && strcmp(name->text, "awk") == 0;
+  bool awk = awk_namespace(name);
   lexer->advance(lexer, false);
   enum Token token = name_token(scanner, read_name(lexer), true, awk);
   bool call = token == QUALIFIED_BUILTIN ||
@@ -363,7 +358,11 @@ static bool scan_name(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   enum Token token = name_token(scanner, name, qualified, qualified_awk);
   if (token == IDENTIFIER && call) {
     if (valid[INDIRECT_IDENTIFIER]) {
-      if (directive_name(name.text)) return false;
+      if (
+        name.word.kind == DIRECTIVE_NAME &&
+        !(scanner->shadows & (UINT32_C(1) << name.word.bit))
+      )
+        return false;
       token = INDIRECT_IDENTIFIER;
     } else token = CALL_IDENTIFIER;
   }
@@ -384,8 +383,7 @@ static bool namespace_name(Scanner *scanner, TSLexer *lexer) {
   enum WordKind kind = word_kind(&name).kind;
   if (!name.length || (kind != ORDINARY && kind != EXTENSION_BUILTIN))
     return false;
-  if (directive_name(name.text)) return false;
-  scanner->non_awk = name.length != 3 || strcmp(name.text, "awk") != 0;
+  scanner->non_awk = !awk_namespace(&name);
   return true;
 }
 
@@ -473,8 +471,7 @@ static bool at_kept_escape(Reader *reader) {
   return code > 0 && !ascii_in(code, "01234567xuabfnrtv");
 }
 
-static Character pattern_character(Reader *reader) {
-  uint32_t start = reader->offset;
+static Character pattern_character(Reader *reader, uint32_t start) {
   skip_continuations(reader);
   uint32_t character_start = reader->offset;
   Character character = decode(reader);
@@ -509,7 +506,7 @@ regex_character(Reader *reader, const Regexp *regexp, bool left_backslash) {
   uint32_t start = reader->offset;
   Character character = {.value = '\\', .escaped = true};
   if (left_backslash) take(reader);
-  else character = pattern_character(reader);
+  else character = pattern_character(reader, start);
   if (character.value != '\\' || character.quoted) return character;
   character.quoted = true;
   skip_continuations(reader);
@@ -520,31 +517,24 @@ regex_character(Reader *reader, const Regexp *regexp, bool left_backslash) {
   } else if (peek(reader, 0) == '/' && !host_bracket(regexp)) {
     character.value = -1;
   } else {
-    uint32_t next_start = reader->offset;
-    Character next = pattern_character(reader);
+    Character next = pattern_character(reader, start);
     character.value = next.value;
-    character.length = next_start + next.length - start;
+    character.length = next.length;
   }
   return character;
 }
 
-// Inside bracket forms, kept escapes contribute only their backslash.
 static Character form_character(Reader *reader) {
   uint32_t start = reader->offset;
   skip_continuations(reader);
-  uint32_t character_start = reader->offset;
-  if (at_kept_escape(reader)) {
-    take(reader);
-    return (Character){
-      .value = '\\',
-      .length = reader->offset - start,
-      .escaped = true,
-      .paired = true,
-    };
-  }
-  Character character = pattern_character(reader);
-  character.length += character_start - start;
-  return character;
+  if (!at_kept_escape(reader)) return pattern_character(reader, start);
+  take(reader);
+  return (Character){
+    .value = '\\',
+    .length = reader->offset - start,
+    .escaped = true,
+    .paired = true,
+  };
 }
 
 static void host_character(Regexp *regexp, int32_t value) {
@@ -558,7 +548,7 @@ static void host_character(Regexp *regexp, int32_t value) {
   if (regexp->host_pending && value == ':') {
     ++regexp->host_depth;
   } else if (value == ']' && !regexp->host_first) {
-    // Raising the depth takes two bytes, so only `]` can reach a bound.
+    // Increments need two bytes; only decrements can overflow.
     if (regexp->host_depth > INT32_MIN) --regexp->host_depth;
   } else if (value == '^' && regexp->host_first && !regexp->host_negated) {
     regexp->host_negated = true;
@@ -788,8 +778,7 @@ static bool regex_role(Scanner *scanner, Reader reader, const bool *valid) {
         regexp,
         regexp->host_escaped && peek(&reader, 0) == '\\'
       );
-  if (character.value < 0 || (lexer->eof(lexer) && character.length == 0))
-    return false;
+  if (character.value < 0) return false;
   uint32_t length = character.length;
   enum Token role = unit_role(regexp, &reader, character, &length);
   if (!valid[role]) return false;
@@ -840,7 +829,13 @@ static bool backslash(Scanner *scanner, TSLexer *lexer, const bool *valid) {
     if (in_regexp && regexp->unit_left) regexp->unit_left -= 2;
     // A continuation separates `[` from `:`, but not `[` from a leading `]`.
     regexp->host_pending = false;
-    return mark(lexer, valid, LINE_CONTINUATION);
+    return mark(
+      lexer,
+      valid,
+      scanner->literal == NONE && valid[OPERATOR_CONTINUATION]
+        ? OPERATOR_CONTINUATION
+        : LINE_CONTINUATION
+    );
   }
   if (valid[ESCAPE_PREPARE] && (!in_regexp || regexp->unit_left)) {
     Character escape = decode(&reader);
@@ -952,7 +947,7 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid) {
     scanner->escape = (Escape){0};
     return mark(lexer, valid, ESCAPE_END);
   }
-  // Include following else detection in statement reuse dependencies.
+  // Statement reuse depends on the following else.
   if (valid[ELSE_MARK] || valid[IF_END]) {
     lexer->mark_end(lexer);
     return emit(lexer, valid, else_follows(lexer) ? ELSE_MARK : IF_END);
@@ -1045,9 +1040,9 @@ void tree_sitter_gawk_external_scanner_destroy(void *payload) {
   ts_free(payload);
 }
 
-// Inactive escape and regexp counters are zero and omitted from serialization.
 unsigned
 tree_sitter_gawk_external_scanner_serialize(void *payload, char *buffer) {
+  if (!payload) return 0;
   Scanner *scanner = payload;
   Regexp *regexp = &scanner->regexp;
   Flags list = flags(scanner);
@@ -1077,6 +1072,7 @@ void tree_sitter_gawk_external_scanner_deserialize(
   const char *buffer,
   unsigned length
 ) {
+  if (!payload) return;
   Scanner *scanner = payload;
   Regexp *regexp = &scanner->regexp;
   memset(scanner, 0, sizeof(*scanner));

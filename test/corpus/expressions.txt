@@ -356,3 +356,97 @@ $1++ ++$2
  (rule pattern: (concatenation_expression
   left: (update_expression operand: (identifier))
   right: (update_expression operand: (identifier)))))
+
+==================
+Logical and conditional operators accept FF and VT layout
+==================
+1 &&1
+0 ||1
+1 ?2 :3
+---
+
+(program
+  (rule pattern: (binary_expression left: (number) right: (number)))
+  (rule pattern: (binary_expression left: (number) right: (number)))
+  (rule pattern: (conditional_expression condition: (number)
+    consequence: (number) alternative: (number))))
+
+==================
+Operator layout keeps newline and comment ownership
+==================
+1 && # comment
+1
+---
+
+(program (rule pattern: (binary_expression
+  left: (number) (comment) right: (number))))
+
+==================
+Operator layout ends at a continuation and resumes at the next operator
+==================
+1 &&\
+1 ||2
+---
+
+(program (rule pattern: (binary_expression
+  left: (binary_expression left: (number) (line_continuation) right: (number))
+  right: (number))))
+
+==================
+FF after a logical operator continuation is rejected
+:error
+==================
+1 &&\
+1
+---
+
+==================
+VT after a conditional operator continuation is rejected
+:error
+==================
+1 ? 2 :\
+3
+---
+
+==================
+FF after a continuation and raw newline is rejected
+:error
+==================
+1 ||\
+
+1
+---
+
+==================
+FF before a conditional colon is rejected
+:error
+==================
+1 ? 2: 3
+---
+
+==================
+VT after a comma is rejected
+:error
+==================
+BEGIN {print 1,2}
+---
+
+==================
+Typed regexp assignment does not override logical precedence
+:error
+==================
+v = @/a/ || 1
+---
+
+==================
+Parenthesized typed regexp assignment can be a logical operand
+==================
+(v = @/a/) || 1
+---
+
+(program (rule pattern: (binary_expression
+  left: (parenthesized_expression (assignment_expression
+    left: (identifier) right: (typed_regexp (regexp
+      pattern: (regular_expression (regex_branch
+        (regex_character (regex_text))))))))
+  right: (number))))

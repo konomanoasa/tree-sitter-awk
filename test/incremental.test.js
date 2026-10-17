@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { applyEdits, clean, edited, parse } from "./support/parser.js";
+import {
+  applyEdits,
+  clean,
+  edited,
+  parse,
+  parseSummary,
+} from "./support/parser.js";
+import {
+  normalWorkloads,
+  replacement,
+  scalingCases,
+  scalingItemCounts,
+} from "./support/workloads.js";
 
 test("gawk: repairs restore names literals and statement ownership across syntax boundaries", () => {
   const sources = [
@@ -111,3 +123,34 @@ test("gawk: fixed-seed generated histories restore fresh CSTs after repairs", ()
     edited(original, original, edits);
   }
 });
+
+function checkWorkload(name, source, edit, successful = true) {
+  const final = applyEdits(source, [edit]);
+  assert.equal(parseSummary(final).successful, successful, `${name}: fresh`);
+  assert.equal(
+    parseSummary(source, [edit]).successful,
+    successful,
+    `${name}: incremental`,
+  );
+}
+for (const { name, run } of normalWorkloads()) {
+  test(`gawk: ${name} complete after editing`, () => run(checkWorkload));
+}
+for (const {
+  name,
+  sizes = scalingItemCounts,
+  source,
+  successful = true,
+} of scalingCases) {
+  test(`gawk: ${name} complete after editing at each scale`, () => {
+    for (const size of sizes) {
+      const contents = source(size);
+      checkWorkload(
+        `${name}/${size}`,
+        contents,
+        replacement(contents, "x", "y"),
+        successful,
+      );
+    }
+  });
+}

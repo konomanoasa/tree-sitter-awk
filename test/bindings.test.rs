@@ -121,6 +121,7 @@ fn parser_reuse_reset_and_document_replacement_preserve_fresh_results() {
 #[test]
 fn leaves_preserve_every_nonlayout_source_byte_without_overlap() {
   for source in [
+    "1 &&\x0c# comment\n\x0b1 ||\x0c\\\n0",
     r"/a\x7b\061,2\x7d[[:alpha:][.é.][=a=]\/]\xc3\xa9/",
     "/a\\x2\\\nb/",
     r"/\x5c\\\
@@ -152,7 +153,7 @@ fn leaves_preserve_every_nonlayout_source_byte_without_overlap() {
     }
     for (byte, &value) in source.as_bytes().iter().enumerate() {
       assert!(
-        covered[byte] || b" \t\r\n".contains(&value),
+        covered[byte] || b" \t\r\n\x0c\x0b".contains(&value),
         "lost byte {byte}"
       );
     }

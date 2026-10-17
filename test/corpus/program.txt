@@ -134,3 +134,22 @@ Pattern-only rule still requires a separator before a function
 ==================
 1 function f() {}
 ---
+
+==================
+Strings remain valid patterns after directives
+==================
+@namespace "lib"
+"x" {print 1}
+@load "x"
+_"y" {print 2}
+---
+
+(program
+  (namespace_directive name: (directive_string (directive_text)))
+  (rule pattern: (string (string_content))
+    action: (block body: (statement_list (print_statement
+      arguments: (output_arguments argument: (number))))))
+  (load_directive path: (directive_string (directive_text)))
+  (rule pattern: (localized_string (string (string_content)))
+    action: (block body: (statement_list (print_statement
+      arguments: (output_arguments argument: (number)))))))

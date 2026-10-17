@@ -489,6 +489,20 @@ static void scanner_lifecycle_releases_allocations(void) {
 #endif
 }
 
+static void failed_creation_payload_is_inert(void) {
+  char buffer[TREE_SITTER_SERIALIZATION_BUFFER_SIZE] = {0};
+  assert(tree_sitter_gawk_external_scanner_serialize(NULL, buffer) == 0);
+  tree_sitter_gawk_external_scanner_deserialize(NULL, buffer, 1);
+  tree_sitter_gawk_external_scanner_deserialize(NULL, NULL, 0);
+  const char source[] = "x";
+  Input input = input_for(source, sizeof(source) - 1);
+  bool valid[ERROR_SENTINEL + 1] = {0};
+  valid[IDENTIFIER] = true;
+  assert(!tree_sitter_gawk_external_scanner_scan(NULL, &input.lexer, valid));
+  assert(input.position == 0);
+  tree_sitter_gawk_external_scanner_destroy(NULL);
+}
+
 int main(void) {
   resumed_tokens_match_uninterrupted_scanning();
   literal_break_preserves_name_context_without_consuming_lf();
@@ -496,8 +510,9 @@ int main(void) {
   completed_constructs_leave_no_scanner_state();
   actual_nul_is_not_end_of_input();
   scanner_lifecycle_releases_allocations();
+  failed_creation_payload_is_inert();
   puts(
-    "scanner: resume, failed scan, reset, completed state, and NUL/EOF checks passed"
+    "scanner: resume, failed scan, reset, completed state, NUL/EOF, and failed creation checks passed"
   );
   return 0;
 }

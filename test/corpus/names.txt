@@ -321,11 +321,35 @@ function f(include) {return awk::include}
 ---
 
 ==================
-Parameter cannot turn a directive into an indirect call
-:error
+Directive parameters allow indirect calls inside their function
 ==================
 function f(include) {return @include(1)}
+function g(load) {return @ load(1)}
+function h(namespace) {return @namespace(1)}
+function i(nsinclude) {return @nsinclude(1)}
 ---
+
+(program
+  (function_definition name: (identifier)
+    parameters: (parameter_list (identifier))
+    body: (block body: (statement_list (return_statement
+      value: (indirect_function_call name: (identifier)
+        arguments: (argument_list argument: (number)))))))
+  (function_definition name: (identifier)
+    parameters: (parameter_list (identifier))
+    body: (block body: (statement_list (return_statement
+      value: (indirect_function_call name: (identifier)
+        arguments: (argument_list argument: (number)))))))
+  (function_definition name: (identifier)
+    parameters: (parameter_list (identifier))
+    body: (block body: (statement_list (return_statement
+      value: (indirect_function_call name: (identifier)
+        arguments: (argument_list argument: (number)))))))
+  (function_definition name: (identifier)
+    parameters: (parameter_list (identifier))
+    body: (block body: (statement_list (return_statement
+      value: (indirect_function_call name: (identifier)
+        arguments: (argument_list argument: (number))))))))
 
 ==================
 Continuation after at sign does not unreserve a directive name
@@ -380,3 +404,25 @@ function f(switch) {return switch lib::switch}
  body: (block body: (statement_list (return_statement
   value: (concatenation_expression left: (identifier)
    right: (qualified_name namespace: (identifier) name: (identifier))))))))
+
+==================
+Directive parameter does not unreserve another directive name
+:error
+==================
+function f(include) {return @load(1)}
+---
+
+==================
+Keyword parameter does not unreserve a directive name
+:error
+==================
+function f(BEGINFILE) {return @include(1)}
+---
+
+==================
+Directive shadowing ends with the function
+:error
+==================
+function f(include) {return @include(1)}
+BEGIN {@include(1)}
+---

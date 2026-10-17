@@ -73,6 +73,7 @@ export const extensionBuiltins = [
   "typeof",
   "xor",
 ];
+export const directiveNames = ["include", "load", "namespace", "nsinclude"];
 export const regexRoles = [
   "character",
   "wildcard",
@@ -148,6 +149,7 @@ export const externalTokens = [
   "escape_fragment",
   "escape_end",
   "line_continuation",
+  "operator_continuation",
   "literal_break",
   "end_of_input",
   ...regexRoles.map((role) => `rx_${role}`),
@@ -155,17 +157,21 @@ export const externalTokens = [
 ];
 
 const commaList = (item) => seq(item, repeat(seq(",", repeat("\n"), item)));
+const operatorLayout = ($) =>
+  seq(
+    repeat(choice("\n", $._operator_space)),
+    optional(
+      seq(alias($._operator_continuation, $.line_continuation), repeat("\n")),
+    ),
+  );
 
 const subscriptExpression = (list) => ($) =>
-  prec.left(
-    16,
-    seq(
-      field(
-        "array",
-        choice($._name, alias($._subscript_prefix, $.subscript_expression)),
-      ),
-      field("subscript", list($)),
+  seq(
+    field(
+      "array",
+      choice($._name, alias($._subscript_prefix, $.subscript_expression)),
     ),
+    field("subscript", list($)),
   );
 const subscriptList = ($, closing) =>
   seq("[", commaList(field("index", $._expression)), closing);
@@ -271,15 +277,15 @@ for (const [name, form] of Object.entries(simpleStatements)) {
     seq(form($), choice(";", "\n"));
   statementRules[`_${name}_last`] = ($) => form($);
 }
-for (const kind of ["while", "for", "for_in"]) {
+const loopKinds = ["while", "for", "for_in"];
+for (const kind of loopKinds) {
   statementRules[`_${kind}_terminated`] = ($) =>
     seq(statementHeader($, kind), field("body", $._terminated_statement));
   statementRules[`_${kind}_last`] = ($) =>
     seq(statementHeader($, kind), field("body", $._last_statement));
 }
 
-const simpleKinds = Object.keys(simpleStatements);
-const loopKinds = ["if", "while", "for", "for_in"];
+const statementKinds = [...Object.keys(simpleStatements), "if", ...loopKinds];
 const statementAliases = ($, names, ending) =>
   names.map((name) => alias($[`_${name}_${ending}`], $[`${name}_statement`]));
 
@@ -320,28 +326,38 @@ const qualified = (namespace, name) => ($) =>
     field("name", name($)),
   );
 
-function contextRules(context, output) {
-  const ref = ($, name) => $[`_${context}_${name}`];
-  const named = ($, name, type) => alias(ref($, name), $[type]);
-  const relational = ($) => [
-    ref($, "concat"),
-    ...(output ? [] : [named($, "pipe", "getline_expression")]),
-  ];
-  const levels = [
-    {
-      name: "or",
-      next: "and",
-      operator: () => "||",
-      precedence: 3,
-      newline: true,
-    },
-    {
-      name: "and",
-      next: "membership",
-      operator: () => "&&",
-      precedence: 4,
-      newline: true,
-    },
+const hiddenRules = (prefix, rules) =>
+  Object.fromEntries(
+    Object.entries(rules).map(([name, rule]) => [`_${prefix}${name}`, rule]),
+  );
+const level = (ref, name, next, type) => ($) =>
+  choice(ref($, next), alias(ref($, `${name}_operation`), $[type]));
+const binaryLevels = (ref, levels) =>
+  Object.fromEntries(
+    levels.flatMap(({ name, next, operator, precedence, newline }) => [
+      [name, level(ref, name, next, "binary_expression")],
+      [
+        `${name}_operation`,
+        ($) =>
+          prec.left(
+            precedence,
+            seq(
+              field("left", ref($, name)),
+              field("operator", operator($)),
+              ...(newline ? [operatorLayout($)] : []),
+              field("right", ref($, next)),
+            ),
+          ),
+      ],
+    ]),
+  );
+
+const shared = ($, name) => $[`_${name}`];
+const sharedRules = {
+  concat: level(shared, "concat", "add", "concatenation_expression"),
+  concat_operation: ($) =>
+    seq(field("left", $._concat), field("right", $._add)),
+  ...binaryLevels(shared, [
     {
       name: "add",
       next: "multiply",
@@ -354,85 +370,120 @@ function contextRules(context, output) {
       operator: ($) => choice("*", alias($._divide, "/"), "%"),
       precedence: 10,
     },
-  ];
-  const rules = {
-    assignment: ($) =>
-      choice(
-        ref($, "conditional"),
-        named($, "assign", "assignment_expression"),
+  ]),
+  unary: level(shared, "unary", "power", "unary_expression"),
+  unary_operation: ($) =>
+    seq(field("operator", choice("+", "-", "!")), field("operand", $._unary)),
+  power: ($) =>
+    choice(
+      $._primary,
+      $.update_expression,
+      alias($._power_operation, $.binary_expression),
+    ),
+  power_operation: ($) =>
+    prec.right(
+      12,
+      seq(
+        field("left", choice($._primary, $.update_expression)),
+        field("operator", choice("^", "**")),
+        field("right", $._unary),
       ),
-    assign: ($) =>
-      prec.right(
-        1,
-        seq(
-          field("left", $._lvalue),
-          choice(
-            seq(
-              field("operator", "="),
-              field("right", choice(ref($, "assignment"), $.typed_regexp)),
-            ),
-            seq(
-              field(
-                "operator",
-                choice(
-                  "+=",
-                  "-=",
-                  "*=",
-                  alias($._divide_assign, "/="),
-                  "%=",
-                  "^=",
-                  "**=",
-                ),
+    ),
+};
+
+function contextRules(context, output) {
+  const ref = ($, name) => $[`_${context}_${name}`];
+  const named = ($, name, type) => alias(ref($, name), $[type]);
+  const relational = ($) => [
+    $._concat,
+    ...(output ? [] : [named($, "pipe", "getline_expression")]),
+  ];
+  const pipe = ($, source) =>
+    seq(
+      field("source", source),
+      field("operator", choice("|", "|&")),
+      $._getline_head,
+    );
+  return hiddenRules(`${context}_`, {
+    assignment: level(
+      ref,
+      "assignment",
+      "conditional",
+      "assignment_expression",
+    ),
+    assignment_operation: ($) =>
+      seq(
+        field("left", $._lvalue),
+        choice(
+          seq(
+            field("operator", "="),
+            field("right", choice(ref($, "assignment"), $.typed_regexp)),
+          ),
+          seq(
+            field(
+              "operator",
+              choice(
+                "+=",
+                "-=",
+                "*=",
+                alias($._divide_assign, "/="),
+                "%=",
+                "^=",
+                "**=",
               ),
-              field("right", ref($, "assignment")),
             ),
+            field("right", ref($, "assignment")),
           ),
         ),
       ),
-    conditional: ($) =>
-      choice(ref($, "or"), named($, "condition", "conditional_expression")),
-    condition: ($) =>
-      prec.right(
-        2,
-        seq(
-          field("condition", ref($, "or")),
-          "?",
-          repeat("\n"),
-          field("consequence", ref($, "assignment")),
-          ":",
-          repeat("\n"),
-          field("alternative", ref($, "assignment")),
-        ),
+    conditional: level(ref, "conditional", "or", "conditional_expression"),
+    conditional_operation: ($) =>
+      seq(
+        field("condition", ref($, "or")),
+        "?",
+        operatorLayout($),
+        field("consequence", ref($, "assignment")),
+        ":",
+        operatorLayout($),
+        field("alternative", ref($, "assignment")),
       ),
-    membership: ($) =>
-      choice(ref($, "match"), named($, "in", "membership_expression")),
-    in: ($) =>
-      prec.left(
-        5,
-        seq(
-          field("index", choice(ref($, "membership"), $.index_list)),
-          "in",
-          field("array", $._array_reference),
-        ),
+    ...binaryLevels(ref, [
+      {
+        name: "or",
+        next: "and",
+        operator: () => "||",
+        precedence: 3,
+        newline: true,
+      },
+      {
+        name: "and",
+        next: "membership",
+        operator: () => "&&",
+        precedence: 4,
+        newline: true,
+      },
+    ]),
+    membership: level(ref, "membership", "match", "membership_expression"),
+    membership_operation: ($) =>
+      seq(
+        field("index", choice(ref($, "membership"), $.index_list)),
+        "in",
+        field("array", $._array_reference),
       ),
-    match: ($) =>
-      choice(ref($, "compare"), named($, "matching", "binary_expression")),
-    matching: ($) =>
-      prec.left(
-        6,
-        seq(
-          field("left", ref($, "match")),
-          field("operator", choice("~", "!~")),
-          field("right", choice(ref($, "compare"), $.typed_regexp)),
-        ),
+    match: level(ref, "match", "compare", "binary_expression"),
+    match_operation: ($) =>
+      seq(
+        field("left", ref($, "match")),
+        field("operator", choice("~", "!~")),
+        field("right", choice(ref($, "compare"), $.typed_regexp)),
       ),
     compare: ($) =>
       choice(
         ...relational($),
-        named($, "comparison", "binary_expression"),
+        named($, "compare_operation", "binary_expression"),
         ...(output ? [] : [named($, "comparison_pipe", "getline_expression")]),
       ),
-    comparison: ($) =>
+    compare_operation: ($) =>
       prec.left(
         7,
         seq(
@@ -444,83 +495,26 @@ function contextRules(context, output) {
           field("right", choice(...relational($))),
         ),
       ),
-    concat: ($) =>
-      choice(
-        ref($, "add"),
-        named($, "concatenate", "concatenation_expression"),
-      ),
-    concatenate: ($) =>
-      prec.left(
-        8,
-        seq(field("left", ref($, "concat")), field("right", ref($, "add"))),
-      ),
-    unary: ($) =>
-      choice(ref($, "power"), named($, "prefix", "unary_expression")),
-    prefix: ($) =>
-      prec.right(
-        11,
-        seq(
-          field("operator", choice("+", "-", "!")),
-          field("operand", ref($, "unary")),
-        ),
-      ),
-    power: ($) =>
-      choice(
-        $._primary,
-        $.update_expression,
-        named($, "exponent", "binary_expression"),
-      ),
-    exponent: ($) =>
-      prec.right(
-        12,
-        seq(
-          field("left", choice($._primary, $.update_expression)),
-          field("operator", choice("^", "**")),
-          field("right", ref($, "unary")),
-        ),
-      ),
-  };
-  if (!output) {
-    const pipe = ($, source) =>
-      prec.left(
-        7,
-        seq(
-          field("source", source),
-          field("operator", choice("|", "|&")),
-          $._getline_head,
-        ),
-      );
-    rules.pipe = ($) =>
-      pipe($, choice(ref($, "concat"), named($, "pipe", "getline_expression")));
-    rules.comparison_pipe = ($) =>
-      pipe(
-        $,
-        choice(
-          named($, "comparison", "binary_expression"),
-          named($, "comparison_pipe", "getline_expression"),
-        ),
-      );
-  }
-  for (const { name, next, operator, precedence, newline } of levels) {
-    rules[name] = ($) =>
-      choice(ref($, next), named($, `${name}_operation`, "binary_expression"));
-    rules[`${name}_operation`] = ($) =>
-      prec.left(
-        precedence,
-        seq(
-          field("left", ref($, name)),
-          field("operator", operator($)),
-          ...(newline ? [repeat("\n")] : []),
-          field("right", ref($, next)),
-        ),
-      );
-  }
-  return Object.fromEntries(
-    Object.entries(rules).map(([name, rule]) => [`_${context}_${name}`, rule]),
-  );
+    ...(output
+      ? {}
+      : {
+          pipe: ($) =>
+            pipe($, choice($._concat, named($, "pipe", "getline_expression"))),
+          comparison_pipe: ($) =>
+            pipe(
+              $,
+              choice(
+                named($, "compare_operation", "binary_expression"),
+                named($, "comparison_pipe", "getline_expression"),
+              ),
+            ),
+        }),
+  });
 }
 
 const regexSymbol = ($, role, owner) => alias($[`_symbol_${role}`], owner);
+const regexToken = (role, raw) => ($) =>
+  seq($[`_rx_${role}`], choice(alias($._regex_raw, raw($)), $._regex_sources));
 const regexUnit = (role, text) => ($) =>
   seq(
     $[`_rx_${role}`],
@@ -582,6 +576,7 @@ const definition = {
   ],
   rules: {
     program: ($) => seq(repeat("\n"), optional($._top_level)),
+    _operator_space: () => token(/[\f\v]+/),
     _top_level: ($) =>
       choice(
         $._top_nonrule,
@@ -612,13 +607,14 @@ const definition = {
     _block_separator: () =>
       choice(seq(repeat("\n"), ";", repeat("\n")), repeat1("\n")),
     _action_rule: ($) =>
-      choice(
-        seq(field("pattern", $.special_pattern), field("action", $.block)),
-        field("action", $.block),
-        seq(
-          field("pattern", choice($._expression, $.range_pattern)),
-          field("action", $.block),
+      seq(
+        optional(
+          field(
+            "pattern",
+            choice($.special_pattern, $._expression, $.range_pattern),
+          ),
         ),
+        field("action", $.block),
       ),
     _pattern_rule: ($) =>
       field("pattern", choice($._expression, $.range_pattern)),
@@ -698,14 +694,14 @@ const definition = {
       ),
     _terminated_statement: ($) =>
       choice(
-        ...statementAliases($, [...simpleKinds, ...loopKinds], "terminated"),
+        ...statementAliases($, statementKinds, "terminated"),
         $.empty_statement,
         $.block,
         $.do_statement,
         $.switch_statement,
       ),
     _last_statement: ($) =>
-      choice(...statementAliases($, [...simpleKinds, ...loopKinds], "last")),
+      choice(...statementAliases($, statementKinds, "last")),
     empty_statement: () => ";",
     _for_part: ($) =>
       choice(
@@ -751,6 +747,7 @@ const definition = {
         field("operator", choice("+", "-")),
         field("operand", $._numeric_literal),
       ),
+    ...hiddenRules("", sharedRules),
     ...contextRules("expr", false),
     ...contextRules("output", true),
     _expression: ($) => $._expr_assignment,
@@ -774,31 +771,17 @@ const definition = {
         ")",
       ),
     field_reference: ($) =>
-      prec.right(
-        15,
-        seq(field("operator", "$"), field("index", $._field_index)),
-      ),
+      seq(field("operator", "$"), field("index", $._field_index)),
     _field_index: ($) =>
       choice(
         $._array_reference,
         $.field_reference,
         ...plainPrimaries($),
-        alias($._field_unary, $.unary_expression),
+        alias($._unary_operation, $.unary_expression),
         alias($._prefix_update, $.update_expression),
       ),
-    _field_unary: ($) =>
-      prec.right(
-        11,
-        seq(
-          field("operator", choice("+", "-", "!")),
-          field("operand", $._expr_unary),
-        ),
-      ),
     _prefix_update: ($) =>
-      prec.right(
-        13,
-        seq(field("operator", choice("++", "--")), field("operand", $._lvalue)),
-      ),
+      seq(field("operator", choice("++", "--")), field("operand", $._lvalue)),
     update_expression: ($) =>
       choice(
         $._prefix_update,
@@ -857,7 +840,7 @@ const definition = {
         9,
         seq(
           $._getline_head,
-          optional(seq(field("operator", "<"), field("source", $._expr_add))),
+          optional(seq(field("operator", "<"), field("source", $._add))),
         ),
       ),
     output_arguments: ($) => choice($._output_plain, $._output_parenthesized),
@@ -872,7 +855,7 @@ const definition = {
         field("operator", choice(">", ">>", "|", "|&")),
         field(
           "destination",
-          choice($._expr_concat, alias($._expr_pipe, $.getline_expression)),
+          choice($._concat, alias($._expr_pipe, $.getline_expression)),
         ),
       ),
     _name: ($) => choice(alias($._identifier, $.identifier), $.qualified_name),
@@ -892,7 +875,7 @@ const definition = {
       ($) => $._call_qualifier,
       ($) => alias($._qualified_identifier, $.identifier),
     ),
-    // Prevent keyword-prefix fallback when the scanner rejects a longer name.
+    // Prevent keyword-prefix fallback after scanner rejection.
     _word: () => /[A-Za-z_][A-Za-z0-9_]*/,
     _numeric_literal: ($) =>
       seq($._number_boundary, alias($._number, $.number)),
@@ -931,7 +914,7 @@ const definition = {
         ),
         $._escape_end,
       ),
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: NUL must end comments to remain a syntax error.
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: Keep NUL outside comments as a syntax error.
     comment: () => token(seq("#", /[^\n\x00]*/)),
     regexp: ($) =>
       seq(
@@ -962,11 +945,7 @@ const definition = {
         $.regex_group,
         $.regex_bracket_expression,
       ),
-    regex_character: ($) =>
-      seq(
-        $._rx_character,
-        choice(alias($._regex_raw, $.regex_text), $._regex_sources),
-      ),
+    regex_character: regexToken("character", ($) => $.regex_text),
     _regex_sources: ($) =>
       repeat1(
         choice(
@@ -975,8 +954,7 @@ const definition = {
           $.line_continuation,
         ),
       ),
-    regex_wildcard: ($) =>
-      seq($._rx_wildcard, choice(alias($._regex_raw, "."), $._regex_sources)),
+    regex_wildcard: regexToken("wildcard", () => "."),
     regex_anchor: ($) =>
       choice(
         $._symbol_anchor_start,
@@ -1048,11 +1026,7 @@ const definition = {
     ...Object.fromEntries(
       Object.entries(regexSymbols).map(([role, spelling]) => [
         `_symbol_${role}`,
-        ($) =>
-          seq(
-            $[`_rx_${role}`],
-            choice(alias($._regex_raw, spelling), $._regex_sources),
-          ),
+        regexToken(role, () => spelling),
       ]),
     ),
     ...Object.fromEntries(

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clean, edited, parse } from "./support/parser.js";
+import { clean, edited, parse, parseSummary } from "./support/parser.js";
+import { nestedCases } from "./support/workloads.js";
 
 test("gawk: keyword parameter repairs preserve simple-name shadowing and qualified reservations", () => {
   for (const name of ["switch", "case", "default", "BEGINFILE", "ENDFILE"]) {
@@ -39,6 +40,38 @@ test("gawk: repairing directive names restores ordinary and indirect qualified n
     ]);
     edited(`@${name}(1)`, `@${name}::f(1)`, [
       { byte: name.length + 1, deleteBytes: 0, insert: "::f" },
+    ]);
+  }
+});
+
+test("gawk: directive parameter edits restore indirect calls without leaking to other functions", () => {
+  for (const name of ["include", "load", "namespace", "nsinclude"]) {
+    const prefix = `function f(${name}) {return @${name}(1)}\n`;
+    const broken = `${prefix}function g(local) {return @${name}(1)}`;
+    const repaired = `${prefix}function g(${name}) {return @${name}(1)}`;
+    const byte = Buffer.byteLength(prefix) + 11;
+    assert.equal(parse(broken).status, 1);
+    edited(broken, repaired, [{ byte, deleteBytes: 5, insert: name }]);
+    edited(repaired, repaired, [
+      { byte, deleteBytes: name.length, insert: "local" },
+      { byte, deleteBytes: 5, insert: name },
+    ]);
+  }
+});
+
+test("gawk: operator layout edits preserve continuation boundaries", () => {
+  for (const { source, byte } of [
+    { source: "1 &&\f1", byte: 4 },
+    { source: "0 ||\v1", byte: 4 },
+    { source: "1 ?\f2 : 3", byte: 3 },
+    { source: "0 ? 2 :\v3", byte: 7 },
+  ]) {
+    const broken = `${source.slice(0, byte)}\\\n${source.slice(byte)}`;
+    assert.equal(parse(broken).status, 1);
+    edited(broken, source, [{ byte, deleteBytes: 2, insert: "" }]);
+    edited(source, source, [
+      { byte, deleteBytes: 0, insert: "\\\n" },
+      { byte, deleteBytes: 2, insert: "" },
     ]);
   }
 });
@@ -379,3 +412,44 @@ test("gawk: nested syntax long names parameter lists and continuations are not t
     ]);
   }
 });
+
+const stressNestingDepth = 2048;
+const stressContinuationCount = 32_768;
+const stressIncompleteCount = 1200;
+const stressCases = [
+  ...nestedCases.map(({ name, source }) => ({
+    name,
+    source: source(stressNestingDepth),
+    successful: true,
+  })),
+  {
+    name: "split regexp escape",
+    source: `/a\\x2${"\\\n".repeat(stressContinuationCount)}b/\n`,
+    successful: true,
+  },
+  {
+    name: "incomplete directives",
+    source: '@namespace "\n'.repeat(stressIncompleteCount),
+    successful: false,
+  },
+  {
+    name: "incomplete getline expressions",
+    source: ") getline < \n".repeat(stressIncompleteCount),
+    successful: false,
+  },
+  {
+    name: "incomplete operators and delimiters",
+    source: "$ ) , \n".repeat(stressIncompleteCount),
+    successful: false,
+  },
+];
+
+for (const { name, source, successful } of stressCases) {
+  test(`gawk: stress: ${name} finish through EOF`, () => {
+    assert.equal(
+      parseSummary(source, [], { completionOnly: true }).successful,
+      successful,
+      name,
+    );
+  });
+}

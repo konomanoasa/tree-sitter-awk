@@ -473,6 +473,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": false,
+      "required": false,
+      "types": [
+        {
+          "type": "line_continuation",
+          "named": true
+        }
+      ]
     }
   },
   {
@@ -946,6 +956,16 @@
           }
         ]
       }
+    },
+    "children": {
+      "multiple": true,
+      "required": false,
+      "types": [
+        {
+          "type": "line_continuation",
+          "named": true
+        }
+      ]
     }
   },
   {

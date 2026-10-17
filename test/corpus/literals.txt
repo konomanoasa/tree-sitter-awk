@@ -182,3 +182,14 @@ Unterminated regexp remains an error before later rules
 /broken
 x /= 2
 ---
+
+==================
+Backslash CR preserves source in strings and directive operands
+==================
+"a\b"
+@include "a\b"
+---
+
+(program
+  (rule pattern: (string (string_content) (escape_sequence) (string_content)))
+  (include_directive path: (directive_string (directive_text))))

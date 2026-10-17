@@ -46,6 +46,7 @@ enum Token {
   ESCAPE_FRAGMENT,
   ESCAPE_END,
   LINE_CONTINUATION,
+  OPERATOR_CONTINUATION,
   LITERAL_BREAK,
   END_OF_INPUT,
   RX_CHARACTER,
@@ -83,7 +84,7 @@ enum Token {
   ERROR_SENTINEL,
 };
 
-enum WordKind { ORDINARY, STANDARD_KEYWORD, STANDARD_BUILTIN, EXTENSION_KEYWORD, EXTENSION_BUILTIN };
+enum WordKind { ORDINARY, STANDARD_KEYWORD, STANDARD_BUILTIN, EXTENSION_KEYWORD, EXTENSION_BUILTIN, DIRECTIVE_NAME };
 typedef struct { const char *text; enum WordKind kind; unsigned bit; } Word;
 static const Word WORDS[] = {
   {"BEGIN", STANDARD_KEYWORD, 0},
@@ -153,4 +154,8 @@ static const Word WORDS[] = {
   {"systime", EXTENSION_BUILTIN, 22},
   {"typeof", EXTENSION_BUILTIN, 23},
   {"xor", EXTENSION_BUILTIN, 24},
+  {"include", DIRECTIVE_NAME, 25},
+  {"load", DIRECTIVE_NAME, 26},
+  {"namespace", DIRECTIVE_NAME, 27},
+  {"nsinclude", DIRECTIVE_NAME, 28},
 };
