@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { clean, edited, parse, parseSummary } from "./support/parser.js";
 import { nestedCases } from "./support/workloads.js";
 
-test("gawk: keyword parameter repairs preserve simple-name shadowing and qualified reservations", () => {
+test("awk: keyword parameter repairs preserve simple-name shadowing and qualified reservations", () => {
   for (const name of ["switch", "case", "default", "BEGINFILE", "ENDFILE"]) {
     const prefix = `function f(${name}) {return `;
     const initial = `${prefix}awk::${name}}`;
@@ -16,21 +16,21 @@ test("gawk: keyword parameter repairs preserve simple-name shadowing and qualifi
   }
 });
 
-test("gawk: field-only ownership changes retain the fresh CST after edits", () => {
+test("awk: field-only ownership changes retain the fresh CST after edits", () => {
   edited("axc?d:e", "a?b:c?d:e", [{ byte: 1, deleteBytes: 1, insert: "?b:" }]);
   edited("getline x++ y", "getline;x++ y", [
     { byte: 7, deleteBytes: 1, insert: ";" },
   ]);
 });
 
-test("gawk: regex literal edits preserve text leaves through composite source changes", () => {
+test("awk: regex literal edits preserve text leaves through composite source changes", () => {
   const initial = String.raw`/\x5c\\./`;
   const final = "/\\x5c\\\\\\\n./";
   edited(initial, final, [{ byte: 7, deleteBytes: 0, insert: "\\\n" }]);
   edited(final, initial, [{ byte: 7, deleteBytes: 2, insert: "" }]);
 });
 
-test("gawk: repairing directive names restores ordinary and indirect qualified names", () => {
+test("awk: repairing directive names restores ordinary and indirect qualified names", () => {
   for (const name of ["include", "load", "namespace", "nsinclude"]) {
     edited(`awk::${name}`, `lib::${name}`, [
       { byte: 0, deleteBytes: 3, insert: "lib" },
@@ -44,7 +44,7 @@ test("gawk: repairing directive names restores ordinary and indirect qualified n
   }
 });
 
-test("gawk: directive parameter edits restore indirect calls without leaking to other functions", () => {
+test("awk: directive parameter edits restore indirect calls without leaking to other functions", () => {
   for (const name of ["include", "load", "namespace", "nsinclude"]) {
     const prefix = `function f(${name}) {return @${name}(1)}\n`;
     const broken = `${prefix}function g(local) {return @${name}(1)}`;
@@ -59,7 +59,7 @@ test("gawk: directive parameter edits restore indirect calls without leaking to 
   }
 });
 
-test("gawk: operator layout edits preserve continuation boundaries", () => {
+test("awk: operator layout edits preserve continuation boundaries", () => {
   for (const { source, byte } of [
     { source: "1 &&\f1", byte: 4 },
     { source: "0 ||\v1", byte: 4 },
@@ -76,7 +76,7 @@ test("gawk: operator layout edits preserve continuation boundaries", () => {
   }
 });
 
-test("gawk: unterminated literals parse deterministically and repairs restore fresh CSTs", () => {
+test("awk: unterminated literals parse deterministically and repairs restore fresh CSTs", () => {
   const prefix = '@namespace "lib"\nfunction f(systime) {\nprint ';
   const suffix =
     "\nprint systime (3), lib::x; x /= 2\n}\nBEGIN {print systime (3)}";
@@ -107,7 +107,7 @@ test("gawk: unterminated literals parse deterministically and repairs restore fr
   ]);
 });
 
-test("gawk: host bracket edits restore nested and formerly negative delimiter depths", () => {
+test("awk: host bracket edits restore nested and formerly negative delimiter depths", () => {
   edited(String.raw`/[\x5c[:\x5c[:a]]/`, String.raw`/[\x5c[:\x5c[:a]]]/`, [
     { byte: 17, deleteBytes: 0, insert: "]" },
   ]);
@@ -128,7 +128,7 @@ test("gawk: host bracket edits restore nested and formerly negative delimiter de
   ]);
 });
 
-test("gawk: namespace edits reclassify later GNU builtins", () => {
+test("awk: namespace edits reclassify later GNU builtins", () => {
   edited(
     '@namespace "awk"\nBEGIN {print systime (3)}',
     '@namespace "lib"\nBEGIN {print systime (3)}',
@@ -141,7 +141,7 @@ test("gawk: namespace edits reclassify later GNU builtins", () => {
   );
 });
 
-test("gawk: parameter edits change body classification and keep following functions independent", () => {
+test("awk: parameter edits change body classification and keep following functions independent", () => {
   edited(
     "function f(systime) {return systime (3)}\nBEGIN {print systime (3)}",
     "function f(local) {return systime (3)}\nBEGIN {print systime (3)}",
@@ -155,7 +155,7 @@ test("gawk: parameter edits change body classification and keep following functi
   edited(final, initial, [{ byte: 11, deleteBytes: 5, insert: "systime" }]);
 });
 
-test("gawk: top-level repairs retain adjacent definitions and directive namespace changes", () => {
+test("awk: top-level repairs retain adjacent definitions and directive namespace changes", () => {
   for (const [initial, final, edit] of [
     [";BEGIN {}", "BEGIN {}", { byte: 0, deleteBytes: 1, insert: "" }],
     ["BEGIN {};;", "BEGIN {};", { byte: 9, deleteBytes: 1, insert: "" }],
@@ -178,7 +178,7 @@ test("gawk: top-level repairs retain adjacent definitions and directive namespac
     edited(initial, final, [edit]);
 });
 
-test("gawk: repairing subscript adjacency restores nested owners after external extras", () => {
+test("awk: repairing subscript adjacency restores nested owners after external extras", () => {
   const source = "BEGIN {print a [1][2][3]}";
   const byte = source.indexOf("][") + 1;
   for (const insert of [" ", "\t", "\r", "\\\n", "# comment\n"]) {
@@ -190,7 +190,7 @@ test("gawk: repairing subscript adjacency restores nested owners after external 
   edited("a[1][2]", "a[1]", [{ byte: 4, deleteBytes: 3, insert: "" }]);
 });
 
-test("gawk: numeric escape edits change regex roles while retaining source ranges", () => {
+test("awk: numeric escape edits change regex roles while retaining source ranges", () => {
   edited(String.raw`/a\x2bb/`, String.raw`/a\x2ab/`, [
     { byte: 5, deleteBytes: 1, insert: "a" },
   ]);
@@ -211,7 +211,7 @@ test("gawk: numeric escape edits change regex roles while retaining source range
   ]);
 });
 
-test("gawk: inserting and removing continuation inside an escape preserves the decoded role", () => {
+test("awk: inserting and removing continuation inside an escape preserves the decoded role", () => {
   edited(String.raw`/a\x2b/`, "/a\\x2\\\nb/", [
     { byte: 5, deleteBytes: 0, insert: "\\\n" },
   ]);
@@ -220,7 +220,7 @@ test("gawk: inserting and removing continuation inside an escape preserves the d
   ]);
 });
 
-test("gawk: regexp repairs retain endpoint kinds through resumed byte and character edits", () => {
+test("awk: regexp repairs retain endpoint kinds through resumed byte and character edits", () => {
   for (const { initial, final, byte, deleteBytes, insert } of [
     {
       initial: String.raw`/[\x80-\x81]/`,
@@ -272,7 +272,7 @@ test("gawk: regexp repairs retain endpoint kinds through resumed byte and charac
   }
 });
 
-test("gawk: edits after output parentheses reselect the owner of the parentheses", () => {
+test("awk: edits after output parentheses reselect the owner of the parentheses", () => {
   for (const tail of ["+b", ",b", " in arr", " > file"]) {
     const initial = "BEGIN {print (a)}";
     const final = `BEGIN {print (a)${tail}}`;
@@ -283,13 +283,13 @@ test("gawk: edits after output parentheses reselect the owner of the parentheses
   }
 });
 
-test("gawk: for-header edits switch between array iteration and a membership initializer", () => {
+test("awk: for-header edits switch between array iteration and a membership initializer", () => {
   edited("BEGIN {for(i in a) {}}", "BEGIN {for(i in a;0;) {}}", [
     { byte: 17, deleteBytes: 0, insert: ";0;" },
   ]);
 });
 
-test("gawk: newlines before else are reclassified when the following statement changes", () => {
+test("awk: newlines before else are reclassified when the following statement changes", () => {
   const before = "BEGIN {if(x) {}\nprint 1;}";
   const after = "BEGIN {if(x) {}\nelse print 1;}";
   edited(before, after, [{ byte: 16, deleteBytes: 0, insert: "else " }]);
@@ -309,7 +309,7 @@ test("gawk: newlines before else are reclassified when the following statement c
   }
 });
 
-test("gawk: do completion edits restore statement and else ownership", () => {
+test("awk: do completion edits restore statement and else ownership", () => {
   const source = "BEGIN {if(x) do {} while(0) else print 2}";
   const byte = source.indexOf(" else");
   for (const insert of [";", "\n", "\n# comment\n"]) {
@@ -328,7 +328,7 @@ test("gawk: do completion edits restore statement and else ownership", () => {
   }
 });
 
-test("gawk: regexp repairs restore endpoint order and raw slash boundaries", () => {
+test("awk: regexp repairs restore endpoint order and raw slash boundaries", () => {
   for (const { initial, final, byte, deleteBytes, insert } of [
     {
       initial: "/[z-a]/",
@@ -355,7 +355,7 @@ test("gawk: regexp repairs restore endpoint order and raw slash boundaries", () 
     edited(initial, final, [{ byte, deleteBytes, insert }]);
 });
 
-test("gawk: rejected regexp units repair across literal boundaries and preserve name context", () => {
+test("awk: rejected regexp units repair across literal boundaries and preserve name context", () => {
   const prefix = '@namespace "lib"\nfunction f(systime) {if (x ~ /';
   const suffix =
     '/) print y; z = "s"; print systime (3)}\nBEGIN {print systime (3)}';
@@ -433,7 +433,7 @@ test("gawk: rejected regexp units repair across literal boundaries and preserve 
   }
 });
 
-test("gawk: repairs before literals opened during recovery restore fresh CSTs", () => {
+test("awk: repairs before literals opened during recovery restore fresh CSTs", () => {
   const prefix = '@namespace "lib"\nfunction f(systime) {';
   const suffix = "; print systime (3)}\nBEGIN {print systime (3)}";
   for (const [rejected, insert, literal] of [
@@ -458,7 +458,7 @@ test("gawk: repairs before literals opened during recovery restore fresh CSTs", 
   }
 });
 
-test("gawk: regexp edits reclassify intervals ranges raw slash boundaries and UTF-8 escapes", () => {
+test("awk: regexp edits reclassify intervals ranges raw slash boundaries and UTF-8 escapes", () => {
   const changes = [
     {
       initial: "/[[:alpha:]-a]/",
@@ -557,7 +557,7 @@ test("gawk: regexp edits reclassify intervals ranges raw slash boundaries and UT
   }
 });
 
-test("gawk: nested syntax long names parameter lists and continuations are not truncated", () => {
+test("awk: nested syntax long names parameter lists and continuations are not truncated", () => {
   const nestingDepth = 160;
   const nameSuffixBytes = 4096;
   const parameterCount = 1025;
@@ -614,7 +614,7 @@ const stressCases = [
 ];
 
 for (const { name, source, successful } of stressCases) {
-  test(`gawk: stress: ${name} finish through EOF`, () => {
+  test(`awk: stress: ${name} finish through EOF`, () => {
     assert.equal(
       parseSummary(source, [], { completionOnly: true }).successful,
       successful,

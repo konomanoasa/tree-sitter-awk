@@ -203,7 +203,7 @@ test(`${language}: package metadata matches the grammar and license`, () => {
   const { metadata } = configuration;
   const pkg = JSON.parse(readFileSync(join(root, "package.json"), "utf8"));
   const cargo = readFileSync(join(root, "Cargo.toml"), "utf8");
-  assert.equal(configuration.grammars[0].name, "gawk");
+  assert.equal(configuration.grammars[0].name, "awk");
   for (const key of ["version", "license", "description"]) {
     assert.equal(pkg[key], metadata[key]);
     assert.ok(cargo.includes(`${key} = "${pkg[key]}"`));

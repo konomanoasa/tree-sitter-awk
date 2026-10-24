@@ -19,5 +19,5 @@ fn main() {
   build
     .include("src")
     .files(["src/parser.c", "src/scanner.c"])
-    .compile("tree-sitter-gawk");
+    .compile("tree-sitter-awk");
 }

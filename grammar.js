@@ -562,7 +562,7 @@ const regexForms = {
 };
 
 const definition = {
-  name: "gawk",
+  name: "awk",
   externals: ($) =>
     externalTokens.map(
       (name) => $[name === "line_continuation" ? name : `_${name}`],

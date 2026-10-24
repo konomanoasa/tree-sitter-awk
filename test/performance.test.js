@@ -59,7 +59,7 @@ function measure(
 }
 
 for (const { name, run } of normalWorkloads()) {
-  test(`gawk: normal: ${name} remain responsive`, (context) => {
+  test(`awk: normal: ${name} remain responsive`, (context) => {
     run((label, source, edit, successful = true) =>
       measure(context, label, source, edit, successful, true),
     );
@@ -71,7 +71,7 @@ for (const {
   source: createSource,
   successful = true,
 } of scalingCases) {
-  test(`gawk: large: ${name} avoid extreme scaling`, (context) => {
+  test(`awk: large: ${name} avoid extreme scaling`, (context) => {
     let previous;
     for (const size of sizes) {
       const source = createSource(size);

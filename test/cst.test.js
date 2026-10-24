@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { clean, parse } from "./support/parser.js";
 
-test("gawk: normal public nodes have source ranges and remain within their parents", () => {
+test("awk: normal public nodes have source ranges and remain within their parents", () => {
   for (const source of [
     "",
     "BEGIN {print 1}",
@@ -45,7 +45,7 @@ test("gawk: normal public nodes have source ranges and remain within their paren
   }
 });
 
-test("gawk: actual NUL is rejected in source, comments, and literals while escaped NUL remains valid", () => {
+test("awk: actual NUL is rejected in source, comments, and literals while escaped NUL remains valid", () => {
   for (const source of [
     "\0",
     "#a\0b\nBEGIN {}",
@@ -67,13 +67,13 @@ test("gawk: actual NUL is rejected in source, comments, and literals while escap
   }
 });
 
-test("gawk: only the source-leading BOM is removed by the input layer", () => {
+test("awk: only the source-leading BOM is removed by the input layer", () => {
   assert.match(clean("\uFEFFBEGIN {}"), /0:3/);
   assert.equal(parse(" \uFEFFBEGIN {}").status, 1);
   clean('BEGIN {print "\uFEFF"}');
 });
 
-test("gawk: CR is layout outside literals and remains string and comment content", () => {
+test("awk: CR is layout outside literals and remains string and comment content", () => {
   clean("BEGIN {\rprint 1}\r\n");
   assert.match(clean('BEGIN {print "a\rb"}'), /string_content/);
   clean("#a\rb\nBEGIN {}");

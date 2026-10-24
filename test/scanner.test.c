@@ -77,8 +77,7 @@ static void restore_position(Input *input) {
 }
 
 static unsigned save(Scanner *scanner, char *buffer) {
-  unsigned length =
-    tree_sitter_gawk_external_scanner_serialize(scanner, buffer);
+  unsigned length = tree_sitter_awk_external_scanner_serialize(scanner, buffer);
   assert(length <= TREE_SITTER_SERIALIZATION_BUFFER_SIZE);
   return length;
 }
@@ -93,12 +92,10 @@ static void assert_resumed_step(
   unsigned length = save(scanner, before);
   Scanner resumed;
   memset(&resumed, DESERIALIZATION_POISON_BYTE, sizeof(resumed));
-  tree_sitter_gawk_external_scanner_deserialize(&resumed, before, length);
+  tree_sitter_awk_external_scanner_deserialize(&resumed, before, length);
   Input copied = *input;
-  assert(tree_sitter_gawk_external_scanner_scan(scanner, &input->lexer, valid));
-  assert(
-    tree_sitter_gawk_external_scanner_scan(&resumed, &copied.lexer, valid)
-  );
+  assert(tree_sitter_awk_external_scanner_scan(scanner, &input->lexer, valid));
+  assert(tree_sitter_awk_external_scanner_scan(&resumed, &copied.lexer, valid));
   assert(input->lexer.result_symbol == token);
   assert(copied.lexer.result_symbol == token);
   assert(input->end == copied.end);
@@ -264,7 +261,7 @@ static void recovery_retains_literal_boundaries_and_resumable_state(void) {
     Input input = input_for(source, strlen(source));
     Scanner scanner = {0};
     assert(
-      !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+      !tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid)
     );
   }
 }
@@ -508,7 +505,7 @@ static void literal_break_preserves_name_context_without_consuming_lf(void) {
       char after[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
       unsigned length = save(&scanner, before);
       assert(
-        !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+        !tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid)
       );
       assert(
         save(&scanner, after) == length && memcmp(before, after, length) == 0
@@ -516,7 +513,7 @@ static void literal_break_preserves_name_context_without_consuming_lf(void) {
       valid[LITERAL_BREAK] = true;
       valid[ERROR_SENTINEL] = recovering != 0;
       assert(
-        tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+        tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid)
       );
       assert(input.lexer.result_symbol == LITERAL_BREAK);
       assert(input.position == 0 && input.end == 0);
@@ -525,10 +522,10 @@ static void literal_break_preserves_name_context_without_consuming_lf(void) {
         save(&scanner, after) == length && memcmp(before, after, length) == 0
       );
       assert(
-        !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+        !tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid)
       );
       Scanner resumed;
-      tree_sitter_gawk_external_scanner_deserialize(&resumed, after, length);
+      tree_sitter_awk_external_scanner_deserialize(&resumed, after, length);
       assert(
         save(&resumed, after) == length && memcmp(before, after, length) == 0
       );
@@ -539,7 +536,7 @@ static void literal_break_preserves_name_context_without_consuming_lf(void) {
       valid[LINE_CONTINUATION] = true;
       length = save(&scanner, before);
       assert(
-        tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+        tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid)
       );
       assert(input.lexer.result_symbol == LINE_CONTINUATION && input.end == 2);
       assert(
@@ -563,7 +560,7 @@ static void recovery_never_synthesizes_a_literal_closing_at_nul_or_eof(void) {
     for (unsigned end = 0; end < 2; ++end) {
       Input input = input_for(source, end ? 0 : sizeof(source));
       assert(
-        !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+        !tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid)
       );
       assert(input.position == 0);
       assert(
@@ -583,18 +580,14 @@ static void failed_scan_preserves_saved_context(void) {
   Input input = input_for(source, sizeof(source) - 1);
   bool valid[ERROR_SENTINEL + 1] = {0};
   valid[IDENTIFIER] = true;
-  assert(
-    !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
-  );
+  assert(!tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid));
   assert(save(&scanner, after) == length);
   assert(memcmp(before, after, length) == 0);
   valid[ERROR_SENTINEL] = true;
-  assert(
-    !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
-  );
+  assert(!tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid));
   assert(save(&scanner, after) == length);
   assert(memcmp(before, after, length) == 0);
-  tree_sitter_gawk_external_scanner_deserialize(&scanner, NULL, 0);
+  tree_sitter_awk_external_scanner_deserialize(&scanner, NULL, 0);
   assert(scanner.shadows == 0 && !scanner.non_awk && scanner.literal == NONE);
 }
 
@@ -609,7 +602,7 @@ static void assert_no_state_after(
     bool valid[ERROR_SENTINEL + 1] = {0};
     valid[tokens[i]] = true;
     assert(
-      tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
+      tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid)
     );
     assert(input.lexer.result_symbol == tokens[i]);
     restore_position(&input);
@@ -672,16 +665,14 @@ static void actual_nul_is_not_end_of_input(void) {
   Scanner scanner = {0};
   bool valid[ERROR_SENTINEL + 1] = {0};
   valid[END_OF_INPUT] = true;
-  assert(
-    !tree_sitter_gawk_external_scanner_scan(&scanner, &input.lexer, valid)
-  );
+  assert(!tree_sitter_awk_external_scanner_scan(&scanner, &input.lexer, valid));
 }
 
 static void scanner_lifecycle_releases_allocations(void) {
   for (unsigned i = 0; i < SCANNER_LIFECYCLE_ITERATIONS; ++i) {
-    Scanner *scanner = tree_sitter_gawk_external_scanner_create();
+    Scanner *scanner = tree_sitter_awk_external_scanner_create();
     assert(scanner && scanner->literal == NONE && scanner->shadows == 0);
-    tree_sitter_gawk_external_scanner_destroy(scanner);
+    tree_sitter_awk_external_scanner_destroy(scanner);
   }
 #ifdef TREE_SITTER_REUSE_ALLOCATOR
   assert(live_allocations == 0);
@@ -690,16 +681,16 @@ static void scanner_lifecycle_releases_allocations(void) {
 
 static void failed_creation_payload_is_inert(void) {
   char buffer[TREE_SITTER_SERIALIZATION_BUFFER_SIZE] = {0};
-  assert(tree_sitter_gawk_external_scanner_serialize(NULL, buffer) == 0);
-  tree_sitter_gawk_external_scanner_deserialize(NULL, buffer, 1);
-  tree_sitter_gawk_external_scanner_deserialize(NULL, NULL, 0);
+  assert(tree_sitter_awk_external_scanner_serialize(NULL, buffer) == 0);
+  tree_sitter_awk_external_scanner_deserialize(NULL, buffer, 1);
+  tree_sitter_awk_external_scanner_deserialize(NULL, NULL, 0);
   const char source[] = "x";
   Input input = input_for(source, sizeof(source) - 1);
   bool valid[ERROR_SENTINEL + 1] = {0};
   valid[IDENTIFIER] = true;
-  assert(!tree_sitter_gawk_external_scanner_scan(NULL, &input.lexer, valid));
+  assert(!tree_sitter_awk_external_scanner_scan(NULL, &input.lexer, valid));
   assert(input.position == 0);
-  tree_sitter_gawk_external_scanner_destroy(NULL);
+  tree_sitter_awk_external_scanner_destroy(NULL);
 }
 
 int main(void) {

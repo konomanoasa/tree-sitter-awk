@@ -14,7 +14,7 @@ import {
   scalingItemCounts,
 } from "./support/workloads.js";
 
-test("gawk: repairs restore names literals and statement ownership across syntax boundaries", () => {
+test("awk: repairs restore names literals and statement ownership across syntax boundaries", () => {
   const sources = [
     '@namespace "lib"\nfunction f(systime) {return systime (3)}\nBEGIN {print systime (3)}',
     "function f(switch) {return switch}\nBEGIN {switch(x) {case @/a{1,2}/: print (a)+b;}}",
@@ -47,7 +47,7 @@ test("gawk: repairs restore names literals and statement ownership across syntax
   }
 });
 
-test("gawk: fixed-seed generated histories restore fresh CSTs after repairs", () => {
+test("awk: fixed-seed generated histories restore fresh CSTs after repairs", () => {
   const historyCount = 512;
   const forwardEditCount = 6;
   const maximumDeletionBytes = 2;
@@ -134,7 +134,7 @@ function checkWorkload(name, source, edit, successful = true) {
   );
 }
 for (const { name, run } of normalWorkloads()) {
-  test(`gawk: ${name} complete after editing`, () => run(checkWorkload));
+  test(`awk: ${name} complete after editing`, () => run(checkWorkload));
 }
 for (const {
   name,
@@ -142,7 +142,7 @@ for (const {
   source,
   successful = true,
 } of scalingCases) {
-  test(`gawk: ${name} complete after editing at each scale`, () => {
+  test(`awk: ${name} complete after editing at each scale`, () => {
     for (const size of sizes) {
       const contents = source(size);
       checkWorkload(

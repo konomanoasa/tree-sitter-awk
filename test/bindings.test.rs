@@ -1,4 +1,4 @@
-use konomanoasa_tree_sitter_gawk as grammar;
+use konomanoasa_tree_sitter_awk as grammar;
 use tree_sitter::{
   InputEdit, Node, Parser, Point, Query, QueryCursor, StreamingIterator,
 };

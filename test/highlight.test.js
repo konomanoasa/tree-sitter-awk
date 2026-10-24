@@ -11,7 +11,7 @@ function check(segments) {
   assert.deepEqual(highlights(source), expected, source);
 }
 
-test("gawk: highlight uses lexical namespace and parameter classifications", () => {
+test("awk: highlight uses lexical namespace and parameter classifications", () => {
   check([
     ["@namespace", "keyword.directive"],
     [" "],
@@ -49,7 +49,7 @@ test("gawk: highlight uses lexical namespace and parameter classifications", () 
   ]);
 });
 
-test("gawk: continuations in split escapes and composite regexp literals keep their own capture", () => {
+test("awk: continuations in split escapes and composite regexp literals keep their own capture", () => {
   check([
     ["/", "punctuation.delimiter"],
     ["a", "string.regexp"],
@@ -69,7 +69,7 @@ test("gawk: continuations in split escapes and composite regexp literals keep th
   ]);
 });
 
-test("gawk: numeric regex symbols remain escapes and composite tails retain their roles", () => {
+test("awk: numeric regex symbols remain escapes and composite tails retain their roles", () => {
   check([
     ["/", "punctuation.delimiter"],
     ["\\x28", "string.escape"],
@@ -83,7 +83,7 @@ test("gawk: numeric regex symbols remain escapes and composite tails retain thei
   ]);
 });
 
-test("gawk: bracket forms counts and raw regex punctuation have specific captures", () => {
+test("awk: bracket forms counts and raw regex punctuation have specific captures", () => {
   check([
     ["/", "punctuation.delimiter"],
     ["^", "operator"],
@@ -105,7 +105,7 @@ test("gawk: bracket forms counts and raw regex punctuation have specific capture
   ]);
 });
 
-test("gawk: directive quotes translation marker and escapes keep their own captures", () => {
+test("awk: directive quotes translation marker and escapes keep their own captures", () => {
   check([
     ["@include", "keyword.directive"],
     [" "],

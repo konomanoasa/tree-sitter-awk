@@ -1,16 +1,18 @@
-# tree-sitter-gawk
+# tree-sitter-awk
 
-[![CI](https://github.com/konomanoasa/tree-sitter-gawk/actions/workflows/ci.yaml/badge.svg)](https://github.com/konomanoasa/tree-sitter-gawk/actions/workflows/ci.yaml)
-[![crates.io](https://img.shields.io/crates/v/konomanoasa-tree-sitter-gawk)](https://crates.io/crates/konomanoasa-tree-sitter-gawk)
-[![npm](https://img.shields.io/npm/v/@konomanoasa/tree-sitter-gawk)](https://www.npmjs.com/package/@konomanoasa/tree-sitter-gawk)
+[![CI](https://github.com/konomanoasa/tree-sitter-awk/actions/workflows/ci.yaml/badge.svg)](https://github.com/konomanoasa/tree-sitter-awk/actions/workflows/ci.yaml)
+[![crates.io](https://img.shields.io/crates/v/konomanoasa-tree-sitter-awk)](https://crates.io/crates/konomanoasa-tree-sitter-awk)
+[![npm](https://img.shields.io/npm/v/@konomanoasa/tree-sitter-awk)](https://www.npmjs.com/package/@konomanoasa/tree-sitter-awk)
 
 [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) grammar for
 GNU Awk 5.4.1.
 
+For POSIX awk, see [tree-sitter-posix-awk](https://github.com/konomanoasa/tree-sitter-posix-awk).
+
 ## Installation
 
 ```sh
-npm install @konomanoasa/tree-sitter-gawk
+npm install @konomanoasa/tree-sitter-awk
 ```
 
 ## Development

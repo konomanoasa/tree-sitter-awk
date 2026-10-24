@@ -1122,16 +1122,16 @@ get_signed(const char *buffer, unsigned length, unsigned *position) {
   return bits & 1 ? -(int32_t)(bits >> 1) - 1 : (int32_t)(bits >> 1);
 }
 
-void *tree_sitter_gawk_external_scanner_create(void) {
+void *tree_sitter_awk_external_scanner_create(void) {
   return ts_calloc(1, sizeof(Scanner));
 }
 
-void tree_sitter_gawk_external_scanner_destroy(void *payload) {
+void tree_sitter_awk_external_scanner_destroy(void *payload) {
   ts_free(payload);
 }
 
 unsigned
-tree_sitter_gawk_external_scanner_serialize(void *payload, char *buffer) {
+tree_sitter_awk_external_scanner_serialize(void *payload, char *buffer) {
   if (!payload) return 0;
   Scanner *scanner = payload;
   Regexp *regexp = &scanner->regexp;
@@ -1157,7 +1157,7 @@ tree_sitter_gawk_external_scanner_serialize(void *payload, char *buffer) {
   return length;
 }
 
-void tree_sitter_gawk_external_scanner_deserialize(
+void tree_sitter_awk_external_scanner_deserialize(
   void *payload,
   const char *buffer,
   unsigned length
@@ -1188,7 +1188,7 @@ void tree_sitter_gawk_external_scanner_deserialize(
   }
 }
 
-bool tree_sitter_gawk_external_scanner_scan(
+bool tree_sitter_awk_external_scanner_scan(
   void *payload,
   TSLexer *lexer,
   const bool *valid
