@@ -411,6 +411,110 @@ Unencodable Unicode escapes are literal question marks
   (regex_character (regex_text)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)))))))
 
 ==================
+Surrogate byte sequences retain their escapes in one regexp character
+==================
+/\xed\xa0\x80\355\277\277/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_character escape: (escape_sequence) escape: (escape_sequence) escape: (escape_sequence))
+  (regex_character escape: (escape_sequence) escape: (escape_sequence) escape: (escape_sequence)))))))
+
+==================
+Surrogate byte sequences form collating and equivalence payloads
+==================
+/[[.\xed\xa0\x80.]][[=\xed\xbf\xbf=]]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_collating_symbol opening: (regex_delimiter)
+      payload: (regex_collating_element escape: (escape_sequence) escape: (escape_sequence) escape: (escape_sequence))
+      closing: (regex_delimiter)) closing: (regex_delimiter))
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_equivalence_class opening: (regex_delimiter)
+      payload: (regex_collating_element escape: (escape_sequence) escape: (escape_sequence) escape: (escape_sequence))
+      closing: (regex_delimiter)) closing: (regex_delimiter)))))))
+
+==================
+Equal undecoded bytes form a range across different escape spellings
+==================
+/[\x80-\200]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_range start: (regex_character escape: (escape_sequence))
+      operator: (regex_operator) end: (regex_character escape: (escape_sequence)))
+    closing: (regex_delimiter)))))))
+
+==================
+Quoting and collating symbols preserve undecoded byte identity
+==================
+/[\x5c\xff-[.\377.]]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_range start: (regex_character escape: (escape_sequence) escape: (escape_sequence))
+      operator: (regex_operator)
+      end: (regex_collating_symbol opening: (regex_delimiter)
+        payload: (regex_collating_element escape: (escape_sequence)) closing: (regex_delimiter)))
+    closing: (regex_delimiter)))))))
+
+==================
+Unequal undecoded bytes cannot form a range
+:error
+==================
+/[\x80-\xc3]/
+---
+
+==================
+An undecoded byte and a character of equal numeric value cannot form a range
+:error
+==================
+/[\x80-\u0080]/
+---
+
+==================
+A character cannot start a range ending in an undecoded byte
+:error
+==================
+/[a-\xff]/
+---
+
+==================
+Quoting an undecoded byte does not make it a character endpoint
+:error
+==================
+/[\x5c\x80-\u0080]/
+---
+
+==================
+An undecoded collating byte cannot start a range ending in a character
+:error
+==================
+/[[.\xc3.]-\u00c3]/
+---
+
+==================
+Equivalence classes reject undecoded single bytes
+:error
+==================
+/[[=\xc3=]]/
+---
+
+==================
+Overlong byte sequences do not form one collating character
+:error
+==================
+/[[.\xe0\x80\x80.]]/
+---
+
+==================
+Byte sequences above the Unicode range do not form one equivalence character
+:error
+==================
+/[[=\xf4\x90\x80\x80=]]/
+---
+
+==================
 An interval cannot exceed the MinRX count limit
 :error
 ==================

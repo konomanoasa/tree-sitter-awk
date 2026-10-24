@@ -6,9 +6,10 @@
 
 (number) @number
 
-(string_content) @string
-
-(directive_text) @string
+[
+  (string_content)
+  (directive_text)
+] @string
 
 (line_continuation) @punctuation.special
 
@@ -107,35 +108,14 @@
 (directive_string
   "\"" @string)
 
-(localized_string
-  "_" @keyword.directive)
-
-(directive_string
-  "_" @keyword.directive)
-
-(namespace_directive
-  [
-    "@"
-    "namespace"
-  ] @keyword.directive)
-
-(include_directive
-  [
-    "@"
-    "include"
-  ] @keyword.directive)
-
-(nsinclude_directive
-  [
-    "@"
-    "nsinclude"
-  ] @keyword.directive)
-
-(load_directive
-  [
-    "@"
-    "load"
-  ] @keyword.directive)
+[
+  "@"
+  "_"
+  "include"
+  "load"
+  "namespace"
+  "nsinclude"
+] @keyword.directive
 
 (indirect_function_call
   "@" @operator)
@@ -202,7 +182,8 @@
 (regex_repetition_modifier
   "?" @operator)
 
-(escape_sequence
-  !fragment) @string.escape
-
-(escape_fragment) @string.escape
+[
+  (escape_sequence
+    !fragment)
+  (escape_fragment)
+] @string.escape

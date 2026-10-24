@@ -220,6 +220,58 @@ test("gawk: inserting and removing continuation inside an escape preserves the d
   ]);
 });
 
+test("gawk: regexp repairs retain endpoint kinds through resumed byte and character edits", () => {
+  for (const { initial, final, byte, deleteBytes, insert } of [
+    {
+      initial: String.raw`/[\x80-\x81]/`,
+      final: String.raw`/[\x80-\x80]/`,
+      byte: 10,
+      deleteBytes: 1,
+      insert: "0",
+    },
+    {
+      initial: String.raw`/[\x80-\u0080]/`,
+      final: String.raw`/[\u0080-\u0080]/`,
+      byte: 3,
+      deleteBytes: 3,
+      insert: "u0080",
+    },
+    {
+      initial: String.raw`/[\x5c\x80-\u0080]/`,
+      final: String.raw`/[\x5c\x80-\x80]/`,
+      byte: 12,
+      deleteBytes: 5,
+      insert: "x80",
+    },
+    {
+      initial: String.raw`/[[=\xc3=]]/`,
+      final: String.raw`/[[=\xc3\xa9=]]/`,
+      byte: 8,
+      deleteBytes: 0,
+      insert: String.raw`\xa9`,
+    },
+    {
+      initial: String.raw`/[[=\xed\xa0=]]/`,
+      final: String.raw`/[[=\xed\xa0\x80=]]/`,
+      byte: 12,
+      deleteBytes: 0,
+      insert: String.raw`\x80`,
+    },
+  ]) {
+    assert.equal(parse(initial).status, 1, initial);
+    edited(initial, final, [{ byte, deleteBytes, insert }]);
+    const undo = {
+      byte,
+      deleteBytes: insert.length,
+      insert: initial.slice(byte, byte + deleteBytes),
+    };
+    const broken = parse(final, [undo]);
+    assert.equal(broken.status, 1, initial);
+    assert.equal(broken.tree, parse(initial).tree);
+    edited(final, final, [undo, { byte, deleteBytes, insert }]);
+  }
+});
+
 test("gawk: edits after output parentheses reselect the owner of the parentheses", () => {
   for (const tail of ["+b", ",b", " in arr", " > file"]) {
     const initial = "BEGIN {print (a)}";
@@ -303,6 +355,109 @@ test("gawk: regexp repairs restore endpoint order and raw slash boundaries", () 
     edited(initial, final, [{ byte, deleteBytes, insert }]);
 });
 
+test("gawk: rejected regexp units repair across literal boundaries and preserve name context", () => {
+  const prefix = '@namespace "lib"\nfunction f(systime) {if (x ~ /';
+  const suffix =
+    '/) print y; z = "s"; print systime (3)}\nBEGIN {print systime (3)}';
+  for (const { before, after, byte, deleteBytes, insert } of [
+    { before: "a{2,1}", after: "a{2,3}", byte: 4, deleteBytes: 1, insert: "3" },
+    {
+      before: String.raw`a{2,1}\/b`,
+      after: String.raw`a{2,3}\/b`,
+      byte: 4,
+      deleteBytes: 1,
+      insert: "3",
+    },
+    {
+      before: "a{2,1}[/]b",
+      after: "a{2,3}[/]b",
+      byte: 4,
+      deleteBytes: 1,
+      insert: "3",
+    },
+    {
+      before: "a{2,1}[[:alpha:]/]b",
+      after: "a{2,3}[[:alpha:]/]b",
+      byte: 4,
+      deleteBytes: 1,
+      insert: "3",
+    },
+    {
+      before: "a{2,1}[\\\n/]b",
+      after: "a{2,3}[\\\n/]b",
+      byte: 4,
+      deleteBytes: 1,
+      insert: "3",
+    },
+    {
+      before: String.raw`a{2,1}\\`,
+      after: String.raw`a{2,3}\\`,
+      byte: 4,
+      deleteBytes: 1,
+      insert: "3",
+    },
+    {
+      before: "a{2,[/]}b",
+      after: "a[/]}b",
+      byte: 1,
+      deleteBytes: 3,
+      insert: "",
+    },
+    {
+      before: "a[[:bogus:]/]b",
+      after: "a[[:alpha:]/]b",
+      byte: 4,
+      deleteBytes: 5,
+      insert: "alpha",
+    },
+  ]) {
+    const initial = prefix + before + suffix;
+    const final = prefix + after + suffix;
+    const edit = {
+      byte: Buffer.byteLength(prefix) + byte,
+      deleteBytes,
+      insert,
+    };
+    const broken = parse(initial);
+    assert.equal(broken.status, 1, initial);
+    assert.equal(broken.tree, parse(initial).tree);
+    edited(initial, final, [edit]);
+    edited(final, final, [
+      {
+        byte: edit.byte,
+        deleteBytes: Buffer.byteLength(insert),
+        insert: before.slice(byte, byte + deleteBytes),
+      },
+      edit,
+    ]);
+  }
+});
+
+test("gawk: repairs before literals opened during recovery restore fresh CSTs", () => {
+  const prefix = '@namespace "lib"\nfunction f(systime) {';
+  const suffix = "; print systime (3)}\nBEGIN {print systime (3)}";
+  for (const [rejected, insert, literal] of [
+    [") ", "", '"}" "a # b"'],
+    [") ", "", "x = @/} # b/"],
+    [") ", "", "x = 1 \\\n+ 2"],
+    ["print ", "x = ", "@/} # b/"],
+    ["y ", "x = ", "@/} # b/"],
+  ]) {
+    const initial = prefix + rejected + literal + suffix;
+    const final = prefix + insert + literal + suffix;
+    const byte = Buffer.byteLength(prefix);
+    const edit = { byte, deleteBytes: rejected.length, insert };
+    const broken = parse(initial);
+    assert.equal(broken.status, 1, initial);
+    assert.equal(broken.tree, parse(initial).tree);
+    edited(initial, final, [edit]);
+    edited(final, final, [
+      { byte, deleteBytes: insert.length, insert: rejected },
+      edit,
+    ]);
+  }
+});
+
 test("gawk: regexp edits reclassify intervals ranges raw slash boundaries and UTF-8 escapes", () => {
   const changes = [
     {
@@ -346,6 +501,20 @@ test("gawk: regexp edits reclassify intervals ranges raw slash boundaries and UT
       byte: 7,
       deleteBytes: 2,
       insert: "ff",
+    },
+    {
+      initial: String.raw`/\xed\x9f\xbf/`,
+      final: String.raw`/\xed\xaf\xbf/`,
+      byte: 7,
+      deleteBytes: 1,
+      insert: "a",
+    },
+    {
+      initial: String.raw`/[\xed\xa0\x80-\xed\xbf\xbf]/`,
+      final: "/[\\xed\\xa0\\\n\\x80-\\xed\\xbf\\xbf]/",
+      byte: 10,
+      deleteBytes: 0,
+      insert: "\\\n",
     },
     {
       initial: String.raw`/a\u110000/`,

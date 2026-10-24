@@ -914,7 +914,7 @@ const definition = {
         ),
         $._escape_end,
       ),
-    // biome-ignore lint/suspicious/noControlCharactersInRegex: Keep NUL outside comments as a syntax error.
+    // biome-ignore lint/suspicious/noControlCharactersInRegex: NUL must terminate comments.
     comment: () => token(seq("#", /[^\n\x00]*/)),
     regexp: ($) =>
       seq(

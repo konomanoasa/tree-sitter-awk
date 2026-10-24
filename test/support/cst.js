@@ -7,6 +7,12 @@ function sourceEndPoint(source) {
   return `${row}:${bytes.length - bytes.lastIndexOf(0x0a) - 1}`;
 }
 
+const recoveryMarker = /^[0-9: \t-]+•/m;
+
+function clean(tree) {
+  assert.doesNotMatch(tree, recoveryMarker, tree);
+}
+
 function parseCst(stdout, source, status) {
   assert.ok(
     status === 0 || status === 1,
@@ -27,4 +33,4 @@ function parseCst(stdout, source, status) {
   return tree;
 }
 
-export { parseCst, sourceEndPoint };
+export { clean, parseCst, sourceEndPoint };

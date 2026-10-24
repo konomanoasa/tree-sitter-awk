@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before } from "node:test";
-import { createTreeSitter, root } from "../../scripts/tree-sitter.js";
-import { parseCst, sourceEndPoint } from "./cst.js";
+import { createTreeSitter, grammars, root } from "../../scripts/tree-sitter.js";
+import { clean as assertClean, parseCst, sourceEndPoint } from "./cst.js";
 
 const commandTimeoutMs = 60_000;
 const cstOutputLimitBytes = 16 * 1024 * 1024;
 const summaryTimeoutMicros = 10_000_000;
+const grammar = grammars[0];
+
 let runtime;
 let nativeLibrary;
 let sequence = 0;
@@ -18,9 +20,12 @@ before(() => {
     runtime.directory,
     process.platform === "win32" ? "parser.dll" : "parser",
   );
-  const result = runtime.run(["build", root, "--output", nativeLibrary], {
-    timeout: commandTimeoutMs,
-  });
+  const result = runtime.run(
+    ["build", join(root, grammar.path), "--output", nativeLibrary],
+    {
+      timeout: commandTimeoutMs,
+    },
+  );
   assert.ifError(result.error);
   assert.equal(result.status, 0, result.stdout + result.stderr);
 });
@@ -28,11 +33,22 @@ after(() => runtime?.close());
 
 export function applyEdits(source, edits) {
   let bytes = Buffer.from(source);
-  for (const { byte, deleteBytes, insert } of edits) {
-    assert.ok(Number.isSafeInteger(byte) && byte >= 0);
-    assert.ok(Number.isSafeInteger(deleteBytes) && deleteBytes >= 0);
-    assert.equal(typeof insert, "string");
-    assert.ok(byte <= bytes.length && deleteBytes <= bytes.length - byte);
+  for (const edit of edits) {
+    const { byte, deleteBytes, insert } = edit;
+    const description = JSON.stringify(edit);
+    assert.ok(
+      Number.isSafeInteger(byte) && byte >= 0,
+      `invalid byte offset: ${description}`,
+    );
+    assert.ok(
+      Number.isSafeInteger(deleteBytes) && deleteBytes >= 0,
+      `invalid deletion length: ${description}`,
+    );
+    assert.equal(typeof insert, "string", `invalid insertion: ${description}`);
+    assert.ok(
+      byte <= bytes.length && deleteBytes <= bytes.length - byte,
+      `edit exceeds ${bytes.length} source bytes: ${description}`,
+    );
     bytes = Buffer.concat([
       bytes.subarray(0, byte),
       Buffer.from(insert),
@@ -42,15 +58,20 @@ export function applyEdits(source, edits) {
   return bytes;
 }
 
-export function parse(source, edits = []) {
+function writeSource(source) {
   const path = join(runtime.directory, `${sequence++}.awk`);
   writeFileSync(path, source);
+  return path;
+}
+
+export function parse(source, edits = []) {
+  const path = writeSource(source);
   const arguments_ = [
     "parse",
     "--lib-path",
     nativeLibrary,
     "--lang-name",
-    "gawk",
+    grammar.name,
     "--cst",
   ];
   if (edits.length)
@@ -73,13 +94,13 @@ export function parse(source, edits = []) {
     applyEdits(source, edits),
     result.status,
   );
-  return { status: result.status, tree, output: result.stdout + result.stderr };
+  return { ...result, tree, output: result.stdout + result.stderr };
 }
 
 export function clean(source) {
   const result = parse(source);
   assert.equal(result.status, 0, result.output);
-  assert.doesNotMatch(result.tree, /•ERROR|MISSING/);
+  assertClean(result.tree);
   return result.tree;
 }
 
@@ -95,14 +116,13 @@ export function parseSummary(
   edits = [],
   { timeoutMicros = summaryTimeoutMicros, completionOnly = false } = {},
 ) {
-  const path = join(runtime.directory, `${sequence++}.awk`);
-  writeFileSync(path, source);
+  const path = writeSource(source);
   const arguments_ = [
     "parse",
     "--lib-path",
     nativeLibrary,
     "--lang-name",
-    "gawk",
+    grammar.name,
     "--quiet",
     "--time",
     "--json-summary",
@@ -151,8 +171,7 @@ export function parseSummary(
 }
 
 export function highlights(source) {
-  const path = join(runtime.directory, `${sequence++}.awk`);
-  writeFileSync(path, source);
+  const path = writeSource(source);
   const result = runtime.run(
     [
       "query",
@@ -160,7 +179,7 @@ export function highlights(source) {
       "--lib-path",
       nativeLibrary,
       "--lang-name",
-      "gawk",
+      grammar.name,
       join(root, "queries/highlights.scm"),
       path,
     ],

@@ -33,6 +33,7 @@ typedef struct {
   bool after_class;
   bool range_pending;
   uint32_t range_start;
+  bool range_byte;
   bool after_quantifier;
   bool interval;
   bool interval_maximum;
@@ -46,6 +47,7 @@ typedef struct {
   enum Literal literal;
   bool non_awk;
   bool qualified_awk;
+  bool typed_slash;
   Escape escape;
   Regexp regexp;
 } Scanner;
@@ -129,6 +131,18 @@ static bool mark(TSLexer *lexer, const bool *valid, enum Token token) {
   return emit(lexer, valid, token);
 }
 
+static bool end_literal(
+  Scanner *scanner,
+  TSLexer *lexer,
+  const bool *valid,
+  enum Token token
+) {
+  scanner->literal = NONE;
+  scanner->escape = (Escape){0};
+  scanner->regexp = (Regexp){0};
+  return mark(lexer, valid, token);
+}
+
 static bool scalar_value(uint32_t value) {
   return value <= 0x10ffff && !(value >= 0xd800 && value <= 0xdfff);
 }
@@ -177,7 +191,7 @@ static Character decode(Reader *reader) {
   int32_t code = take(reader);
   result.value = code;
   result.length = reader->offset - start;
-  if (code <= 0 || code == '\n') {
+  if (code <= 0) {
     result.value = -1;
   } else if (ascii_in(code, "01234567xu")) {
     numeric_escape(reader, &result, code, start);
@@ -328,7 +342,7 @@ static bool scan_name(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   bool qualified_awk = scanner->qualified_awk;
   scanner->qualified_awk = false;
   bool call = lexer->lookahead == '(';
-  bool qualified = valid[QUALIFIED_IDENTIFIER] || valid[QUALIFIED_BUILTIN];
+  bool qualified = valid[QUALIFIED_IDENTIFIER];
   bool reserved =
     name.word.kind == STANDARD_KEYWORD || name.word.kind == STANDARD_BUILTIN;
   if (
@@ -412,26 +426,11 @@ directive_content(Scanner *scanner, TSLexer *lexer, const bool *valid) {
     lexer->mark_end(lexer);
     content = true;
   }
-  return content && emit(lexer, valid, DIRECTIVE_TEXT);
-}
-
-static bool
-quoted_content(Scanner *scanner, TSLexer *lexer, const bool *valid) {
-  bool string = scanner->literal == STRING;
-  if (lexer->lookahead == '"') {
-    scanner->literal = NONE;
-    lexer->advance(lexer, false);
-    return mark(lexer, valid, string ? STRING_END : DIRECTIVE_END);
-  }
-  while (quoted_text(lexer) && lexer->lookahead != '\\')
-    lexer->advance(lexer, false);
-  return mark(lexer, valid, string ? STRING_CONTENT : DIRECTIVE_TEXT);
+  return emit(lexer, valid, DIRECTIVE_TEXT);
 }
 
 static bool number_boundary(TSLexer *lexer) {
-  if (lexer->lookahead != '0')
-    return (lexer->lookahead >= '1' && lexer->lookahead <= '9') ||
-      lexer->lookahead == '.';
+  if (lexer->lookahead != '0') return true;
   lexer->advance(lexer, false);
   if (lexer->lookahead != 'x' && lexer->lookahead != 'X') return true;
   lexer->advance(lexer, false);
@@ -493,7 +492,7 @@ static Character pattern_character(Reader *reader, uint32_t start) {
     end = next_start + next.length;
   }
   uint32_t minimum = count == 2 ? 0x80 : count == 3 ? 0x800 : 0x10000;
-  if (value >= minimum && scalar_value(value)) {
+  if (value >= minimum && value <= 0x10ffff) {
     character.value = (int32_t)value;
     character.length = end - start;
     character.byte_escape = false;
@@ -520,6 +519,7 @@ regex_character(Reader *reader, const Regexp *regexp, bool left_backslash) {
     Character next = pattern_character(reader, start);
     character.value = next.value;
     character.length = next.length;
+    character.byte_escape = next.byte_escape;
   }
   return character;
 }
@@ -716,11 +716,19 @@ static enum Token operator_unit(Regexp *regexp, Reader *reader, int32_t value) {
   }
 }
 
-static bool bracket_member(Regexp *regexp, enum Token role, int32_t value) {
+static bool
+bracket_member(Regexp *regexp, enum Token role, Character character) {
   if (role == RX_CHARACTER || (role == RX_PAYLOAD && regexp->form != ':')) {
-    if (regexp->range_pending && (uint32_t)value < regexp->range_start)
-      return false;
-    regexp->range_start = (uint32_t)value;
+    uint32_t value = (uint32_t)character.value;
+    bool byte = character.byte_escape && value >= 0x80;
+    if (role == RX_PAYLOAD && regexp->form == '=' && byte) return false;
+    if (regexp->range_pending) {
+      if (byte != regexp->range_byte) return false;
+      if (byte ? value != regexp->range_start : value < regexp->range_start)
+        return false;
+    }
+    regexp->range_start = value;
+    regexp->range_byte = byte;
     regexp->range_pending = false;
   } else if (role == RX_RANGE) {
     regexp->range_pending = true;
@@ -757,6 +765,7 @@ static void enter_role(Regexp *regexp, enum Token role) {
   } else if (role == RX_BRACKET_CLOSE) {
     regexp->bracket = false;
     regexp->range_start = 0;
+    regexp->range_byte = false;
   } else if (role == RX_NEGATION) {
     regexp->bracket_negated = true;
   } else {
@@ -781,10 +790,14 @@ static bool regex_role(Scanner *scanner, Reader reader, const bool *valid) {
   if (character.value < 0) return false;
   uint32_t length = character.length;
   enum Token role = unit_role(regexp, &reader, character, &length);
-  if (!valid[role]) return false;
-  if (regexp->bracket && !bracket_member(regexp, role, character.value))
-    return false;
-  enter_role(regexp, role);
+  if (
+    !valid[role] ||
+    (regexp->bracket && !bracket_member(regexp, role, character))
+  ) {
+    // Keep rejected source in place for recovery's host delimiter tracking.
+    role = ERROR_SENTINEL;
+  }
+  if (role != ERROR_SENTINEL) enter_role(regexp, role);
   regexp->unit_left = length;
   regexp->unit_raw = !character.escaped;
   regexp->unit_backslash = character.paired;
@@ -853,11 +866,25 @@ static bool regexp_source(Scanner *scanner, TSLexer *lexer, const bool *valid) {
     lexer->lookahead == '/' && !host_bracket(regexp) && !regexp->host_escaped
   ) {
     lexer->advance(lexer, false);
-    scanner->literal = NONE;
-    *regexp = (Regexp){0};
-    return mark(lexer, valid, REGEXP_END);
+    return end_literal(scanner, lexer, valid, REGEXP_END);
   }
   return regex_role(scanner, (Reader){.lexer = lexer}, valid);
+}
+
+static bool open_regexp(Scanner *scanner, TSLexer *lexer) {
+  scanner->literal = REGEXP;
+  scanner->regexp = (Regexp){0};
+  lexer->result_symbol = REGEXP_START;
+  return true;
+}
+
+// Preserve typed-regexp boundaries even where the parser rejects them.
+static bool typed_marker(Scanner *scanner, TSLexer *lexer) {
+  lexer->advance(lexer, false);
+  lexer->mark_end(lexer);
+  lexer->result_symbol = TYPED_REGEXP_MARKER;
+  scanner->typed_slash = lexer->lookahead == '/';
+  return scanner->typed_slash;
 }
 
 static bool slash(Scanner *scanner, TSLexer *lexer, const bool *valid) {
@@ -870,9 +897,7 @@ static bool slash(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   }
   if (valid[DIVIDE] && !(equals && valid[REGEXP_START]))
     return emit(lexer, valid, DIVIDE);
-  scanner->literal = REGEXP;
-  scanner->regexp = (Regexp){0};
-  return emit(lexer, valid, REGEXP_START);
+  return valid[REGEXP_START] && open_regexp(scanner, lexer);
 }
 
 static bool quote(Scanner *scanner, TSLexer *lexer, const bool *valid) {
@@ -906,10 +931,7 @@ static bool layout_token(Scanner *scanner, TSLexer *lexer, const bool *valid) {
       return name_start(lexer->lookahead) &&
         emit(lexer, valid, QUALIFIED_SEPARATOR);
     case '@':
-      if (!valid[TYPED_REGEXP_MARKER]) return false;
-      lexer->advance(lexer, false);
-      lexer->mark_end(lexer);
-      return lexer->lookahead == '/' && emit(lexer, valid, TYPED_REGEXP_MARKER);
+      return typed_marker(scanner, lexer);
     case '\\':
       return backslash(scanner, lexer, valid);
     case '"':
@@ -922,33 +944,95 @@ static bool layout_token(Scanner *scanner, TSLexer *lexer, const bool *valid) {
 }
 
 static bool quoted_token(Scanner *scanner, TSLexer *lexer, const bool *valid) {
-  int32_t next = lexer->lookahead;
-  if (scanner->literal == DIRECTIVE && !scanner->escape.open && next != '"')
+  bool string = scanner->literal == STRING;
+  if (lexer->lookahead == '"') {
+    lexer->advance(lexer, false);
+    return end_literal(
+      scanner,
+      lexer,
+      valid,
+      string ? STRING_END : DIRECTIVE_END
+    );
+  }
+  if (!string && !scanner->escape.open)
     return directive_content(scanner, lexer, valid);
-  if (next == '\\') return backslash(scanner, lexer, valid);
-  return quoted_content(scanner, lexer, valid);
+  if (lexer->lookahead == '\\') return backslash(scanner, lexer, valid);
+  while (quoted_text(lexer) && lexer->lookahead != '\\')
+    lexer->advance(lexer, false);
+  return mark(lexer, valid, STRING_CONTENT);
+}
+
+// Recovery lacks parser context; accept only context-free boundaries.
+static bool
+recovery_source(Scanner *scanner, TSLexer *lexer, const bool *valid) {
+  if (lexer->lookahead == '@') return typed_marker(scanner, lexer);
+  if (lexer->lookahead == '"') {
+    lexer->advance(lexer, false);
+    scanner->literal = STRING;
+    return mark(lexer, valid, STRING_START);
+  }
+  Reader reader = {.lexer = lexer};
+  return continuation(&reader) && mark(lexer, valid, LINE_CONTINUATION);
+}
+
+static bool
+recovery_regexp(Scanner *scanner, TSLexer *lexer, const bool *valid) {
+  Regexp *regexp = &scanner->regexp;
+  int32_t next = lexer->lookahead;
+  scanner->escape = (Escape){0};
+  regexp->unit_left = 0;
+  regexp->unit_backslash = false;
+  if (regexp->host_escaped) {
+    host_escape(regexp);
+    regexp->host_escaped = false;
+    lexer->advance(lexer, false);
+  } else if (next == '\\') {
+    lexer->advance(lexer, false);
+    if (lexer->lookahead == '\n') {
+      lexer->advance(lexer, false);
+      regexp->host_pending = false;
+      return mark(lexer, valid, LINE_CONTINUATION);
+    }
+    host_escape(regexp);
+    if (!lexer->eof(lexer) && lexer->lookahead) lexer->advance(lexer, false);
+  } else if (next == '/' && !host_bracket(regexp)) {
+    lexer->advance(lexer, false);
+    return end_literal(scanner, lexer, valid, REGEXP_END);
+  } else {
+    do {
+      host_character(regexp, lexer->lookahead);
+      lexer->advance(lexer, false);
+    } while (
+      !lexer->eof(lexer) &&
+      lexer->lookahead &&
+      !ascii_in(lexer->lookahead, "\\\n") &&
+      !(lexer->lookahead == '/' && !host_bracket(regexp))
+    );
+  }
+  // Recovery may be probed before an error; raw contents must remain rejected.
+  return mark(lexer, valid, ERROR_SENTINEL);
 }
 
 static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid) {
-  if (valid[ERROR_SENTINEL]) return false;
-  if (
-    scanner->literal != NONE && lexer->lookahead == '\n' && valid[LITERAL_BREAK]
-  ) {
-    scanner->literal = NONE;
-    scanner->escape = (Escape){0};
-    scanner->regexp = (Regexp){0};
-    return mark(lexer, valid, LITERAL_BREAK);
+  bool recovering = valid[ERROR_SENTINEL];
+  if (scanner->typed_slash) {
+    scanner->typed_slash = false;
+    lexer->advance(lexer, false);
+    lexer->mark_end(lexer);
+    return open_regexp(scanner, lexer);
   }
-  if (valid[FUNCTION_END]) {
+  if (scanner->literal != NONE && lexer->lookahead == '\n')
+    return end_literal(scanner, lexer, valid, LITERAL_BREAK);
+  if (!recovering && valid[FUNCTION_END]) {
     scanner->shadows = 0;
     return mark(lexer, valid, FUNCTION_END);
   }
-  if (scanner->escape.open && !scanner->escape.left && valid[ESCAPE_END]) {
+  if (scanner->escape.open && !scanner->escape.left) {
     scanner->escape = (Escape){0};
     return mark(lexer, valid, ESCAPE_END);
   }
   // Statement reuse depends on the following else.
-  if (valid[ELSE_MARK] || valid[IF_END]) {
+  if (!recovering && valid[ELSE_MARK]) {
     lexer->mark_end(lexer);
     return emit(lexer, valid, else_follows(lexer) ? ELSE_MARK : IF_END);
   }
@@ -957,9 +1041,13 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   }
   lexer->mark_end(lexer);
   int32_t next = lexer->lookahead;
-  if (lexer->eof(lexer)) return emit(lexer, valid, END_OF_INPUT);
+  if (lexer->eof(lexer)) return !recovering && emit(lexer, valid, END_OF_INPUT);
   if (!next || next == '\n') return false;
-  if (scanner->escape.open && scanner->escape.left && next != '\\')
+  if (recovering && scanner->literal == NONE)
+    return recovery_source(scanner, lexer, valid);
+  if (recovering && scanner->literal == REGEXP)
+    return recovery_regexp(scanner, lexer, valid);
+  if (scanner->escape.open && next != '\\')
     return escape_fragment(scanner, lexer, valid);
   switch (scanner->literal) {
     case NONE:
@@ -972,7 +1060,7 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   }
 }
 
-enum { FLAG_COUNT = 18 };
+enum { FLAG_COUNT = 20 };
 
 typedef struct {
   bool *flag[FLAG_COUNT];
@@ -983,6 +1071,7 @@ static Flags flags(Scanner *scanner) {
   return (Flags){{
     &scanner->non_awk,
     &scanner->qualified_awk,
+    &scanner->typed_slash,
     &scanner->escape.open,
     &scanner->escape.started,
     &regexp->unit_raw,
@@ -996,6 +1085,7 @@ static Flags flags(Scanner *scanner) {
     &regexp->bracket_negated,
     &regexp->after_class,
     &regexp->range_pending,
+    &regexp->range_byte,
     &regexp->after_quantifier,
     &regexp->interval,
     &regexp->interval_maximum,

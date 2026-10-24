@@ -15,8 +15,6 @@ npm install @konomanoasa/tree-sitter-gawk
 
 ## Development
 
-Development uses Node.js 24.21.0 or later.
-
 ```sh
 npm install
 npm run build
@@ -29,7 +27,7 @@ npm test
 
 ## Used By
 
-[awk-ts-mode](https://github.com/konomanoasa/awk-ts-mode): Emacs major mode.
+[awk-ts-mode](https://github.com/konomanoasa/awk-ts-mode)
 
 ## License
 
