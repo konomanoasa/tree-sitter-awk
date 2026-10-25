@@ -1,6 +1,6 @@
 [package]
 name = "konomanoasa-tree-sitter-awk"
-version = "0.11.0"
+version = "0.12.0"
 edition = "2024"
 description = "Tree-sitter grammar for GNU Awk 5.4.1."
 readme = "README.md"
