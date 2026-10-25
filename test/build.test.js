@@ -96,6 +96,23 @@ test(`${language}: generated checks reject stale and missing files without rewri
       assert.ok(stale.stderr.includes(path), stale.stderr);
       assert.equal(existsSync(join(directory, path)), false);
     }
+
+    for (const path of [
+      ...changedFiles.map(([path]) => path),
+      ...missingFiles,
+    ]) {
+      writeFileSync(join(directory, path), readFileSync(join(root, path)));
+    }
+    const tokenHeaders = grammars.map(({ path }) =>
+      join(path, "src", "tokens.h"),
+    );
+    for (const path of tokenHeaders) rmSync(join(directory, path));
+    const missing = check();
+    assert.equal(missing.status, 1, missing.stdout + missing.stderr);
+    for (const path of tokenHeaders) {
+      assert.ok(missing.stderr.includes(path), missing.stderr);
+      assert.equal(existsSync(join(directory, path)), false);
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
