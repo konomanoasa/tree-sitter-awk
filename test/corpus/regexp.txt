@@ -278,16 +278,14 @@ POSIX classes collating symbols and equivalence classes retain payloads
 ==================
 Character class closing marker may be a numeric escape
 ==================
-/[[:alpha\x3a]/]/
+/[[:alpha\x3a]]/
 ---
 
 (program (rule pattern: (regexp pattern: (regular_expression (regex_branch
   (regex_bracket_expression opening: (regex_delimiter)
-    (regex_posix_class
-      opening: (regex_delimiter)
+    (regex_posix_class opening: (regex_delimiter)
       payload: (regex_class_name (regex_text))
       closing: (regex_delimiter escape: (escape_sequence)))
-    (regex_character (regex_text))
     closing: (regex_delimiter)))))))
 
 ==================
@@ -333,11 +331,16 @@ Raw slash after an equivalence class ends the host regexp
 ---
 
 ==================
-Escaped outer bracket after a character class leaves the host regexp open
-:error
+Numeric escape closes the outer bracket without hiding the closing slash
 ==================
 /[[:alpha:]\x5d/
 ---
+
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_posix_class opening: (regex_delimiter)
+      payload: (regex_class_name (regex_text)) closing: (regex_delimiter))
+    closing: (regex_delimiter escape: (escape_sequence))))))))
 
 ==================
 Collating symbol can be a range endpoint
@@ -621,28 +624,25 @@ All twelve POSIX character classes are supported
     closing: (regex_delimiter)))))))
 
 ==================
-Unmatched raw closing bracket changes the later host slash boundary
+Raw slash ends an unclosed bracket after an unmatched closing bracket
 :error
 ==================
 /]x[/]/
 ---
 
 ==================
-Later raw brackets do not restore slash protection after an unmatched closing
+Raw slash ends an unclosed bracket after a literal opening bracket
 :error
 ==================
 /][[][/]/
 ---
 
 ==================
-Leading literal closing bracket does not cancel a raw bracket
+Raw slash ends a bracket with a leading literal closing bracket
+:error
 ==================
 /[]x[/]/
 ---
-(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
- (regex_bracket_expression opening: (regex_delimiter)
-  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text))
-  closing: (regex_delimiter)))))))
 
 ==================
 Reversed literal range endpoints are rejected
@@ -730,38 +730,28 @@ GNU boundary escape is a literal character within brackets according to the manu
   (regex_character escape: (escape_sequence)) closing: (regex_delimiter)))))))
 
 ==================
-Nested raw class openings require an equal number of host closings
-:error
+Quoted class openings do not hide the closing slash
 ==================
 /[\x5c[:\x5c[:a]]/
 ---
 
-==================
-Nested raw class depth is independent of decoded bracket structure
-==================
-/[\x5c[:\x5c[:a]]]/
----
 (program (rule pattern: (regexp pattern: (regular_expression (regex_branch
  (regex_bracket_expression opening: (regex_delimiter)
   (regex_character escape: (escape_sequence) (regex_text))
   (regex_character (regex_text))
   (regex_character escape: (escape_sequence) (regex_text))
   (regex_character (regex_text)) (regex_character (regex_text)) closing: (regex_delimiter))
- (regex_character (regex_text)) (regex_character (regex_text)))))))
+ (regex_character (regex_text)))))))
 
 ==================
-Raw class openings can restore slash protection after an unmatched closing
+Raw slash ends an unclosed bracket with nested literal opening brackets
+:error
 ==================
 /]x[:[a/]/
 ---
-(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
- (regex_character (regex_text)) (regex_character (regex_text))
- (regex_bracket_expression opening: (regex_delimiter)
-  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text))
-  closing: (regex_delimiter)))))))
 
 ==================
-Continuation between a raw bracket and colon does not nest the host bracket
+Raw slash after a continued character class ends the regexp
 :error
 ==================
 /[[\
@@ -769,7 +759,7 @@ Continuation between a raw bracket and colon does not nest the host bracket
 ---
 
 ==================
-Continuation between a raw bracket and colon does not restore a negative host depth
+Continuation inside a bracket does not quote a later slash
 :error
 ==================
 /]x[\
@@ -780,9 +770,50 @@ Continuation between a raw bracket and colon does not restore a negative host de
 Continuation after an opening bracket keeps the leading literal closing bracket
 ==================
 /[\
-]a/]/
+]a\/]/
 ---
+
 (program (rule pattern: (regexp pattern: (regular_expression (regex_branch
  (regex_bracket_expression opening: (regex_delimiter) (line_continuation)
-  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character (regex_text))
+  (regex_character (regex_text)) (regex_character (regex_text)) (regex_character escape: (escape_sequence))
   closing: (regex_delimiter)))))))
+
+==================
+Raw slash in a bracket cannot be regexp text
+:error
+==================
+/[/]/
+---
+
+==================
+Raw slash after a character class cannot be regexp text
+:error
+==================
+/[[:alpha:]/]/
+---
+
+==================
+Typed regexp also requires escaping a bracket slash
+:error
+==================
+x = @/[/]/
+---
+
+==================
+Decoded backslash cannot quote a raw closing slash in a bracket
+:error
+==================
+/[\x5c/]/
+---
+
+==================
+Escaped and numeric slashes remain bracket members
+==================
+/[\/\x2f]/
+---
+
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_character escape: (escape_sequence))
+    (regex_character escape: (escape_sequence))
+    closing: (regex_delimiter)))))))

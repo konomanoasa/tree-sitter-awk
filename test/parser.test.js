@@ -107,25 +107,50 @@ test("awk: unterminated literals parse deterministically and repairs restore fre
   ]);
 });
 
-test("awk: host bracket edits restore nested and formerly negative delimiter depths", () => {
-  edited(String.raw`/[\x5c[:\x5c[:a]]/`, String.raw`/[\x5c[:\x5c[:a]]]/`, [
-    { byte: 17, deleteBytes: 0, insert: "]" },
-  ]);
-  edited("/]x[ [a/]/", "/]x[:[a/]/", [
-    { byte: 4, deleteBytes: 1, insert: ":" },
-  ]);
-  edited("/]x[:[a/]/", String.raw`/\]x[:[a/]/`, [
-    { byte: 1, deleteBytes: 0, insert: "\\" },
-  ]);
-  edited(String.raw`/\]x[:[a/]/`, "/]x[:[a/]/", [
-    { byte: 1, deleteBytes: 1, insert: "" },
-  ]);
-  edited("/]x[\\\n:[a/]/", "/]x[:[a/]/", [
-    { byte: 4, deleteBytes: 2, insert: "" },
-  ]);
-  edited("/[[\\\n:alpha:]/]/", "/[[:alpha:]/]/", [
-    { byte: 3, deleteBytes: 2, insert: "" },
-  ]);
+test("awk: escaping bracket slashes repairs ordinary and typed regexps", () => {
+  for (const pattern of [
+    "/[/]/",
+    "/[]a/]/",
+    "/[[:alpha:]/]/",
+    "/[[.a.]/]/",
+    "/[[=a=]/]/",
+    "/]x[:[a/]/",
+  ]) {
+    for (const marker of ["", "@"]) {
+      const prefix = `BEGIN {x = ${marker}`;
+      const suffix = "; y /= 2}";
+      const byte = prefix.length + pattern.indexOf("/", 1);
+      const initial = prefix + pattern + suffix;
+      const final = `${initial.slice(0, byte)}\\${initial.slice(byte)}`;
+      assert.equal(parse(initial).status, 1, initial);
+      edited(initial, final, [{ byte, deleteBytes: 0, insert: "\\" }]);
+      edited(final, final, [
+        { byte, deleteBytes: 1, insert: "" },
+        { byte, deleteBytes: 0, insert: "\\" },
+      ]);
+    }
+  }
+});
+
+test("awk: comparison chain edits retain fresh associativity and output redirection", () => {
+  for (const { initial, final, byte, insert } of [
+    { initial: "a < b", final: "a < b < c", byte: 5, insert: " < c" },
+    {
+      initial: "a < b | getline x",
+      final: "a < b | getline x >= c",
+      byte: 17,
+      insert: " >= c",
+    },
+    {
+      initial: "BEGIN {print a < b > out}",
+      final: "BEGIN {print a < b == c > out}",
+      byte: 18,
+      insert: " == c",
+    },
+  ]) {
+    edited(initial, final, [{ byte, deleteBytes: 0, insert }]);
+    edited(final, initial, [{ byte, deleteBytes: insert.length, insert: "" }]);
+  }
 });
 
 test("awk: namespace edits reclassify later GNU builtins", () => {
@@ -346,8 +371,8 @@ test("awk: regexp repairs restore endpoint order and raw slash boundaries", () =
     },
     {
       initial: "/]x[/]/",
-      final: String.raw`/\]x[/]/`,
-      byte: 1,
+      final: String.raw`/]x[\/]/`,
+      byte: 4,
       deleteBytes: 0,
       insert: "\\",
     },
@@ -369,22 +394,22 @@ test("awk: rejected regexp units repair across literal boundaries and preserve n
       insert: "3",
     },
     {
-      before: "a{2,1}[/]b",
-      after: "a{2,3}[/]b",
+      before: String.raw`a{2,1}[\/]b`,
+      after: String.raw`a{2,3}[\/]b`,
       byte: 4,
       deleteBytes: 1,
       insert: "3",
     },
     {
-      before: "a{2,1}[[:alpha:]/]b",
-      after: "a{2,3}[[:alpha:]/]b",
+      before: String.raw`a{2,1}[[:alpha:]\/]b`,
+      after: String.raw`a{2,3}[[:alpha:]\/]b`,
       byte: 4,
       deleteBytes: 1,
       insert: "3",
     },
     {
-      before: "a{2,1}[\\\n/]b",
-      after: "a{2,3}[\\\n/]b",
+      before: "a{2,1}[\\\n\\/]b",
+      after: "a{2,3}[\\\n\\/]b",
       byte: 4,
       deleteBytes: 1,
       insert: "3",
@@ -397,15 +422,15 @@ test("awk: rejected regexp units repair across literal boundaries and preserve n
       insert: "3",
     },
     {
-      before: "a{2,[/]}b",
-      after: "a[/]}b",
+      before: String.raw`a{2,[\/]}b`,
+      after: String.raw`a[\/]}b`,
       byte: 1,
       deleteBytes: 3,
       insert: "",
     },
     {
-      before: "a[[:bogus:]/]b",
-      after: "a[[:alpha:]/]b",
+      before: String.raw`a[[:bogus:]\/]b`,
+      after: String.raw`a[[:alpha:]\/]b`,
       byte: 4,
       deleteBytes: 5,
       insert: "alpha",
@@ -483,14 +508,14 @@ test("awk: regexp edits reclassify intervals ranges raw slash boundaries and UTF
     },
     {
       initial: "/[a-c]/",
-      final: "/[a/c]/",
+      final: String.raw`/[a\/c]/`,
       byte: 3,
       deleteBytes: 1,
-      insert: "/",
+      insert: String.raw`\/`,
     },
     {
-      initial: "/[[:alpha:]/]/",
-      final: "/[[:digit:]/]/",
+      initial: String.raw`/[[:alpha:]\/]/`,
+      final: String.raw`/[[:digit:]\/]/`,
       byte: 4,
       deleteBytes: 5,
       insert: "digit",
@@ -524,8 +549,8 @@ test("awk: regexp edits reclassify intervals ranges raw slash boundaries and UTF
       insert: "00003f",
     },
     {
-      initial: "/[[:alpha:]/]/",
-      final: String.raw`/[[:alpha\x3a]/]/`,
+      initial: String.raw`/[[:alpha:]\/]/`,
+      final: String.raw`/[[:alpha\x3a]\/]/`,
       byte: 9,
       deleteBytes: 1,
       insert: String.raw`\x3a`,

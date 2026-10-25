@@ -394,10 +394,6 @@ const sharedRules = {
 function contextRules(context, output) {
   const ref = ($, name) => $[`_${context}_${name}`];
   const named = ($, name, type) => alias(ref($, name), $[type]);
-  const relational = ($) => [
-    $._concat,
-    ...(output ? [] : [named($, "pipe", "getline_expression")]),
-  ];
   const pipe = ($, source) =>
     seq(
       field("source", source),
@@ -479,21 +475,19 @@ function contextRules(context, output) {
       ),
     compare: ($) =>
       choice(
-        ...relational($),
+        $._concat,
+        ...(output ? [] : [named($, "pipe", "getline_expression")]),
         named($, "compare_operation", "binary_expression"),
         ...(output ? [] : [named($, "comparison_pipe", "getline_expression")]),
       ),
     compare_operation: ($) =>
-      prec.left(
-        7,
-        seq(
-          field("left", choice(...relational($))),
-          field(
-            "operator",
-            choice("<", "<=", "==", "!=", ">=", ...(output ? [] : [">"])),
-          ),
-          field("right", choice(...relational($))),
+      seq(
+        field("left", ref($, "compare")),
+        field(
+          "operator",
+          choice("<", "<=", "==", "!=", ">=", ...(output ? [] : [">"])),
         ),
+        field("right", $._concat),
       ),
     ...(output
       ? {}

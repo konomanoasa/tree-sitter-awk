@@ -152,11 +152,32 @@ x~@/a/
 (program (rule pattern: (binary_expression left: (identifier) right: (typed_regexp (regexp pattern: (regular_expression (regex_branch (regex_character (regex_text)))))))))
 
 ==================
-Unparenthesized comparisons cannot chain
-:error
+Unparenthesized comparisons associate left
 ==================
 a<b<c
 ---
+
+(program (rule pattern: (binary_expression
+  left: (binary_expression left: (identifier) right: (identifier))
+  right: (identifier))))
+
+==================
+Mixed comparison operators share left associativity
+==================
+a > b >= c == d != e <= f < g
+---
+
+(program (rule pattern: (binary_expression
+  left: (binary_expression
+    left: (binary_expression
+      left: (binary_expression
+        left: (binary_expression
+          left: (binary_expression left: (identifier) right: (identifier))
+          right: (identifier))
+        right: (identifier))
+      right: (identifier))
+    right: (identifier))
+  right: (identifier))))
 
 ==================
 Membership keyword is not a prefix of a longer name

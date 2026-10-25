@@ -18,7 +18,7 @@ test("awk: repairs restore names literals and statement ownership across syntax 
   const sources = [
     '@namespace "lib"\nfunction f(systime) {return systime (3)}\nBEGIN {print systime (3)}',
     "function f(switch) {return switch}\nBEGIN {switch(x) {case @/a{1,2}/: print (a)+b;}}",
-    'BEGIN {if(x) {print "é"}\nelse print /[[:alpha:]/]/; getline a[i] < file}',
+    'BEGIN {if(x) {print "é"}\nelse print /[[:alpha:]\\/]/; getline a[i] < file}',
     String.raw`BEGIN {x = @/\x28a\x29+?/; print (x), y > dest}`,
     "BEGIN {for(i in a; i < 3; i++) {print a[i]} }",
   ];
@@ -54,7 +54,7 @@ test("awk: fixed-seed generated histories restore fresh CSTs after repairs", () 
   const seeds = [
     '@namespace "lib"\nfunction f(systime) {return systime (3)}\nBEGIN {print systime(3)}',
     "BEGIN {switch(x) {case @/a{1,2}/: print (a)+b; default: break;}}",
-    String.raw`/[[:alpha:]/]\x28a\x29+?\xc3\xa9/`,
+    String.raw`/[[:alpha:]\/]\x28a\x29+?\xc3\xa9/`,
     "BEGIN {getline a[i] < file; print (a), b > dest}",
   ];
   const insertions = [

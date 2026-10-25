@@ -179,9 +179,6 @@
 
 (regex_digits) @number
 
-(regex_repetition_modifier
-  "?" @operator)
-
 [
   (escape_sequence
     !fragment)

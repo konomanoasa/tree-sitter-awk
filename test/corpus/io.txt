@@ -199,11 +199,64 @@ BEGIN {print a > "b" > "c"}
 ---
 
 ==================
-Comparisons do not chain through an input pipe command
+Input pipe cannot pull a comparison into an output destination
 :error
+==================
+BEGIN {print a > b < c | getline x}
+---
+
+==================
+Grouped comparison chain can be an output destination
+==================
+BEGIN {print a > (b < c <= d)}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list
+  (print_statement arguments: (output_arguments argument: (identifier))
+    redirect: (output_redirection destination: (parenthesized_expression
+      (binary_expression
+        left: (binary_expression left: (identifier) right: (identifier))
+        right: (identifier)))))))))
+
+==================
+Comparison chains form the input pipe command
 ==================
 a < b < c | getline
 ---
+
+(program (rule pattern: (getline_expression source: (binary_expression
+  left: (binary_expression left: (identifier) right: (identifier))
+  right: (identifier)))))
+
+==================
+Comparisons and input pipes alternate with left associativity
+==================
+a < b | getline x >= c |& getline y
+---
+
+(program (rule pattern: (getline_expression
+  source: (binary_expression
+    left: (getline_expression
+      source: (binary_expression left: (identifier) right: (identifier))
+      target: (identifier))
+    right: (identifier))
+  target: (identifier))))
+
+==================
+Output comparison chains leave redirection at statement level
+==================
+BEGIN {print a < b == c > out; printf a <= b != c >> out}
+---
+
+(program (rule pattern: (special_pattern) action: (block body: (statement_list
+  (print_statement arguments: (output_arguments argument: (binary_expression
+    left: (binary_expression left: (identifier) right: (identifier))
+    right: (identifier)))
+    redirect: (output_redirection destination: (identifier)))
+  (printf_statement arguments: (output_arguments argument: (binary_expression
+    left: (binary_expression left: (identifier) right: (identifier))
+    right: (identifier)))
+    redirect: (output_redirection destination: (identifier)))))))
 
 ==================
 Typed regexp is not an output argument

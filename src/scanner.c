@@ -16,16 +16,11 @@ typedef struct {
   bool started;
 } Escape;
 
-// host_* tracks source delimiters; other state tracks the decoded pattern.
 typedef struct {
   uint32_t unit_left;
   bool unit_raw;
   bool unit_backslash;
   bool host_escaped;
-  int32_t host_depth;
-  bool host_first;
-  bool host_negated;
-  bool host_pending;
   uint32_t group_depth;
   bool bracket;
   bool bracket_first;
@@ -217,15 +212,6 @@ static void advance_escape(Scanner *scanner, uint32_t length) {
   if (scanner->literal == REGEXP) scanner->regexp.unit_left -= length;
 }
 
-static void host_escape(Regexp *regexp) {
-  regexp->host_first = false;
-  regexp->host_pending = false;
-}
-
-static bool host_bracket(const Regexp *regexp) {
-  return regexp->host_depth > 0;
-}
-
 static bool escape_start(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   Escape *escape = &scanner->escape;
   bool split = escape->first_fragment != 0;
@@ -233,23 +219,22 @@ static bool escape_start(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   for (uint32_t i = 0; i < length; ++i) lexer->advance(lexer, false);
   advance_escape(scanner, length);
   escape->started = true;
-  host_escape(&scanner->regexp);
   if (!split) scanner->escape = (Escape){0};
   return mark(lexer, valid, split ? ESCAPE_START : ESCAPE);
 }
 
-static bool
-escape_fragment(Scanner *scanner, TSLexer *lexer, const bool *valid) {
+static uint32_t advance_text(TSLexer *lexer, uint32_t limit) {
   uint32_t length = 0;
-  while (
-    length < scanner->escape.left &&
-    lexer->lookahead != '\\' &&
-    !lexer->eof(lexer)
-  ) {
+  while (length < limit && lexer->lookahead != '\\' && !lexer->eof(lexer)) {
     lexer->advance(lexer, false);
     ++length;
   }
-  advance_escape(scanner, length);
+  return length;
+}
+
+static bool
+escape_fragment(Scanner *scanner, TSLexer *lexer, const bool *valid) {
+  advance_escape(scanner, advance_text(lexer, scanner->escape.left));
   return mark(lexer, valid, ESCAPE_FRAGMENT);
 }
 
@@ -500,8 +485,7 @@ static Character pattern_character(Reader *reader, uint32_t start) {
   return character;
 }
 
-static Character
-regex_character(Reader *reader, const Regexp *regexp, bool left_backslash) {
+static Character regex_character(Reader *reader, bool left_backslash) {
   uint32_t start = reader->offset;
   Character character = {.value = '\\', .escaped = true};
   if (left_backslash) take(reader);
@@ -513,7 +497,7 @@ regex_character(Reader *reader, const Regexp *regexp, bool left_backslash) {
     take(reader);
     character.paired = true;
     character.length = reader->offset - start;
-  } else if (peek(reader, 0) == '/' && !host_bracket(regexp)) {
+  } else if (peek(reader, 0) == '/') {
     character.value = -1;
   } else {
     Character next = pattern_character(reader, start);
@@ -535,27 +519,6 @@ static Character form_character(Reader *reader) {
     .escaped = true,
     .paired = true,
   };
-}
-
-static void host_character(Regexp *regexp, int32_t value) {
-  if (value == '[' && !regexp->host_depth) {
-    regexp->host_depth = 1;
-    regexp->host_first = true;
-    regexp->host_negated = false;
-    regexp->host_pending = false;
-    return;
-  }
-  if (regexp->host_pending && value == ':') {
-    ++regexp->host_depth;
-  } else if (value == ']' && !regexp->host_first) {
-    // Increments need two bytes; only decrements can overflow.
-    if (regexp->host_depth > INT32_MIN) --regexp->host_depth;
-  } else if (value == '^' && regexp->host_first && !regexp->host_negated) {
-    regexp->host_negated = true;
-    return;
-  }
-  regexp->host_pending = value == '[';
-  regexp->host_first = false;
 }
 
 static bool
@@ -637,13 +600,15 @@ static enum Token interval_unit(
   }
   if (value == '}') {
     regexp->interval = false;
+    regexp->interval_maximum = false;
+    regexp->interval_minimum = 0;
     return RX_INTERVAL_CLOSE;
   }
   if (value < '0' || value > '9') return ERROR_SENTINEL;
   uint32_t count = (uint32_t)(value - '0');
   for (;;) {
     uint32_t start = reader->offset;
-    Character next = regex_character(reader, regexp, false);
+    Character next = regex_character(reader, false);
     if (next.value < '0' || next.value > '9' || next.quoted) break;
     count = count * 10 + (uint32_t)(next.value - '0');
     *length = start + next.length;
@@ -662,7 +627,7 @@ static enum Token bracket_unit(Regexp *regexp, Reader *reader, int32_t value) {
   if (value == '^' && regexp->bracket_first && !regexp->bracket_negated)
     return RX_NEGATION;
   if (value == '[') {
-    Character next = regex_character(reader, regexp, false);
+    Character next = regex_character(reader, false);
     if (next.quoted || !ascii_in(next.value, ":.=")) return RX_CHARACTER;
     regexp->form = (unsigned char)next.value;
     regexp->form_phase = FORM_MARKER;
@@ -674,7 +639,7 @@ static enum Token bracket_unit(Regexp *regexp, Reader *reader, int32_t value) {
     !regexp->after_class &&
     !regexp->range_pending
   ) {
-    Character next = regex_character(reader, regexp, false);
+    Character next = regex_character(reader, false);
     if (next.value != ']' || next.quoted) return RX_RANGE;
   }
   return RX_CHARACTER;
@@ -703,12 +668,10 @@ static enum Token operator_unit(Regexp *regexp, Reader *reader, int32_t value) {
     case '?':
       return regexp->after_quantifier ? RX_MODIFIER : RX_QUESTION;
     case '{': {
-      Character next = regex_character(reader, regexp, false);
+      Character next = regex_character(reader, false);
       if (next.value < '0' || next.value > '9' || next.quoted)
         return RX_CHARACTER;
       regexp->interval = true;
-      regexp->interval_maximum = false;
-      regexp->interval_minimum = 0;
       return RX_INTERVAL_OPEN;
     }
     default:
@@ -758,10 +721,10 @@ static enum Token unit_role(
 static void enter_role(Regexp *regexp, enum Token role) {
   if (role == RX_GROUP_OPEN) ++regexp->group_depth;
   if (role == RX_GROUP_CLOSE) --regexp->group_depth;
+  if (role == RX_FORM_END) regexp->form = 0;
   if (role == RX_BRACKET_OPEN) {
     regexp->bracket = true;
     regexp->bracket_first = true;
-    regexp->bracket_negated = false;
   } else if (role == RX_BRACKET_CLOSE) {
     regexp->bracket = false;
     regexp->range_start = 0;
@@ -770,6 +733,7 @@ static void enter_role(Regexp *regexp, enum Token role) {
     regexp->bracket_negated = true;
   } else {
     regexp->bracket_first = false;
+    regexp->bracket_negated = false;
   }
   regexp->after_quantifier = role == RX_STAR ||
     role == RX_PLUS ||
@@ -784,7 +748,6 @@ static bool regex_role(Scanner *scanner, Reader reader, const bool *valid) {
     ? form_character(&reader)
     : regex_character(
         &reader,
-        regexp,
         regexp->host_escaped && peek(&reader, 0) == '\\'
       );
   if (character.value < 0) return false;
@@ -806,16 +769,8 @@ static bool regex_role(Scanner *scanner, Reader reader, const bool *valid) {
 }
 
 static bool regex_unit(Regexp *regexp, TSLexer *lexer, const bool *valid) {
-  uint32_t length = 0;
-  while (
-    length < regexp->unit_left && lexer->lookahead != '\\' && !lexer->eof(lexer)
-  ) {
-    if (regexp->host_escaped) host_escape(regexp);
-    else host_character(regexp, lexer->lookahead);
-    regexp->host_escaped = false;
-    lexer->advance(lexer, false);
-    ++length;
-  }
+  uint32_t length = advance_text(lexer, regexp->unit_left);
+  if (length) regexp->host_escaped = false;
   regexp->unit_left -= length;
   return mark(lexer, valid, regexp->unit_raw ? REGEX_RAW : REGEX_TEXT);
 }
@@ -834,14 +789,11 @@ static bool backslash(Scanner *scanner, TSLexer *lexer, const bool *valid) {
     --regexp->unit_left;
     if (paired) regexp->unit_backslash = false;
     regexp->host_escaped = paired;
-    host_escape(regexp);
     return mark(lexer, valid, REGEX_TEXT);
   }
   if (continuation(&reader)) {
     if (scanner->escape.open) scanner->escape.left -= 2;
     if (in_regexp && regexp->unit_left) regexp->unit_left -= 2;
-    // A continuation separates `[` from `:`, but not `[` from a leading `]`.
-    regexp->host_pending = false;
     return mark(
       lexer,
       valid,
@@ -862,9 +814,7 @@ static bool backslash(Scanner *scanner, TSLexer *lexer, const bool *valid) {
 static bool regexp_source(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   Regexp *regexp = &scanner->regexp;
   if (regexp->unit_left) return regex_unit(regexp, lexer, valid);
-  if (
-    lexer->lookahead == '/' && !host_bracket(regexp) && !regexp->host_escaped
-  ) {
+  if (lexer->lookahead == '/' && !regexp->host_escaped) {
     lexer->advance(lexer, false);
     return end_literal(scanner, lexer, valid, REGEXP_END);
   }
@@ -983,30 +933,25 @@ recovery_regexp(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   regexp->unit_left = 0;
   regexp->unit_backslash = false;
   if (regexp->host_escaped) {
-    host_escape(regexp);
     regexp->host_escaped = false;
     lexer->advance(lexer, false);
   } else if (next == '\\') {
     lexer->advance(lexer, false);
     if (lexer->lookahead == '\n') {
       lexer->advance(lexer, false);
-      regexp->host_pending = false;
       return mark(lexer, valid, LINE_CONTINUATION);
     }
-    host_escape(regexp);
     if (!lexer->eof(lexer) && lexer->lookahead) lexer->advance(lexer, false);
-  } else if (next == '/' && !host_bracket(regexp)) {
+  } else if (next == '/') {
     lexer->advance(lexer, false);
     return end_literal(scanner, lexer, valid, REGEXP_END);
   } else {
     do {
-      host_character(regexp, lexer->lookahead);
       lexer->advance(lexer, false);
     } while (
       !lexer->eof(lexer) &&
       lexer->lookahead &&
-      !ascii_in(lexer->lookahead, "\\\n") &&
-      !(lexer->lookahead == '/' && !host_bracket(regexp))
+      !ascii_in(lexer->lookahead, "\\\n/")
     );
   }
   // Recovery may be probed before an error; raw contents must remain rejected.
@@ -1060,7 +1005,7 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   }
 }
 
-enum { FLAG_COUNT = 20 };
+enum { FLAG_COUNT = 17 };
 
 typedef struct {
   bool *flag[FLAG_COUNT];
@@ -1077,9 +1022,6 @@ static Flags flags(Scanner *scanner) {
     &regexp->unit_raw,
     &regexp->unit_backslash,
     &regexp->host_escaped,
-    &regexp->host_first,
-    &regexp->host_negated,
-    &regexp->host_pending,
     &regexp->bracket,
     &regexp->bracket_first,
     &regexp->bracket_negated,
@@ -1111,17 +1053,6 @@ static uint32_t get(const char *buffer, unsigned length, unsigned *position) {
   return value;
 }
 
-static unsigned put_signed(char *buffer, unsigned length, int32_t value) {
-  uint32_t bits = (uint32_t)value << 1;
-  return put(buffer, length, value < 0 ? ~bits : bits);
-}
-
-static int32_t
-get_signed(const char *buffer, unsigned length, unsigned *position) {
-  uint32_t bits = get(buffer, length, position);
-  return bits & 1 ? -(int32_t)(bits >> 1) - 1 : (int32_t)(bits >> 1);
-}
-
 void *tree_sitter_awk_external_scanner_create(void) {
   return ts_calloc(1, sizeof(Scanner));
 }
@@ -1147,7 +1078,6 @@ tree_sitter_awk_external_scanner_serialize(void *payload, char *buffer) {
   }
   if (scanner->literal == REGEXP) {
     length = put(buffer, length, regexp->unit_left);
-    length = put_signed(buffer, length, regexp->host_depth);
     length = put(buffer, length, regexp->group_depth);
     length = put(buffer, length, regexp->range_start);
     length = put(buffer, length, regexp->interval_minimum);
@@ -1179,7 +1109,6 @@ void tree_sitter_awk_external_scanner_deserialize(
   }
   if (scanner->literal == REGEXP) {
     regexp->unit_left = get(buffer, length, &position);
-    regexp->host_depth = get_signed(buffer, length, &position);
     regexp->group_depth = get(buffer, length, &position);
     regexp->range_start = get(buffer, length, &position);
     regexp->interval_minimum = get(buffer, length, &position);

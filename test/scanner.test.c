@@ -162,10 +162,11 @@ static void recovery_retains_literal_boundaries_and_resumable_state(void) {
   };
   const RecoveryStep bracket[] = {
     {RX_COUNT, ERROR_SENTINEL, 0},
-    {ERROR_SENTINEL, ERROR_SENTINEL, 6},
-    {ERROR_SENTINEL, REGEXP_END, 7},
+    {ERROR_SENTINEL, ERROR_SENTINEL, 3},
+    {ERROR_SENTINEL, REGEXP_END, 4},
+    {IDENTIFIER, IDENTIFIER, 8},
   };
-  assert_recovery_steps(interval, "1}[/]b/", bracket, 3);
+  assert_recovery_steps(interval, "1}[/tail", bracket, 4);
   const RecoveryStep escaped[] = {
     {RX_COUNT, ERROR_SENTINEL, 0},
     {ERROR_SENTINEL, ERROR_SENTINEL, 2},
@@ -176,33 +177,27 @@ static void recovery_retains_literal_boundaries_and_resumable_state(void) {
   assert_recovery_steps(interval, "1}\\/b/", escaped, 5);
   const RecoveryStep first_bracket[] = {
     {RX_COUNT, ERROR_SENTINEL, 0},
-    {ERROR_SENTINEL, ERROR_SENTINEL, 5},
-    {ERROR_SENTINEL, REGEXP_END, 6},
+    {ERROR_SENTINEL, ERROR_SENTINEL, 1},
+    {ERROR_SENTINEL, REGEXP_END, 2},
   };
-  assert_recovery_steps(interval, "[/]}b/", first_bracket, 3);
+  assert_recovery_steps(interval, "[/", first_bracket, 3);
   const RecoveryStep continuation[] = {
     {RX_COUNT, ERROR_SENTINEL, 0},
     {ERROR_SENTINEL, ERROR_SENTINEL, 3},
     {ERROR_SENTINEL, LINE_CONTINUATION, 5},
-    {ERROR_SENTINEL, ERROR_SENTINEL, 7},
-    {ERROR_SENTINEL, REGEXP_END, 8},
+    {ERROR_SENTINEL, REGEXP_END, 6},
   };
-  assert_recovery_steps(interval, "1}[\\\n/]/", continuation, 5);
+  assert_recovery_steps(interval, "1}[\\\n/", continuation, 4);
   const Scanner class = {
     .literal = REGEXP,
-    .regexp = {
-      .host_depth = 2,
-      .bracket = true,
-      .form = ':',
-      .form_phase = FORM_PAYLOAD
-    },
+    .regexp = {.bracket = true, .form = ':', .form_phase = FORM_PAYLOAD},
   };
   const RecoveryStep class_steps[] = {
     {RX_PAYLOAD, ERROR_SENTINEL, 0},
-    {ERROR_SENTINEL, ERROR_SENTINEL, 10},
-    {ERROR_SENTINEL, REGEXP_END, 11},
+    {ERROR_SENTINEL, ERROR_SENTINEL, 7},
+    {ERROR_SENTINEL, REGEXP_END, 8},
   };
-  assert_recovery_steps(class, "bogus:]/]b/", class_steps, 3);
+  assert_recovery_steps(class, "bogus:]/", class_steps, 3);
   const Scanner paired = {.literal = REGEXP, .regexp = {.host_escaped = true}};
   const RecoveryStep paired_steps[] = {
     {ERROR_SENTINEL, ERROR_SENTINEL, 1},
@@ -323,14 +318,10 @@ static void resumed_tokens_match_uninterrupted_scanning(void) {
     REGEX_RAW,
     RX_FORM_END,
     REGEX_RAW,
-    RX_CHARACTER,
-    REGEX_RAW,
-    RX_BRACKET_CLOSE,
-    REGEX_RAW,
     REGEXP_END
   };
   assert_resumed_tokens(
-    "/[^[:alpha:]/]/",
+    "/[^[:alpha:]/",
     bracket,
     sizeof(bracket) / sizeof(*bracket)
   );
@@ -349,14 +340,10 @@ static void resumed_tokens_match_uninterrupted_scanning(void) {
     ESCAPE,
     RX_FORM_END,
     REGEX_RAW,
-    RX_CHARACTER,
-    REGEX_RAW,
-    RX_BRACKET_CLOSE,
-    REGEX_RAW,
     REGEXP_END
   };
   assert_resumed_tokens(
-    "/[[:alpha\\x3a]/]/",
+    "/[[:alpha\\x3a]/",
     escaped_class_marker,
     sizeof(escaped_class_marker) / sizeof(*escaped_class_marker)
   );
@@ -431,32 +418,23 @@ static void resumed_tokens_match_uninterrupted_scanning(void) {
     unmatched_bracket,
     sizeof(unmatched_bracket) / sizeof(*unmatched_bracket)
   );
-  const enum Token restored_bracket[] = {
+  const enum Token escaped_slash[] = {
     REGEXP_START,
-    RX_CHARACTER,
-    REGEX_RAW,
-    RX_CHARACTER,
-    REGEX_RAW,
     RX_BRACKET_OPEN,
     REGEX_RAW,
     RX_CHARACTER,
-    REGEX_RAW,
-    RX_CHARACTER,
-    REGEX_RAW,
-    RX_CHARACTER,
-    REGEX_RAW,
-    RX_CHARACTER,
-    REGEX_RAW,
+    ESCAPE_PREPARE,
+    ESCAPE,
     RX_BRACKET_CLOSE,
     REGEX_RAW,
     REGEXP_END
   };
   assert_resumed_tokens(
-    "/]x[:[a/]/",
-    restored_bracket,
-    sizeof(restored_bracket) / sizeof(*restored_bracket)
+    "/[\\/]/",
+    escaped_slash,
+    sizeof(escaped_slash) / sizeof(*escaped_slash)
   );
-  const enum Token nested_host_class[] = {
+  const enum Token escaped_brackets[] = {
     REGEXP_START,
     RX_BRACKET_OPEN,
     REGEX_RAW,
@@ -484,8 +462,8 @@ static void resumed_tokens_match_uninterrupted_scanning(void) {
   };
   assert_resumed_tokens(
     "/[\\x5c[:\\x5c[:a]]]/",
-    nested_host_class,
-    sizeof(nested_host_class) / sizeof(*nested_host_class)
+    escaped_brackets,
+    sizeof(escaped_brackets) / sizeof(*escaped_brackets)
   );
 }
 
@@ -497,8 +475,7 @@ static void literal_break_preserves_name_context_without_consuming_lf(void) {
       Scanner scanner = expected;
       scanner.literal = literals[i];
       scanner.escape = (Escape){.left = 3, .open = true, .started = true};
-      scanner.regexp =
-        (Regexp){.host_depth = 3, .bracket = true, .group_depth = 2};
+      scanner.regexp = (Regexp){.bracket = true, .group_depth = 2};
       Input input = input_for("\n", 1);
       bool valid[ERROR_SENTINEL + 1] = {0};
       char before[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
@@ -591,10 +568,11 @@ static void failed_scan_preserves_saved_context(void) {
   assert(scanner.shadows == 0 && !scanner.non_awk && scanner.literal == NONE);
 }
 
-static void assert_no_state_after(
+static unsigned state_after(
   const char *source,
   const enum Token *tokens,
-  unsigned count
+  unsigned count,
+  char *buffer
 ) {
   Scanner scanner = {0};
   Input input = input_for(source, strlen(source));
@@ -608,15 +586,25 @@ static void assert_no_state_after(
     restore_position(&input);
   }
   assert(input.position == input.length);
-  Scanner empty = {0};
-  char expected[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  return save(&scanner, buffer);
+}
+
+static void assert_state_after(
+  const char *source,
+  const enum Token *tokens,
+  unsigned count,
+  const char *expected,
+  unsigned length
+) {
   char actual[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
-  unsigned length = save(&empty, expected);
-  assert(save(&scanner, actual) == length);
+  assert(state_after(source, tokens, count, actual) == length);
   assert(memcmp(expected, actual, length) == 0);
 }
 
 static void completed_constructs_leave_no_scanner_state(void) {
+  Scanner empty = {0};
+  char none[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  unsigned length = save(&empty, none);
   const enum Token regexp[] = {
     REGEXP_START,
     RX_BRACKET_OPEN,
@@ -635,7 +623,13 @@ static void completed_constructs_leave_no_scanner_state(void) {
     REGEX_RAW,
     REGEXP_END
   };
-  assert_no_state_after("/[^a]{3}/", regexp, sizeof(regexp) / sizeof(*regexp));
+  assert_state_after(
+    "/[^a]{3}/",
+    regexp,
+    sizeof(regexp) / sizeof(*regexp),
+    none,
+    length
+  );
   const enum Token split_escape[] = {
     STRING_START,
     ESCAPE_PREPARE,
@@ -645,17 +639,145 @@ static void completed_constructs_leave_no_scanner_state(void) {
     ESCAPE_END,
     STRING_END
   };
-  assert_no_state_after(
+  assert_state_after(
     "\"\\1\\\n2\"",
     split_escape,
-    sizeof(split_escape) / sizeof(*split_escape)
+    sizeof(split_escape) / sizeof(*split_escape),
+    none,
+    length
   );
   const enum Token qualified[] =
     {QUALIFIER, QUALIFIED_SEPARATOR, QUALIFIED_IDENTIFIER};
-  assert_no_state_after(
+  assert_state_after(
     "awk::x",
     qualified,
-    sizeof(qualified) / sizeof(*qualified)
+    sizeof(qualified) / sizeof(*qualified),
+    none,
+    length
+  );
+}
+
+static void closed_regexp_constructs_leave_only_regexp_state(void) {
+  const enum Token bracket[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW
+  };
+  const enum Token negated[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_NEGATION,
+    REGEX_RAW,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW
+  };
+  const enum Token collating[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_COLLATING_OPEN,
+    REGEX_RAW,
+    RX_COLLATING_MARKER,
+    REGEX_RAW,
+    RX_PAYLOAD,
+    REGEX_RAW,
+    RX_COLLATING_CLOSE,
+    REGEX_RAW,
+    RX_FORM_END,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW
+  };
+  const enum Token posix_class[] = {
+    REGEXP_START,
+    RX_BRACKET_OPEN,
+    REGEX_RAW,
+    RX_CLASS_OPEN,
+    REGEX_RAW,
+    RX_CLASS_MARKER,
+    REGEX_RAW,
+    RX_PAYLOAD,
+    REGEX_RAW,
+    RX_CLASS_CLOSE,
+    REGEX_RAW,
+    RX_FORM_END,
+    REGEX_RAW,
+    RX_BRACKET_CLOSE,
+    REGEX_RAW
+  };
+  char state[TREE_SITTER_SERIALIZATION_BUFFER_SIZE];
+  unsigned length =
+    state_after("/[a]", bracket, sizeof(bracket) / sizeof(*bracket), state);
+  assert_state_after(
+    "/[^a]",
+    negated,
+    sizeof(negated) / sizeof(*negated),
+    state,
+    length
+  );
+  assert_state_after(
+    "/[[.a.]]",
+    collating,
+    sizeof(collating) / sizeof(*collating),
+    state,
+    length
+  );
+  assert_state_after(
+    "/[[:alpha:]]",
+    posix_class,
+    sizeof(posix_class) / sizeof(*posix_class),
+    state,
+    length
+  );
+  const enum Token star[] =
+    {REGEXP_START, RX_CHARACTER, REGEX_RAW, RX_STAR, REGEX_RAW};
+  const enum Token minimum[] = {
+    REGEXP_START,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_INTERVAL_OPEN,
+    REGEX_RAW,
+    RX_COUNT,
+    REGEX_RAW,
+    RX_INTERVAL_CLOSE,
+    REGEX_RAW
+  };
+  const enum Token bounded[] = {
+    REGEXP_START,
+    RX_CHARACTER,
+    REGEX_RAW,
+    RX_INTERVAL_OPEN,
+    REGEX_RAW,
+    RX_COUNT,
+    REGEX_RAW,
+    RX_COMMA,
+    REGEX_RAW,
+    RX_COUNT,
+    REGEX_RAW,
+    RX_INTERVAL_CLOSE,
+    REGEX_RAW
+  };
+  length = state_after("/a*", star, sizeof(star) / sizeof(*star), state);
+  assert_state_after(
+    "/a{3}",
+    minimum,
+    sizeof(minimum) / sizeof(*minimum),
+    state,
+    length
+  );
+  assert_state_after(
+    "/a{3,5}",
+    bounded,
+    sizeof(bounded) / sizeof(*bounded),
+    state,
+    length
   );
 }
 
@@ -700,6 +822,7 @@ int main(void) {
   recovery_never_synthesizes_a_literal_closing_at_nul_or_eof();
   failed_scan_preserves_saved_context();
   completed_constructs_leave_no_scanner_state();
+  closed_regexp_constructs_leave_only_regexp_state();
   actual_nul_is_not_end_of_input();
   scanner_lifecycle_releases_allocations();
   failed_creation_payload_is_inert();
