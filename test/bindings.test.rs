@@ -76,6 +76,8 @@ fn point(source: &str, byte: usize) -> Point {
 
 #[test]
 fn parser_reuse_reset_and_document_replacement_preserve_fresh_results() {
+  const DOCUMENT_CYCLES: usize = 3;
+  const FRESH_PARSE_REPETITIONS: usize = 2;
   let sources = [
     "@namespace \"lib\"\nfunction f(systime) {return systime (3)}",
     "function f(switch) {return switch}\nBEGIN {switch(x) {case 1: break;}}",
@@ -88,9 +90,13 @@ fn parser_reuse_reset_and_document_replacement_preserve_fresh_results() {
   let mut reused = parser();
   let mut previous = reused.parse("", None).unwrap();
   let mut old_source = "";
-  for source in sources.into_iter().cycle().take(sources.len() * 3) {
+  for source in sources
+    .into_iter()
+    .cycle()
+    .take(sources.len() * DOCUMENT_CYCLES)
+  {
     let independent = parser().parse(source, None).unwrap();
-    for _ in 0..2 {
+    for _ in 0..FRESH_PARSE_REPETITIONS {
       same_cst(
         reused.parse(source, None).unwrap().root_node(),
         independent.root_node(),

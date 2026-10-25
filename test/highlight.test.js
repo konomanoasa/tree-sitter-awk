@@ -1,6 +1,57 @@
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { test } from "node:test";
-import { clean, highlights } from "./support/parser.js";
+import { grammars, root } from "../scripts/tree-sitter.js";
+import {
+  clean,
+  nativeLibrary,
+  runtime,
+  writeSource,
+} from "./support/parser.js";
+
+const commandTimeoutMs = 60_000;
+const grammar = grammars[0];
+
+function highlights(source) {
+  const path = writeSource(source);
+  const result = runtime.run(
+    [
+      "query",
+      "--captures",
+      "--lib-path",
+      nativeLibrary,
+      "--lang-name",
+      grammar.name,
+      join(root, "queries/highlights.scm"),
+      path,
+    ],
+    {
+      timeout: commandTimeoutMs,
+    },
+  );
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  const lines = source.split("\n");
+  const offset = (row, column) =>
+    Buffer.byteLength(lines.slice(0, Number(row)).join("\n")) +
+    (Number(row) ? 1 : 0) +
+    Number(column);
+  const captures = [];
+  for (const match of result.stdout.matchAll(
+    /pattern: +([0-9]+), capture: +[0-9]+ - ([a-z_.]+), start: \(([0-9]+), ([0-9]+)\), end: \(([0-9]+), ([0-9]+)\)/g,
+  )) {
+    captures.push({
+      pattern: Number(match[1]),
+      name: match[2],
+      start: offset(match[3], match[4]),
+      end: offset(match[5], match[6]),
+    });
+  }
+  const final = Array(Buffer.byteLength(source)).fill("");
+  for (const capture of captures.sort((a, b) => a.pattern - b.pattern))
+    final.fill(capture.name, capture.start, capture.end);
+  return final;
+}
 
 function check(segments) {
   const source = segments.map(([text]) => text).join("");

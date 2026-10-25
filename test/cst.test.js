@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { clean, parse } from "./support/parser.js";
+import { clean, parse, parseSummary } from "./support/parser.js";
+import { nestedCases, sourcePreservationCases } from "./support/workloads.js";
 
 test("awk: normal public nodes have source ranges and remain within their parents", () => {
   for (const source of [
@@ -80,3 +81,50 @@ test("awk: CR is layout outside literals and remains string and comment content"
   for (const blank of ["\f", "\v"])
     assert.equal(parse(`BEGIN {${blank}print 1}`).status, 1);
 });
+
+for (const { name, source } of sourcePreservationCases) {
+  test(`awk: ${name} are not truncated and parse deterministically`, () => {
+    assert.equal(clean(source), clean(source));
+  });
+}
+
+const completionNestingDepth = 2048;
+const completionContinuationCount = 32_768;
+const incompleteFragmentCount = 1200;
+const completionCases = [
+  ...nestedCases.map(({ name, source }) => ({
+    name,
+    source: source(completionNestingDepth),
+    successful: true,
+  })),
+  {
+    name: "split regexp escape",
+    source: `/a\\x2${"\\\n".repeat(completionContinuationCount)}b/\n`,
+    successful: true,
+  },
+  {
+    name: "incomplete directives",
+    source: '@namespace "\n'.repeat(incompleteFragmentCount),
+    successful: false,
+  },
+  {
+    name: "incomplete getline expressions",
+    source: ") getline < \n".repeat(incompleteFragmentCount),
+    successful: false,
+  },
+  {
+    name: "incomplete operators and delimiters",
+    source: "$ ) , \n".repeat(incompleteFragmentCount),
+    successful: false,
+  },
+];
+
+for (const { name, source, successful } of completionCases) {
+  test(`awk: large ${name} finish through EOF`, () => {
+    assert.equal(
+      parseSummary(source, [], { completionOnly: true }).successful,
+      successful,
+      name,
+    );
+  });
+}

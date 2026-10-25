@@ -213,3 +213,29 @@ export function* normalWorkloads() {
 }
 
 export { replacement, scalingItemCounts };
+
+const nestingDepth = 160;
+const nameSuffixBytes = 4096;
+const parameterCount = 1025;
+const continuationCount = 2048;
+const name = `n${"a".repeat(nameSuffixBytes)}`;
+const parameters = Array.from(
+  { length: parameterCount },
+  (_, i) => `p${i}`,
+).join(",");
+const continuation = "\\\n".repeat(continuationCount);
+export const sourcePreservationCases = [
+  {
+    name: "nested expressions",
+    source: `BEGIN {print ${"(".repeat(nestingDepth)}1${")".repeat(nestingDepth)}}`,
+  },
+  {
+    name: "nested regexp groups",
+    source: `/${"(".repeat(nestingDepth)}a${")".repeat(nestingDepth)}/`,
+  },
+  {
+    name: "long namespace function and parameter names",
+    source: `@namespace "${name}"\nfunction ${name}(${parameters},systime) {return systime}`,
+  },
+  { name: "continued regexp escapes", source: `/a\\x2${continuation}b/` },
+];

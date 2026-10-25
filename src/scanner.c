@@ -752,15 +752,19 @@ static bool regex_role(Scanner *scanner, Reader reader, const bool *valid) {
       );
   if (character.value < 0) return false;
   uint32_t length = character.length;
-  enum Token role = unit_role(regexp, &reader, character, &length);
+  Regexp next = *regexp;
+  enum Token role = unit_role(&next, &reader, character, &length);
   if (
-    !valid[role] ||
-    (regexp->bracket && !bracket_member(regexp, role, character))
+    role != ERROR_SENTINEL &&
+    valid[role] &&
+    (!next.bracket || bracket_member(&next, role, character))
   ) {
-    // Keep rejected source in place for recovery's host delimiter tracking.
+    enter_role(&next, role);
+    *regexp = next;
+  } else {
+    // Recovery must track host delimiters in rejected source.
     role = ERROR_SENTINEL;
   }
-  if (role != ERROR_SENTINEL) enter_role(regexp, role);
   regexp->unit_left = length;
   regexp->unit_raw = !character.escaped;
   regexp->unit_backslash = character.paired;
@@ -828,7 +832,6 @@ static bool open_regexp(Scanner *scanner, TSLexer *lexer) {
   return true;
 }
 
-// Preserve typed-regexp boundaries even where the parser rejects them.
 static bool typed_marker(Scanner *scanner, TSLexer *lexer) {
   lexer->advance(lexer, false);
   lexer->mark_end(lexer);
@@ -954,7 +957,7 @@ recovery_regexp(Scanner *scanner, TSLexer *lexer, const bool *valid) {
       !ascii_in(lexer->lookahead, "\\\n/")
     );
   }
-  // Recovery may be probed before an error; raw contents must remain rejected.
+  // Recovery probes can precede errors; reject raw contents.
   return mark(lexer, valid, ERROR_SENTINEL);
 }
 
