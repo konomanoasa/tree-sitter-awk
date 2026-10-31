@@ -39,6 +39,32 @@ BEGIN {print "\1234\x414\u3042z\x\u\q\0\n"}
         (escape_sequence) (escape_sequence))))))))
 
 ==================
+Numeric control escapes and unknown printable escapes remain accepted
+==================
+BEGIN {print "\001\x01\q"}
+---
+
+(program
+  (rule pattern: (special_pattern)
+    action: (block body: (statement_list
+      (print_statement arguments: (output_arguments argument: (string
+        (escape_sequence) (escape_sequence) (escape_sequence))))))))
+
+==================
+A backslash followed by raw U+0001 is not a string escape
+:error
+==================
+BEGIN {print "a\b"}
+---
+
+==================
+A backslash followed by raw DEL is not directive text
+:error
+==================
+@load "a\b"
+---
+
+==================
 Localized string requires adjacency
 ==================
 BEGIN {print _"日本語", _ "text"}

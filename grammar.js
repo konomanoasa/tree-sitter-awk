@@ -231,10 +231,7 @@ const statementHeaders = {
   while: ($) => condition($, "while"),
   for: ($) =>
     seq(
-      "for",
-      "(",
-      optional(field("initializer", $._for_part)),
-      ";",
+      $._for_initializer,
       optional(field("condition", $._expression)),
       ";",
       optional(field("update", $._for_part)),
@@ -663,6 +660,8 @@ const definition = {
     ),
     _namespace_string: directiveString(($) => $._namespace_start),
     ...statementRules,
+    _for_initializer: ($) =>
+      seq("for", "(", optional(field("initializer", $._for_part)), ";"),
     _for_in_header: ($) =>
       seq(
         "for",

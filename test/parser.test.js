@@ -2,6 +2,47 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { edited, parse } from "./support/parser.js";
 
+test("awk: removing a backslash repairs forbidden raw controls in quoted literals", () => {
+  const rejected = [
+    0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13,
+    0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+    0x7f,
+  ];
+  for (const [prefix, suffix] of [
+    ['BEGIN {print "', '"}\n'],
+    ['BEGIN {print _"', '"}\n'],
+    ['@include "', '"\nBEGIN {print 1}\n'],
+    ['@load "', '"\nBEGIN {print 1}\n'],
+    ['@nsinclude "', '"\nBEGIN {print 1}\n'],
+  ]) {
+    for (const leading of ["", "a"]) {
+      for (const code of rejected) {
+        const head = prefix + leading;
+        const tail = `${String.fromCharCode(code)}b${suffix}`;
+        const initial = `${head}\\${tail}`;
+        assert.equal(parse(initial).status, 1, JSON.stringify(initial));
+        edited(initial, head + tail, [
+          { byte: head.length, deleteBytes: 1, insert: "" },
+        ]);
+        const paired = `${head}\\\\${tail}`;
+        assert.equal(parse(paired).status, 0, JSON.stringify(paired));
+      }
+    }
+  }
+});
+
+test("awk: quoted escapes retain the permitted raw control boundaries", () => {
+  for (const code of [0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d]) {
+    for (const [prefix, suffix] of [
+      ['BEGIN {print "', '"}\n'],
+      ['@include "', '"\n'],
+    ]) {
+      const source = `${prefix}a\\${String.fromCharCode(code)}b${suffix}`;
+      assert.equal(parse(source).status, 0, JSON.stringify(source));
+    }
+  }
+});
+
 test("awk: directive parameter edits restore indirect calls without leaking to other functions", () => {
   for (const name of ["include", "load", "namespace", "nsinclude"]) {
     const prefix = `function f(${name}) {return @${name}(1)}\n`;
@@ -90,42 +131,35 @@ test("awk: escaping bracket slashes repairs ordinary and typed regexps", () => {
   }
 });
 
-test("awk: regexp repairs retain endpoint kinds through resumed byte and character edits", () => {
+test("awk: regexp repairs restore byte range order and single-byte collating payloads", () => {
   for (const { initial, final, byte, deleteBytes, insert } of [
     {
-      initial: String.raw`/[\x80-\x81]/`,
+      initial: String.raw`/[\x81-\x80]/`,
       final: String.raw`/[\x80-\x80]/`,
-      byte: 10,
+      byte: 5,
       deleteBytes: 1,
       insert: "0",
     },
     {
-      initial: String.raw`/[\x80-\u0080]/`,
-      final: String.raw`/[\u0080-\u0080]/`,
-      byte: 3,
+      initial: String.raw`/[a-\u0100]/`,
+      final: String.raw`/[a-\u00ff]/`,
+      byte: 7,
       deleteBytes: 3,
-      insert: "u0080",
+      insert: "0ff",
     },
     {
-      initial: String.raw`/[\x5c\x80-\u0080]/`,
-      final: String.raw`/[\x5c\x80-\x80]/`,
-      byte: 12,
-      deleteBytes: 5,
-      insert: "x80",
-    },
-    {
-      initial: String.raw`/[[=\xc3=]]/`,
-      final: String.raw`/[[=\xc3\xa9=]]/`,
+      initial: String.raw`/[[=\xc3\xa9=]]/`,
+      final: String.raw`/[[=\xc3=]]/`,
       byte: 8,
-      deleteBytes: 0,
-      insert: String.raw`\xa9`,
+      deleteBytes: 4,
+      insert: "",
     },
     {
-      initial: String.raw`/[[=\xed\xa0=]]/`,
-      final: String.raw`/[[=\xed\xa0\x80=]]/`,
-      byte: 12,
-      deleteBytes: 0,
-      insert: String.raw`\x80`,
+      initial: String.raw`/[[.\u0100.]]/`,
+      final: String.raw`/[[.\u00ff.]]/`,
+      byte: 7,
+      deleteBytes: 3,
+      insert: "0ff",
     },
   ]) {
     assert.equal(parse(initial).status, 1, initial);

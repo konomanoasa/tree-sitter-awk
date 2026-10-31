@@ -140,8 +140,8 @@ static void assert_recovery_steps(
   for (unsigned i = 0; i < count; ++i) {
     bool valid[ERROR_SENTINEL + 1] = {0};
     for (unsigned token = 0; token <= ERROR_SENTINEL; ++token)
-      valid[token] =
-        steps[i].request == ERROR_SENTINEL || steps[i].request == token;
+      valid[token] = steps[i].request == ERROR_SENTINEL ||
+        steps[i].request == (enum Token)token;
     assert_resumed_step(&scanner, &input, valid, steps[i].token);
     assert(input.position == steps[i].end);
   }

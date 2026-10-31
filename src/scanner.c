@@ -28,7 +28,6 @@ typedef struct {
   bool after_class;
   bool range_pending;
   uint32_t range_start;
-  bool range_byte;
   bool after_quantifier;
   bool interval;
   bool interval_maximum;
@@ -60,7 +59,6 @@ typedef struct {
   uint32_t first_fragment;
   bool escaped;
   bool quoted;
-  bool byte_escape;
   bool paired;
 } Character;
 
@@ -138,10 +136,6 @@ static bool end_literal(
   return mark(lexer, valid, token);
 }
 
-static bool scalar_value(uint32_t value) {
-  return value <= 0x10ffff && !(value >= 0xd800 && value <= 0xdfff);
-}
-
 static void numeric_escape(
   Reader *reader,
   Character *result,
@@ -167,12 +161,11 @@ static void numeric_escape(
     result->first_fragment = first_break;
   }
   if (!count) return;
-  result->byte_escape = code != 'u';
-  if (code == 'u' && !scalar_value(value)) {
+  if (code == 'u' && value > UINT8_MAX) {
     result->value = '?';
     result->quoted = true;
   } else {
-    result->value = (int32_t)(octal ? value & 255 : value);
+    result->value = (int32_t)(octal ? value & UINT8_MAX : value);
   }
 }
 
@@ -391,12 +384,20 @@ static bool quoted_text(const TSLexer *lexer) {
   return !lexer->eof(lexer) && next && next != '\n' && next != '"';
 }
 
+static bool invalid_quoted_escape(int32_t value) {
+  return (value > 0 && value < 0x07) ||
+    (value >= 0x0e && value <= 0x1f) ||
+    value == 0x7f;
+}
+
 static bool
 directive_content(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   bool content = false;
   while (quoted_text(lexer)) {
     if (lexer->lookahead == '\\') {
       lexer->advance(lexer, false);
+      if (invalid_quoted_escape(lexer->lookahead))
+        return content && emit(lexer, valid, DIRECTIVE_TEXT);
       if (lexer->lookahead == '"' || lexer->lookahead == '\n') {
         if (content) return emit(lexer, valid, DIRECTIVE_TEXT);
         if (lexer->lookahead == '"') {
@@ -460,28 +461,6 @@ static Character pattern_character(Reader *reader, uint32_t start) {
   uint32_t character_start = reader->offset;
   Character character = decode(reader);
   character.length += character_start - start;
-  unsigned count = character.value >= 0xc2 && character.value <= 0xdf ? 2
-    : character.value >= 0xe0 && character.value <= 0xef              ? 3
-    : character.value >= 0xf0 && character.value <= 0xf4              ? 4
-                                                                      : 0;
-  if (!character.byte_escape || !count) return character;
-  uint32_t value = (uint32_t)character.value & (0x7f >> count);
-  uint32_t end = start + character.length;
-  for (unsigned i = 1; i < count; ++i) {
-    skip_continuations(reader);
-    uint32_t next_start = reader->offset;
-    Character next = decode(reader);
-    if (!next.byte_escape || next.value < 0x80 || next.value > 0xbf)
-      return character;
-    value = (value << 6) | ((uint32_t)next.value & 0x3f);
-    end = next_start + next.length;
-  }
-  uint32_t minimum = count == 2 ? 0x80 : count == 3 ? 0x800 : 0x10000;
-  if (value >= minimum && value <= 0x10ffff) {
-    character.value = (int32_t)value;
-    character.length = end - start;
-    character.byte_escape = false;
-  }
   return character;
 }
 
@@ -503,7 +482,6 @@ static Character regex_character(Reader *reader, bool left_backslash) {
     Character next = pattern_character(reader, start);
     character.value = next.value;
     character.length = next.length;
-    character.byte_escape = next.byte_escape;
   }
   return character;
 }
@@ -683,15 +661,8 @@ static bool
 bracket_member(Regexp *regexp, enum Token role, Character character) {
   if (role == RX_CHARACTER || (role == RX_PAYLOAD && regexp->form != ':')) {
     uint32_t value = (uint32_t)character.value;
-    bool byte = character.byte_escape && value >= 0x80;
-    if (role == RX_PAYLOAD && regexp->form == '=' && byte) return false;
-    if (regexp->range_pending) {
-      if (byte != regexp->range_byte) return false;
-      if (byte ? value != regexp->range_start : value < regexp->range_start)
-        return false;
-    }
+    if (regexp->range_pending && value < regexp->range_start) return false;
     regexp->range_start = value;
-    regexp->range_byte = byte;
     regexp->range_pending = false;
   } else if (role == RX_RANGE) {
     regexp->range_pending = true;
@@ -728,7 +699,6 @@ static void enter_role(Regexp *regexp, enum Token role) {
   } else if (role == RX_BRACKET_CLOSE) {
     regexp->bracket = false;
     regexp->range_start = 0;
-    regexp->range_byte = false;
   } else if (role == RX_NEGATION) {
     regexp->bracket_negated = true;
   } else {
@@ -773,9 +743,8 @@ static bool regex_role(Scanner *scanner, Reader reader, const bool *valid) {
 }
 
 static bool regex_unit(Regexp *regexp, TSLexer *lexer, const bool *valid) {
-  uint32_t length = advance_text(lexer, regexp->unit_left);
-  if (length) regexp->host_escaped = false;
-  regexp->unit_left -= length;
+  regexp->unit_left -= advance_text(lexer, regexp->unit_left);
+  regexp->host_escaped = false;
   return mark(lexer, valid, regexp->unit_raw ? REGEX_RAW : REGEX_TEXT);
 }
 
@@ -807,6 +776,8 @@ static bool backslash(Scanner *scanner, TSLexer *lexer, const bool *valid) {
     );
   }
   if (valid[ESCAPE_PREPARE] && (!in_regexp || regexp->unit_left)) {
+    if (scanner->literal == STRING && invalid_quoted_escape(peek(&reader, 1)))
+      return false;
     Character escape = decode(&reader);
     if (escape.value < 0) return false;
     open_escape(scanner, escape.length, escape.first_fragment);
@@ -1008,7 +979,7 @@ static bool scan(Scanner *scanner, TSLexer *lexer, const bool *valid) {
   }
 }
 
-enum { FLAG_COUNT = 17 };
+enum { FLAG_COUNT = 16 };
 
 typedef struct {
   bool *flag[FLAG_COUNT];
@@ -1030,7 +1001,6 @@ static Flags flags(Scanner *scanner) {
     &regexp->bracket_negated,
     &regexp->after_class,
     &regexp->range_pending,
-    &regexp->range_byte,
     &regexp->after_quantifier,
     &regexp->interval,
     &regexp->interval_maximum,

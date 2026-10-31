@@ -396,126 +396,136 @@ Numeric backslash is not part of a character class name
 ---
 
 ==================
-UTF-8 byte escapes form one character and invalid bytes retain their source
+Byte escapes remain separate characters in C locale
 ==================
 /\xc3\xa9\303\251\xffa/
 ---
-(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
-  (regex_character escape: (escape_sequence) escape: (escape_sequence))
-  (regex_character escape: (escape_sequence) escape: (escape_sequence))
-  (regex_character escape: (escape_sequence)) (regex_character (regex_text)))))))
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character (regex_text)))))))
 
 ==================
-Unencodable Unicode escapes are literal question marks
+Repetition applies only to the last byte escape
 ==================
-/a\u110000\ud800/
+/\xc3\xa9+/
 ---
-(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
-  (regex_character (regex_text)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)))))))
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_character escape: (escape_sequence)) (regex_repetition operand: (regex_character escape: (escape_sequence)) quantifier: (regex_quantifier operator: (regex_operator))))))))
 
 ==================
-Surrogate byte sequences retain their escapes in one regexp character
+Unicode escapes above 255 are literal question marks
+==================
+/a\u0100\u110000\ud800/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_character (regex_text)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)))))))
+
+==================
+Surrogate byte sequences remain independent escapes
 ==================
 /\xed\xa0\x80\355\277\277/
 ---
-(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
-  (regex_character escape: (escape_sequence) escape: (escape_sequence) escape: (escape_sequence))
-  (regex_character escape: (escape_sequence) escape: (escape_sequence) escape: (escape_sequence)))))))
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)) (regex_character escape: (escape_sequence)))))))
 
 ==================
-Surrogate byte sequences form collating and equivalence payloads
-==================
-/[[.\xed\xa0\x80.]][[=\xed\xbf\xbf=]]/
----
-(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
-  (regex_bracket_expression opening: (regex_delimiter)
-    (regex_collating_symbol opening: (regex_delimiter)
-      payload: (regex_collating_element escape: (escape_sequence) escape: (escape_sequence) escape: (escape_sequence))
-      closing: (regex_delimiter)) closing: (regex_delimiter))
-  (regex_bracket_expression opening: (regex_delimiter)
-    (regex_equivalence_class opening: (regex_delimiter)
-      payload: (regex_collating_element escape: (escape_sequence) escape: (escape_sequence) escape: (escape_sequence))
-      closing: (regex_delimiter)) closing: (regex_delimiter)))))))
-
-==================
-Equal undecoded bytes form a range across different escape spellings
-==================
-/[\x80-\200]/
----
-(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
-  (regex_bracket_expression opening: (regex_delimiter)
-    (regex_range start: (regex_character escape: (escape_sequence))
-      operator: (regex_operator) end: (regex_character escape: (escape_sequence)))
-    closing: (regex_delimiter)))))))
-
-==================
-Quoting and collating symbols preserve undecoded byte identity
-==================
-/[\x5c\xff-[.\377.]]/
----
-(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
-  (regex_bracket_expression opening: (regex_delimiter)
-    (regex_range start: (regex_character escape: (escape_sequence) escape: (escape_sequence))
-      operator: (regex_operator)
-      end: (regex_collating_symbol opening: (regex_delimiter)
-        payload: (regex_collating_element escape: (escape_sequence)) closing: (regex_delimiter)))
-    closing: (regex_delimiter)))))))
-
-==================
-Unequal undecoded bytes cannot form a range
+Multiple byte escapes cannot form one collating payload
 :error
+==================
+/[[.\xc3\xa9.]]/
+---
+
+
+==================
+Multiple byte escapes cannot form one equivalence payload
+:error
+==================
+/[[=\xed\xbf\xbf=]]/
+---
+
+
+==================
+Increasing byte endpoints form a range
 ==================
 /[\x80-\xc3]/
 ---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_bracket_expression opening: (regex_delimiter) (regex_range start: (regex_character escape: (escape_sequence)) operator: (regex_operator) end: (regex_character escape: (escape_sequence))) closing: (regex_delimiter)))))))
 
 ==================
-An undecoded byte and a character of equal numeric value cannot form a range
-:error
+Octal and hex byte endpoints share numeric order
+==================
+/[\x80-\200]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_bracket_expression opening: (regex_delimiter) (regex_range start: (regex_character escape: (escape_sequence)) operator: (regex_operator) end: (regex_character escape: (escape_sequence))) closing: (regex_delimiter)))))))
+
+==================
+Unicode and hex byte endpoints share numeric order
 ==================
 /[\x80-\u0080]/
 ---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_bracket_expression opening: (regex_delimiter) (regex_range start: (regex_character escape: (escape_sequence)) operator: (regex_operator) end: (regex_character escape: (escape_sequence))) closing: (regex_delimiter)))))))
 
 ==================
-A character cannot start a range ending in an undecoded byte
-:error
+ASCII can start a range ending in a high byte
 ==================
 /[a-\xff]/
 ---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_bracket_expression opening: (regex_delimiter) (regex_range start: (regex_character (regex_text)) operator: (regex_operator) end: (regex_character escape: (escape_sequence))) closing: (regex_delimiter)))))))
 
 ==================
-Quoting an undecoded byte does not make it a character endpoint
-:error
+Quoted bytes keep their numeric endpoint value
 ==================
 /[\x5c\x80-\u0080]/
 ---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_bracket_expression opening: (regex_delimiter) (regex_range start: (regex_character escape: (escape_sequence) escape: (escape_sequence)) operator: (regex_operator) end: (regex_character escape: (escape_sequence))) closing: (regex_delimiter)))))))
 
 ==================
-An undecoded collating byte cannot start a range ending in a character
-:error
+Collating byte endpoints share Unicode escape values
 ==================
 /[[.\xc3.]-\u00c3]/
 ---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_bracket_expression opening: (regex_delimiter) (regex_range start: (regex_collating_symbol opening: (regex_delimiter) payload: (regex_collating_element escape: (escape_sequence)) closing: (regex_delimiter)) operator: (regex_operator) end: (regex_character escape: (escape_sequence))) closing: (regex_delimiter)))))))
 
 ==================
-Equivalence classes reject undecoded single bytes
-:error
+Equivalence classes accept single high bytes
 ==================
 /[[=\xc3=]]/
 ---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_bracket_expression opening: (regex_delimiter) (regex_equivalence_class opening: (regex_delimiter) payload: (regex_collating_element escape: (escape_sequence)) closing: (regex_delimiter)) closing: (regex_delimiter)))))))
 
 ==================
-Overlong byte sequences do not form one collating character
+Reversed byte endpoints are rejected
 :error
 ==================
-/[[.\xe0\x80\x80.]]/
+/[\xff-\x80]/
 ---
 
+
 ==================
-Byte sequences above the Unicode range do not form one equivalence character
+Unicode replacement changes range endpoint order
 :error
 ==================
-/[[=\xf4\x90\x80\x80=]]/
+/[a-\u0100]/
 ---
+
+
+==================
+Unicode replacement cannot form a collating payload
+:error
+==================
+/[[.\u0100.]]/
+---
+
+
+==================
+Unicode replacement cannot form an equivalence payload
+:error
+==================
+/[[=\u0100=]]/
+---
+
+
+==================
+Non-ASCII source remains one code point per collating payload
+==================
+/[[.é.]][[=é=]]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch (regex_bracket_expression opening: (regex_delimiter) (regex_collating_symbol opening: (regex_delimiter) payload: (regex_collating_element (regex_text)) closing: (regex_delimiter)) closing: (regex_delimiter)) (regex_bracket_expression opening: (regex_delimiter) (regex_equivalence_class opening: (regex_delimiter) payload: (regex_collating_element (regex_text)) closing: (regex_delimiter)) closing: (regex_delimiter)))))))
 
 ==================
 An interval cannot exceed the MinRX count limit
@@ -817,3 +827,24 @@ Escaped and numeric slashes remain bracket members
     (regex_character escape: (escape_sequence))
     (regex_character escape: (escape_sequence))
     closing: (regex_delimiter)))))))
+
+==================
+Byte escape sequences retain separate members around a range
+==================
+/[\xc3\xa9-\xc3\xaa]/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_bracket_expression opening: (regex_delimiter)
+    (regex_character escape: (escape_sequence))
+    (regex_range start: (regex_character escape: (escape_sequence))
+      operator: (regex_operator) end: (regex_character escape: (escape_sequence)))
+    (regex_character escape: (escape_sequence)) closing: (regex_delimiter)))))))
+
+==================
+Non-ASCII source remains a whole code point repetition operand
+==================
+/é+/
+---
+(program (rule pattern: (regexp pattern: (regular_expression (regex_branch
+  (regex_repetition operand: (regex_character (regex_text))
+    quantifier: (regex_quantifier operator: (regex_operator))))))))

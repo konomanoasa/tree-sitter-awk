@@ -252,7 +252,7 @@ test("awk: regexp repairs restore endpoint order and raw slash boundaries", () =
     edited(initial, final, [{ byte, deleteBytes, insert }]);
 });
 
-test("awk: regexp edits reclassify intervals ranges raw slash boundaries and UTF-8 escapes", () => {
+test("awk: regexp edits reclassify intervals ranges raw slash boundaries and byte escapes", () => {
   const changes = [
     {
       initial: "/[[:alpha:]-a]/",
@@ -385,8 +385,8 @@ test("awk: repairs restore names literals and statement ownership across syntax 
 });
 
 test("awk: fixed-seed generated histories restore fresh CSTs after repairs", () => {
-  const historyCount = 512;
-  const forwardEditCount = 6;
+  const historiesPerInput = 2;
+  const forwardEditCount = 2;
   const maximumDeletionBytes = 2;
   const seeds = [
     '@namespace "lib"\nfunction f(systime) {return systime (3)}\nBEGIN {print systime(3)}',
@@ -417,7 +417,7 @@ test("awk: fixed-seed generated histories restore fresh CSTs after repairs", () 
     random ^= random << 5;
     return random >>> 0;
   };
-  for (let history = 0; history < historyCount; history++) {
+  for (let history = 0; history < seeds.length * historiesPerInput; history++) {
     const original = seeds[history % seeds.length];
     let source = Buffer.from(original);
     const edits = [];

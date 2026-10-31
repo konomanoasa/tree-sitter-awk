@@ -7,8 +7,6 @@
 [Tree-sitter](https://tree-sitter.github.io/tree-sitter/) grammar for
 GNU Awk 5.4.1.
 
-For POSIX awk, see [tree-sitter-posix-awk](https://github.com/konomanoasa/tree-sitter-posix-awk).
-
 ## Installation
 
 ```sh
@@ -26,10 +24,6 @@ npm test
 ## Specification
 
 [The GNU Awk User’s Guide, Edition 5.4](https://www.gnu.org/software/gawk/manual/gawk.html)
-
-## Used By
-
-[awk-ts-mode](https://github.com/konomanoasa/awk-ts-mode)
 
 ## License
 

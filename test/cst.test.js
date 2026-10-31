@@ -46,6 +46,24 @@ test("awk: normal public nodes have source ranges and remain within their parent
   }
 });
 
+test("awk: C locale parsing conditions are independent of the process locale", () => {
+  const previous = process.env.LC_ALL;
+  const sources = [
+    String.raw`/\xc3\xa9+[a-\xff][[=\u00ff=]]/`,
+    String.raw`/a\u0100[\u0100-\u00ff]/`,
+    "/é+[é-ê][[.é.]]/",
+  ];
+  try {
+    process.env.LC_ALL = "C";
+    const expected = sources.map(clean);
+    process.env.LC_ALL = "C.UTF-8";
+    assert.deepEqual(sources.map(clean), expected);
+  } finally {
+    if (previous === undefined) delete process.env.LC_ALL;
+    else process.env.LC_ALL = previous;
+  }
+});
+
 test("awk: actual NUL is rejected in source, comments, and literals while escaped NUL remains valid", () => {
   for (const source of [
     "\0",
